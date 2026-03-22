@@ -245,23 +245,44 @@ export async function updateStoryTone(storyId: string, tone: string) {
   if (error) throw error;
 }
 
-export async function deactivateNodesAfter(storyId: string, nodeId: string) {
-  // Get the node to find its created_at
-  const { data: node, error: nodeErr } = await supabase
-    .from("story_nodes")
-    .select("created_at")
-    .eq("id", nodeId)
-    .single();
-
-  if (nodeErr) throw nodeErr;
-
-  // Deactivate all nodes created after this one
-  const { error } = await supabase
+export async function jumpToNode(storyId: string, nodeId: string) {
+  // 1. Deactivate ALL nodes in this story
+  const { error: deactErr } = await supabase
     .from("story_nodes")
     .update({ is_active: false } as any)
     .eq("story_id", storyId)
-    .eq("is_active", true)
-    .gt("created_at", node.created_at);
+    .eq("is_active", true);
 
-  if (error) throw error;
+  if (deactErr) throw deactErr;
+
+  // 2. Walk up from target node to root, collecting ancestor IDs
+  const { data: allNodes, error: fetchErr } = await supabase
+    .from("story_nodes")
+    .select("id, parent_id")
+    .eq("story_id", storyId);
+
+  if (fetchErr) throw fetchErr;
+
+  const nodeMap = new Map(allNodes.map((n: any) => [n.id, n.parent_id]));
+  const pathIds: string[] = [];
+  let current: string | null = nodeId;
+  while (current) {
+    pathIds.push(current);
+    current = nodeMap.get(current) || null;
+  }
+
+  // 3. Re-activate only the path nodes
+  if (pathIds.length > 0) {
+    const { error: actErr } = await supabase
+      .from("story_nodes")
+      .update({ is_active: true } as any)
+      .eq("story_id", storyId)
+      .in("id", pathIds);
+
+    if (actErr) throw actErr;
+  }
+}
+
+export async function deactivateNodesAfter(storyId: string, nodeId: string) {
+  return jumpToNode(storyId, nodeId);
 }

@@ -1,15 +1,16 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle, Palette, GitBranch } from "lucide-react";
+import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle, Palette, GitBranch, Hash } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { StoryCanvas, type StoryParagraph } from "@/components/story/StoryCanvas";
 import { ChoiceCards, type StoryChoice } from "@/components/story/ChoiceCards";
+import { ChapterSidebar, type Chapter } from "@/components/story/ChapterSidebar";
 import { StoryTimeline, type TimelineNode } from "@/components/story/StoryTimeline";
 import { TonePanel } from "@/components/story/TonePanel";
 import {
   streamSection, generateChoices, summarizeStory,
   getStory, getStoryNodes, getAllStoryNodes, createStoryNode,
-  updateStoryTitle, updateStoryTone, deactivateNodesAfter,
+  updateStoryTitle, updateStoryTone, jumpToNode,
 } from "@/lib/story-api";
 import { toast } from "sonner";
 
@@ -19,10 +20,11 @@ export default function StoryWrite() {
   const { theme, toggleTheme } = useTheme();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [sidebarTab, setSidebarTab] = useState<"timeline">("timeline");
+  const [sidebarTab, setSidebarTab] = useState<"chapters" | "timeline">("chapters");
   const [paragraphs, setParagraphs] = useState<StoryParagraph[]>([]);
   const [choices, setChoices] = useState<StoryChoice[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingChoices, setIsLoadingChoices] = useState(false);
   const [storyTitle, setStoryTitle] = useState("Untitled Story");
   const [storyMeta, setStoryMeta] = useState<{ genre?: string; tone?: string; premise?: string }>({});
@@ -111,6 +113,7 @@ export default function StoryWrite() {
       },
       onDone: async (text) => {
         setIsGenerating(false);
+        setIsProcessing(true);
         const paras = text.split("\n\n").filter(Boolean);
         setParagraphs(paras.map((t, i) => ({ id: `gen-${i}`, text: t })));
 
@@ -138,10 +141,12 @@ export default function StoryWrite() {
           console.error("Failed to save node:", e);
         }
 
+        setIsProcessing(false);
         fetchChoices(text);
       },
       onError: (err) => {
         setIsGenerating(false);
+        setIsProcessing(false);
         toast.error(err);
       },
     });
@@ -200,6 +205,7 @@ export default function StoryWrite() {
       },
       onDone: async (text) => {
         setIsGenerating(false);
+        setIsProcessing(true);
         const newParas = text.split("\n\n").filter(Boolean);
         setParagraphs([
           ...existingParas,
@@ -230,23 +236,23 @@ export default function StoryWrite() {
           console.error("Failed to save:", e);
         }
 
+        setIsProcessing(false);
         fetchChoices(text);
       },
       onError: (err) => {
         setIsGenerating(false);
+        setIsProcessing(false);
         toast.error(err);
       },
     });
   };
 
   const handleJumpToNode = async (nodeId: string) => {
-    if (isGenerating) return;
+    if (isGenerating || isProcessing) return;
 
     try {
-      // Deactivate everything after this node, then re-activate path to this node
-      await deactivateNodesAfter(storyId!, nodeId);
+      await jumpToNode(storyId!, nodeId);
 
-      // Reload
       const activeNodes = await getStoryNodes(storyId!);
       const paras: StoryParagraph[] = [];
       activeNodes.forEach((node) => {
@@ -272,16 +278,15 @@ export default function StoryWrite() {
         fetchChoices(paras.map((p) => p.text).join("\n\n"));
       }
 
-      toast.success("Jumped to earlier point");
+      toast.success("Jumped to this point");
     } catch {
       toast.error("Failed to jump");
     }
   };
 
   const handleForkFromNode = async (nodeId: string) => {
-    // Same as jump — we go back to that node and generate new choices
     await handleJumpToNode(nodeId);
-    toast.info("Forked from this point — choose a new direction");
+    toast.info("Forked — choose a new direction");
   };
 
   const handleToneChange = async (tone: string) => {
@@ -318,6 +323,17 @@ export default function StoryWrite() {
     [paragraphs]
   );
 
+  // Build chapters from active nodes
+  const chapters: Chapter[] = useMemo(() => {
+    const activeNodes = allNodes.filter((n) => n.is_active);
+    return activeNodes.map((n, i) => ({
+      id: n.id,
+      title: n.chosen_option?.label || (i === 0 ? "Opening" : `Section ${i + 1}`),
+      wordCount: (n.text || "").split(/\s+/).filter(Boolean).length,
+      isActive: n.id === lastNodeId,
+    }));
+  }, [allNodes, lastNodeId]);
+
   const timelineNodes: TimelineNode[] = useMemo(() =>
     allNodes.map((n) => ({
       id: n.id,
@@ -329,6 +345,14 @@ export default function StoryWrite() {
     })),
     [allNodes]
   );
+
+  const handleChapterClick = (id: string) => {
+    // Scroll to the paragraph from this node
+    const el = document.getElementById(`para-${id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   if (loading) {
     return (
@@ -354,24 +378,13 @@ export default function StoryWrite() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {storyMeta.tone && (
-            <button
-              onClick={() => setToneOpen(!toneOpen)}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
-            >
-              <Palette className="w-3 h-3" />
-              <span className="hidden sm:inline">{storyMeta.tone}</span>
-            </button>
-          )}
-          {!storyMeta.tone && (
-            <button
-              onClick={() => setToneOpen(!toneOpen)}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
-            >
-              <Palette className="w-3 h-3" />
-              <span className="hidden sm:inline">Set tone</span>
-            </button>
-          )}
+          <button
+            onClick={() => setToneOpen(!toneOpen)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
+          >
+            <Palette className="w-3 h-3" />
+            <span className="hidden sm:inline">{storyMeta.tone || "Set tone"}</span>
+          </button>
           <span className="text-xs text-muted-foreground tabular-nums">{wordCount.toLocaleString()} words</span>
           <button onClick={toggleTheme} className="p-1.5 rounded-md hover:bg-secondary transition-colors active:scale-95">
             {theme === "light" ? <Moon className="w-3.5 h-3.5 text-muted-foreground" /> : <Sun className="w-3.5 h-3.5 text-muted-foreground" />}
@@ -379,7 +392,6 @@ export default function StoryWrite() {
         </div>
       </header>
 
-      {/* Tone panel popover */}
       <TonePanel
         currentTone={storyMeta.tone}
         onToneChange={handleToneChange}
@@ -389,15 +401,51 @@ export default function StoryWrite() {
 
       <div className="flex-1 flex overflow-hidden">
         {sidebarOpen && (
-          <aside className="w-56 shrink-0 border-r border-border/50 bg-card/50 overflow-hidden animate-fade-in">
-            <StoryTimeline
-              nodes={timelineNodes}
-              currentNodeId={lastNodeId}
-              onJumpToNode={handleJumpToNode}
-              onForkFromNode={handleForkFromNode}
-              totalWords={wordCount}
-              storyTitle={storyTitle}
-            />
+          <aside className="w-56 shrink-0 border-r border-border/50 bg-card/50 overflow-hidden flex flex-col animate-fade-in">
+            {/* Tab switcher */}
+            <div className="flex border-b border-border">
+              <button
+                onClick={() => setSidebarTab("chapters")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
+                  sidebarTab === "chapters"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Hash className="w-3 h-3" />
+                Chapters
+              </button>
+              <button
+                onClick={() => setSidebarTab("timeline")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
+                  sidebarTab === "timeline"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <GitBranch className="w-3 h-3" />
+                Timeline
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-hidden">
+              {sidebarTab === "chapters" ? (
+                <ChapterSidebar
+                  chapters={chapters}
+                  totalWords={wordCount}
+                  onChapterClick={handleChapterClick}
+                />
+              ) : (
+                <StoryTimeline
+                  nodes={timelineNodes}
+                  currentNodeId={lastNodeId}
+                  onJumpToNode={handleJumpToNode}
+                  onForkFromNode={handleForkFromNode}
+                  totalWords={wordCount}
+                  storyTitle={storyTitle}
+                />
+              )}
+            </div>
           </aside>
         )}
 
@@ -410,7 +458,15 @@ export default function StoryWrite() {
 
             <StoryCanvas paragraphs={paragraphs} onEdit={handleEdit} />
 
-            {isDesyncced && !isGenerating && (
+            {/* Processing indicator — shows after streaming ends while saving/summarizing */}
+            {isProcessing && !isGenerating && (
+              <div className="mt-6 flex items-center gap-3 text-muted-foreground animate-fade-in">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm">Saving and preparing choices…</span>
+              </div>
+            )}
+
+            {isDesyncced && !isGenerating && !isProcessing && (
               <div className="mt-6 p-4 rounded-xl border border-choice-risky/30 bg-choice-risky/5 flex items-center gap-3 animate-fade-in">
                 <AlertTriangle className="w-4 h-4 text-choice-risky shrink-0" />
                 <div className="flex-1">
@@ -423,7 +479,7 @@ export default function StoryWrite() {
               </div>
             )}
 
-            {!isDesyncced && (
+            {!isDesyncced && !isProcessing && (
               <ChoiceCards
                 choices={choices}
                 onSelect={handleChoiceSelect}
