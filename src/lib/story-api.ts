@@ -174,17 +174,18 @@ export async function createStoryNode({
   choices?: StoryChoice[];
   chosenOption?: any;
 }) {
+  const insertObj: Record<string, any> = {
+    story_id: storyId,
+    parent_id: parentId || null,
+    text,
+    summary: summary || null,
+    story_state: storyState || {},
+    choices: (choices || []) as any,
+    chosen_option: chosenOption || null,
+  };
   const { data, error } = await supabase
     .from("story_nodes")
-    .insert({
-      story_id: storyId,
-      parent_id: parentId || null,
-      text,
-      summary: summary || null,
-      story_state: storyState || {},
-      choices: choices || [],
-      chosen_option: chosenOption || null,
-    })
+    .insert(insertObj as any)
     .select()
     .single();
 
