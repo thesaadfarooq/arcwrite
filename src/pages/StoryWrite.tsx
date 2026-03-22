@@ -40,6 +40,8 @@ export default function StoryWrite() {
   const [loading, setLoading] = useState(true);
   const [toneOpen, setToneOpen] = useState(false);
   const [allNodes, setAllNodes] = useState<any[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(null);
   const loadedRef = useRef(false);
 
   useEffect(() => {
