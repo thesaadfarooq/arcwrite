@@ -38,6 +38,7 @@ const AppRoutes = () => (
     <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
     <Route path="/story/new" element={<ProtectedRoute><StoryNew /></ProtectedRoute>} />
     <Route path="/story/:id" element={<ProtectedRoute><StoryWrite /></ProtectedRoute>} />
+    <Route path="/pricing" element={<Pricing />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
