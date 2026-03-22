@@ -14,7 +14,9 @@ import {
   streamSection, generateChoices, summarizeStory,
   getStory, getStoryNodes, getAllStoryNodes, createStoryNode,
   updateStoryTitle, updateStoryTone, jumpToNode,
+  updateNodeChapterTitle, deleteNodeAndDescendants, splitNodeAtPosition, mergeNodeWithParent,
 } from "@/lib/story-api";
+import type { ChapterHeading } from "@/components/story/StoryCanvas";
 import { toast } from "sonner";
 
 export default function StoryWrite() {
