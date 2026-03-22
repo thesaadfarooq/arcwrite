@@ -50,9 +50,10 @@ export function StoryCanvas({ paragraphs, onEdit, isEditable = true, chapterHead
         const paraIndexStr = p.id.includes("-") ? p.id.substring(p.id.lastIndexOf("-") + 1) : "0";
         const paraIndex = parseInt(paraIndexStr, 10);
         const isFirstOfNode = i === 0 || paragraphs[i - 1]?.id.substring(0, paragraphs[i - 1].id.lastIndexOf("-")) !== nodeId;
+        const isChapterNode = headingMap.has(nodeId);
 
-        // Show chapter heading at node boundary (skip first node — that's handled by the page title)
-        const showHeading = isFirstOfNode && i > 0 && headingMap.has(nodeId);
+        // Show chapter heading only for chapter-start nodes, not for every timeline node.
+        const showHeading = isFirstOfNode && i > 0 && isChapterNode;
 
         return (
           <div key={p.id} id={isFirstOfNode ? `para-${nodeId}` : undefined}>
@@ -83,7 +84,7 @@ export function StoryCanvas({ paragraphs, onEdit, isEditable = true, chapterHead
             <ParagraphBlock
               paragraph={p}
               isFirst={i === 0}
-              isChapterStart={isFirstOfNode && i > 0}
+              isChapterStart={showHeading}
               onEdit={isEditable ? onEdit : undefined}
             />
           </div>
