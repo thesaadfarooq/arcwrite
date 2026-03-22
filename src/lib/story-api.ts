@@ -286,3 +286,184 @@ export async function jumpToNode(storyId: string, nodeId: string) {
 export async function deactivateNodesAfter(storyId: string, nodeId: string) {
   return jumpToNode(storyId, nodeId);
 }
+
+export async function updateNodeChapterTitle(nodeId: string, title: string) {
+  const { error } = await supabase
+    .from("story_nodes")
+    .update({ chapter_title: title } as any)
+    .eq("id", nodeId);
+
+  if (error) throw error;
+}
+
+export async function deleteNodeAndDescendants(storyId: string, nodeId: string) {
+  // Get all nodes to find descendants
+  const { data: allNodes, error: fetchErr } = await supabase
+    .from("story_nodes")
+    .select("id, parent_id")
+    .eq("story_id", storyId);
+
+  if (fetchErr) throw fetchErr;
+
+  // Find the node's parent
+  const targetNode = allNodes.find((n: any) => n.id === nodeId);
+  if (!targetNode) throw new Error("Node not found");
+
+  // Collect node and all descendants via BFS
+  const toDelete = new Set<string>();
+  const queue = [nodeId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    toDelete.add(current);
+    allNodes
+      .filter((n: any) => n.parent_id === current)
+      .forEach((n: any) => queue.push(n.id));
+  }
+
+  // Delete all collected nodes
+  const { error: delErr } = await supabase
+    .from("story_nodes")
+    .delete()
+    .eq("story_id", storyId)
+    .in("id", Array.from(toDelete));
+
+  if (delErr) throw delErr;
+
+  // If there's a parent, jump to it to fix active path
+  if (targetNode.parent_id) {
+    await jumpToNode(storyId, targetNode.parent_id);
+  }
+
+  return targetNode.parent_id;
+}
+
+export async function splitNodeAtPosition(storyId: string, nodeId: string, splitIndex: number) {
+  // Get the node
+  const { data: node, error: fetchErr } = await supabase
+    .from("story_nodes")
+    .select("*")
+    .eq("id", nodeId)
+    .single();
+
+  if (fetchErr) throw fetchErr;
+
+  const paragraphs = (node.text || "").split("\n\n").filter(Boolean);
+  if (splitIndex <= 0 || splitIndex >= paragraphs.length) {
+    throw new Error("Invalid split position");
+  }
+
+  const textBefore = paragraphs.slice(0, splitIndex).join("\n\n");
+  const textAfter = paragraphs.slice(splitIndex).join("\n\n");
+
+  // Update the original node with text before split
+  const { error: updateErr } = await supabase
+    .from("story_nodes")
+    .update({ text: textBefore } as any)
+    .eq("id", nodeId);
+
+  if (updateErr) throw updateErr;
+
+  // Re-parent existing children of this node to the new child
+  // First create the new child node
+  const { data: newNode, error: insertErr } = await supabase
+    .from("story_nodes")
+    .insert({
+      story_id: storyId,
+      parent_id: nodeId,
+      text: textAfter,
+      summary: node.summary,
+      story_state: node.story_state,
+      choices: node.choices,
+      chosen_option: null,
+      is_active: node.is_active,
+    } as any)
+    .select()
+    .single();
+
+  if (insertErr) throw insertErr;
+
+  // Re-parent old children to the new node
+  const { data: children } = await supabase
+    .from("story_nodes")
+    .select("id")
+    .eq("parent_id", nodeId)
+    .neq("id", newNode.id);
+
+  if (children && children.length > 0) {
+    const { error: reparentErr } = await supabase
+      .from("story_nodes")
+      .update({ parent_id: newNode.id } as any)
+      .in("id", children.map((c: any) => c.id));
+
+    if (reparentErr) throw reparentErr;
+  }
+
+  // Clear choices from original node (they belong to the end)
+  await supabase
+    .from("story_nodes")
+    .update({ choices: [] as any, summary: null } as any)
+    .eq("id", nodeId);
+
+  return newNode;
+}
+
+export async function mergeNodeWithParent(storyId: string, nodeId: string) {
+  const { data: node, error: fetchErr } = await supabase
+    .from("story_nodes")
+    .select("*")
+    .eq("id", nodeId)
+    .single();
+
+  if (fetchErr) throw fetchErr;
+  if (!node.parent_id) throw new Error("Cannot merge the root node");
+
+  // Get parent
+  const { data: parent, error: parentErr } = await supabase
+    .from("story_nodes")
+    .select("*")
+    .eq("id", node.parent_id)
+    .single();
+
+  if (parentErr) throw parentErr;
+
+  // Merge text
+  const mergedText = [parent.text, node.text].filter(Boolean).join("\n\n");
+
+  // Update parent with merged text and child's metadata
+  const { error: updateErr } = await supabase
+    .from("story_nodes")
+    .update({
+      text: mergedText,
+      summary: node.summary || parent.summary,
+      story_state: node.story_state || parent.story_state,
+      choices: node.choices,
+    } as any)
+    .eq("id", node.parent_id);
+
+  if (updateErr) throw updateErr;
+
+  // Re-parent child's children to parent
+  const { data: grandchildren } = await supabase
+    .from("story_nodes")
+    .select("id")
+    .eq("parent_id", nodeId);
+
+  if (grandchildren && grandchildren.length > 0) {
+    const { error: reparentErr } = await supabase
+      .from("story_nodes")
+      .update({ parent_id: node.parent_id } as any)
+      .in("id", grandchildren.map((c: any) => c.id));
+
+    if (reparentErr) throw reparentErr;
+  }
+
+  // Delete the merged node
+  const { error: delErr } = await supabase
+    .from("story_nodes")
+    .delete()
+    .eq("id", nodeId);
+
+  if (delErr) throw delErr;
+
+  return node.parent_id;
+}
