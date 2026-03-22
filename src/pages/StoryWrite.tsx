@@ -623,6 +623,9 @@ export default function StoryWrite() {
                   chapters={chapters}
                   totalWords={wordCount}
                   onChapterClick={handleChapterClick}
+                  onRename={handleChapterRename}
+                  onDelete={handleChapterDelete}
+                  onMerge={handleChapterMerge}
                 />
               ) : (
                 <StoryTimeline
