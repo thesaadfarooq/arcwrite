@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { createStory } from "@/lib/story-api";
+import { getTierLimits } from "@/lib/subscription";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const genres = [
@@ -31,7 +33,7 @@ export default function StoryNew() {
   const mode = searchParams.get("mode") || "scratch";
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, tier } = useAuth();
 
   const [step, setStep] = useState(mode === "genre" ? "genre" : mode === "surprise" ? "surprise" : "premise");
   const [premise, setPremise] = useState("");
@@ -42,6 +44,22 @@ export default function StoryNew() {
   const handleStart = async () => {
     if (!user) return;
     setCreating(true);
+
+    // Check story limit
+    const limits = getTierLimits(tier);
+    if (limits.stories !== Infinity) {
+      const { count, error: countErr } = await supabase
+        .from("stories")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id);
+
+      if (!countErr && count !== null && count >= limits.stories) {
+        toast.error(`You've reached the ${limits.stories}-story limit on your plan. Upgrade for more.`);
+        setCreating(false);
+        navigate("/pricing");
+        return;
+      }
+    }
     try {
       const story = await createStory({
         userId: user.id,
