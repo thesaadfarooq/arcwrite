@@ -434,10 +434,93 @@ export default function StoryWrite() {
   );
 
   const handleChapterClick = (id: string) => {
-    // Scroll to the paragraph from this node
     const el = document.getElementById(`para-${id}`);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const handleChapterRename = async (id: string, newTitle: string) => {
+    try {
+      await updateNodeChapterTitle(id, newTitle);
+      await refreshAllNodes();
+      toast.success("Chapter renamed");
+    } catch {
+      toast.error("Failed to rename chapter");
+    }
+  };
+
+  const handleChapterDelete = async (id: string) => {
+    if (isGenerating || isProcessing) return;
+    try {
+      const newTipId = await deleteNodeAndDescendants(storyId!, id);
+      const activeNodes = await getStoryNodes(storyId!);
+      const paras: StoryParagraph[] = [];
+      activeNodes.forEach((node) => {
+        const texts = (node.text || "").split("\n\n").filter(Boolean);
+        texts.forEach((t, idx) => {
+          paras.push({ id: `${node.id}-${idx}`, text: t });
+        });
+      });
+      setParagraphs(paras);
+      const lastNode = activeNodes[activeNodes.length - 1];
+      setLastNodeId(lastNode?.id || null);
+      setSummary(lastNode?.summary || "");
+      setStoryState(lastNode?.story_state || {});
+      setChoices([]);
+      await refreshAllNodes();
+      if (lastNode) fetchChoices(paras.map((p) => p.text).join("\n\n"));
+      toast.success("Chapter deleted");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to delete chapter");
+    }
+  };
+
+  const handleChapterMerge = async (id: string) => {
+    if (isGenerating || isProcessing) return;
+    try {
+      await mergeNodeWithParent(storyId!, id);
+      const activeNodes = await getStoryNodes(storyId!);
+      const paras: StoryParagraph[] = [];
+      activeNodes.forEach((node) => {
+        const texts = (node.text || "").split("\n\n").filter(Boolean);
+        texts.forEach((t, idx) => {
+          paras.push({ id: `${node.id}-${idx}`, text: t });
+        });
+      });
+      setParagraphs(paras);
+      const lastNode = activeNodes[activeNodes.length - 1];
+      setLastNodeId(lastNode?.id || null);
+      setSummary(lastNode?.summary || "");
+      setStoryState(lastNode?.story_state || {});
+      setChoices([]);
+      await refreshAllNodes();
+      if (lastNode) fetchChoices(paras.map((p) => p.text).join("\n\n"));
+      toast.success("Chapters merged");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to merge chapters");
+    }
+  };
+
+  const handleInsertBreak = async (nodeId: string, paragraphIndex: number) => {
+    if (isGenerating || isProcessing) return;
+    try {
+      await splitNodeAtPosition(storyId!, nodeId, paragraphIndex);
+      const activeNodes = await getStoryNodes(storyId!);
+      const paras: StoryParagraph[] = [];
+      activeNodes.forEach((node) => {
+        const texts = (node.text || "").split("\n\n").filter(Boolean);
+        texts.forEach((t, idx) => {
+          paras.push({ id: `${node.id}-${idx}`, text: t });
+        });
+      });
+      setParagraphs(paras);
+      const lastNode = activeNodes[activeNodes.length - 1];
+      setLastNodeId(lastNode?.id || null);
+      await refreshAllNodes();
+      toast.success("Chapter break inserted");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to insert break");
     }
   };
 
