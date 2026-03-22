@@ -1,19 +1,64 @@
-import { BookOpen, Hash, ChevronRight } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { BookOpen, Hash, ChevronRight, MoreHorizontal, Pencil, Trash2, Merge } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export interface Chapter {
   id: string;
   title: string;
   wordCount: number;
   isActive?: boolean;
+  isRoot?: boolean;
 }
 
 interface ChapterSidebarProps {
   chapters: Chapter[];
   totalWords: number;
   onChapterClick: (id: string) => void;
+  onRename?: (id: string, newTitle: string) => void;
+  onDelete?: (id: string) => void;
+  onMerge?: (id: string) => void;
 }
 
-export function ChapterSidebar({ chapters, totalWords, onChapterClick }: ChapterSidebarProps) {
+export function ChapterSidebar({ chapters, totalWords, onChapterClick, onRename, onDelete, onMerge }: ChapterSidebarProps) {
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Chapter | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (renamingId && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [renamingId]);
+
+  const startRename = (ch: Chapter) => {
+    setRenamingId(ch.id);
+    setRenameValue(ch.title);
+  };
+
+  const commitRename = () => {
+    if (renamingId && renameValue.trim() && onRename) {
+      onRename(renamingId, renameValue.trim());
+    }
+    setRenamingId(null);
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -36,26 +81,106 @@ export function ChapterSidebar({ chapters, totalWords, onChapterClick }: Chapter
         ) : (
           <div className="space-y-0.5">
             {chapters.map((ch, i) => (
-              <button
-                key={ch.id}
-                onClick={() => onChapterClick(ch.id)}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 flex items-center gap-2 group active:scale-[0.98] ${
-                  ch.isActive
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                }`}
-              >
-                <Hash className="w-3.5 h-3.5 shrink-0 opacity-50" />
-                <span className="truncate flex-1">{ch.title || `Chapter ${i + 1}`}</span>
-                <span className="text-xs opacity-0 group-hover:opacity-60 transition-opacity">
-                  {ch.wordCount}w
-                </span>
-                {ch.isActive && <ChevronRight className="w-3 h-3 shrink-0" />}
-              </button>
+              <div key={ch.id} className="group relative flex items-center">
+                {renamingId === ch.id ? (
+                  <input
+                    ref={inputRef}
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onBlur={commitRename}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitRename();
+                      if (e.key === "Escape") setRenamingId(null);
+                    }}
+                    className="w-full text-left px-3 py-2.5 rounded-lg text-sm bg-primary/10 border border-primary/30 text-foreground font-medium focus:outline-none focus:border-primary/50"
+                  />
+                ) : (
+                  <button
+                    onClick={() => onChapterClick(ch.id)}
+                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 flex items-center gap-2 active:scale-[0.98] ${
+                      ch.isActive
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    }`}
+                  >
+                    <Hash className="w-3.5 h-3.5 shrink-0 opacity-50" />
+                    <span className="truncate flex-1">{ch.title || `Chapter ${i + 1}`}</span>
+                    <span className="text-xs opacity-0 group-hover:opacity-60 transition-opacity">
+                      {ch.wordCount}w
+                    </span>
+                    {ch.isActive && <ChevronRight className="w-3 h-3 shrink-0" />}
+                  </button>
+                )}
+
+                {/* Context menu */}
+                {renamingId !== ch.id && (onRename || onDelete || onMerge) && (
+                  <div className="absolute right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+                          <MoreHorizontal className="w-3.5 h-3.5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        {onRename && (
+                          <DropdownMenuItem onClick={() => startRename(ch)}>
+                            <Pencil className="w-3.5 h-3.5 mr-2" />
+                            Rename
+                          </DropdownMenuItem>
+                        )}
+                        {onMerge && !ch.isRoot && (
+                          <DropdownMenuItem onClick={() => onMerge(ch.id)}>
+                            <Merge className="w-3.5 h-3.5 mr-2" />
+                            Merge with previous
+                          </DropdownMenuItem>
+                        )}
+                        {onDelete && chapters.length > 1 && !ch.isRoot && (
+                          <DropdownMenuItem
+                            onClick={() => setDeleteTarget(ch)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete chapter?</DialogTitle>
+            <DialogDescription>
+              This will permanently remove "{deleteTarget?.title}" and all subsequent chapters that branch from it. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" size="sm">Cancel</Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                if (deleteTarget && onDelete) {
+                  onDelete(deleteTarget.id);
+                }
+                setDeleteTarget(null);
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
