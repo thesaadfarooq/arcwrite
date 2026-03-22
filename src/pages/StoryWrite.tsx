@@ -326,6 +326,67 @@ export default function StoryWrite() {
     }
   };
 
+  const handleExport = async () => {
+    if (!limits.export) {
+      toast.error("PDF export is available on Plus and Pro plans");
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("export-story", {
+        body: { storyId },
+      });
+      if (error) throw error;
+
+      // Open HTML in new tab for printing to PDF
+      const blob = new Blob([data.html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, "_blank");
+      if (win) {
+        win.onload = () => {
+          win.print();
+          URL.revokeObjectURL(url);
+        };
+      }
+      toast.success("PDF export opened — use your browser's print dialog to save");
+    } catch (e: any) {
+      toast.error(e.message || "Export failed");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!limits.sharing) {
+      toast.error("Public sharing is available on the Pro plan");
+      return;
+    }
+
+    try {
+      if (shareToken) {
+        // Already shared — copy link
+        const url = `${window.location.origin}/s/${shareToken}`;
+        await navigator.clipboard.writeText(url);
+        toast.success("Share link copied to clipboard");
+      } else {
+        // Generate new share token
+        const token = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+        const { error } = await supabase
+          .from("stories")
+          .update({ share_token: token } as any)
+          .eq("id", storyId);
+
+        if (error) throw error;
+        setShareToken(token);
+        const url = `${window.location.origin}/s/${token}`;
+        await navigator.clipboard.writeText(url);
+        toast.success("Story shared! Link copied to clipboard");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to share");
+    }
+  };
+
   const wordCount = useMemo(
     () => paragraphs.reduce((acc, p) => acc + p.text.split(/\s+/).filter(Boolean).length, 0),
     [paragraphs]
