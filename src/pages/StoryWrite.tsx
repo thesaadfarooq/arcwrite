@@ -184,6 +184,13 @@ export default function StoryWrite() {
   };
 
   const handleChoiceSelect = async (choice: StoryChoice | { type: "custom"; label: string; preview: string }) => {
+    // Check chapter limit
+    const activeNodeCount = allNodes.filter((n) => n.is_active).length;
+    if (limits.chapters !== Infinity && activeNodeCount >= limits.chapters) {
+      toast.error(`You've reached the ${limits.chapters}-chapter limit on your plan. Upgrade for more.`);
+      return;
+    }
+
     setIsGenerating(true);
     setChoices([]);
     setIsDesyncced(false);
