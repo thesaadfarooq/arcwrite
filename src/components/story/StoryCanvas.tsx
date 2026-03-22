@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { SplitSquareVertical } from "lucide-react";
 
 export interface StoryParagraph {
   id: string;
@@ -6,13 +7,20 @@ export interface StoryParagraph {
   isStreaming?: boolean;
 }
 
+export interface ChapterHeading {
+  nodeId: string;
+  title: string;
+}
+
 interface StoryCanvasProps {
   paragraphs: StoryParagraph[];
   onEdit?: (id: string, newText: string) => void;
   isEditable?: boolean;
+  chapterHeadings?: ChapterHeading[];
+  onInsertBreak?: (nodeId: string, paragraphIndex: number) => void;
 }
 
-export function StoryCanvas({ paragraphs, onEdit, isEditable = true }: StoryCanvasProps) {
+export function StoryCanvas({ paragraphs, onEdit, isEditable = true, chapterHeadings, onInsertBreak }: StoryCanvasProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,14 +38,48 @@ export function StoryCanvas({ paragraphs, onEdit, isEditable = true }: StoryCanv
     );
   }
 
+  // Build a map of nodeId → chapter title for headings
+  const headingMap = new Map<string, string>();
+  chapterHeadings?.forEach((h) => headingMap.set(h.nodeId, h.title));
+
   return (
     <div className="space-y-0">
       {paragraphs.map((p, i) => {
         // Extract node ID from paragraph ID (format: "nodeId-index")
         const nodeId = p.id.includes("-") ? p.id.substring(0, p.id.lastIndexOf("-")) : p.id;
+        const paraIndexStr = p.id.includes("-") ? p.id.substring(p.id.lastIndexOf("-") + 1) : "0";
+        const paraIndex = parseInt(paraIndexStr, 10);
         const isFirstOfNode = i === 0 || paragraphs[i - 1]?.id.substring(0, paragraphs[i - 1].id.lastIndexOf("-")) !== nodeId;
+
+        // Show chapter heading at node boundary (skip first node — that's handled by the page title)
+        const showHeading = isFirstOfNode && i > 0 && headingMap.has(nodeId);
+
         return (
           <div key={p.id} id={isFirstOfNode ? `para-${nodeId}` : undefined}>
+            {showHeading && (
+              <div className="mt-12 mb-6 flex items-center gap-4">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  {headingMap.get(nodeId)}
+                </span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+            )}
+
+            {/* Insert chapter break button — between paragraphs of the same node */}
+            {onInsertBreak && !isFirstOfNode && paraIndex > 0 && (
+              <div className="relative h-0 group/break">
+                <button
+                  onClick={() => onInsertBreak(nodeId, paraIndex)}
+                  className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/80 border border-border text-muted-foreground text-xs opacity-0 group-hover/break:opacity-100 hover:!opacity-100 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all duration-200 active:scale-95"
+                  title="Insert chapter break here"
+                >
+                  <SplitSquareVertical className="w-3 h-3" />
+                  <span>Chapter break</span>
+                </button>
+              </div>
+            )}
+
             <ParagraphBlock
               paragraph={p}
               isFirst={i === 0}
