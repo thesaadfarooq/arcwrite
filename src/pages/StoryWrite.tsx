@@ -426,25 +426,35 @@ export default function StoryWrite() {
     [paragraphs]
   );
 
-  // Build chapters from active nodes
+  // Chapters are a subset of the active timeline path.
+  // A chapter starts at the root node or at a node created by an explicit chapter break.
+  // Regular choice generations should extend the current chapter, not create a new one.
+  const activeNodes = useMemo(
+    () => allNodes.filter((n) => n.is_active),
+    [allNodes]
+  );
+
+  const chapterNodes = useMemo(
+    () => activeNodes.filter((n) => !n.parent_id || n.chosen_option == null),
+    [activeNodes]
+  );
+
   const chapters: Chapter[] = useMemo(() => {
-    const activeNodes = allNodes.filter((n) => n.is_active);
-    return activeNodes.map((n, i) => ({
+    return chapterNodes.map((n, i) => ({
       id: n.id,
-      title: (n as any).chapter_title || n.chosen_option?.label || (i === 0 ? "Opening" : `Section ${i + 1}`),
+      title: (n as any).chapter_title || `Chapter ${i + 1}`,
       wordCount: (n.text || "").split(/\s+/).filter(Boolean).length,
       isActive: n.id === lastNodeId,
       isRoot: !n.parent_id,
     }));
-  }, [allNodes, lastNodeId]);
+  }, [chapterNodes, lastNodeId]);
 
   const chapterHeadings: ChapterHeading[] = useMemo(() => {
-    const activeNodes = allNodes.filter((n) => n.is_active);
-    return activeNodes.map((n, i) => ({
+    return chapterNodes.map((n, i) => ({
       nodeId: n.id,
-      title: (n as any).chapter_title || n.chosen_option?.label || (i === 0 ? "Opening" : `Section ${i + 1}`),
+      title: (n as any).chapter_title || `Chapter ${i + 1}`,
     }));
-  }, [allNodes]);
+  }, [chapterNodes]);
 
   const timelineNodes: TimelineNode[] = useMemo(() =>
     allNodes.map((n) => ({
