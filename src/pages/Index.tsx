@@ -1,7 +1,9 @@
 import { useNavigate } from "react-router-dom";
-import { PenLine, Sparkles, Shuffle, BookOpen, Sun, Moon } from "lucide-react";
+import { PenLine, Sparkles, Shuffle, BookOpen, Sun, Moon, LogIn } from "lucide-react";
 import { useTheme } from "@/lib/theme";
+import { useAuth } from "@/lib/auth";
 import { useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const navigate = useNavigate();
