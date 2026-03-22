@@ -644,8 +644,9 @@ export default function StoryWrite() {
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-[680px] mx-auto px-6 md:px-12 py-12 md:py-16">
             <div className="mb-10">
-              <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Chapter 1</span>
-              <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground mt-1 leading-tight">{storyTitle}</h2>
+              <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                {chapters.length > 0 ? chapters[0].title : "Chapter 1"}
+              </span>
             </div>
 
             <StoryCanvas
