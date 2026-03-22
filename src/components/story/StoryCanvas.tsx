@@ -32,14 +32,20 @@ export function StoryCanvas({ paragraphs, onEdit, isEditable = true }: StoryCanv
 
   return (
     <div className="space-y-0">
-      {paragraphs.map((p, i) => (
-        <ParagraphBlock
-          key={p.id}
-          paragraph={p}
-          isFirst={i === 0}
-          onEdit={isEditable ? onEdit : undefined}
-        />
-      ))}
+      {paragraphs.map((p, i) => {
+        // Extract node ID from paragraph ID (format: "nodeId-index")
+        const nodeId = p.id.includes("-") ? p.id.substring(0, p.id.lastIndexOf("-")) : p.id;
+        const isFirstOfNode = i === 0 || paragraphs[i - 1]?.id.substring(0, paragraphs[i - 1].id.lastIndexOf("-")) !== nodeId;
+        return (
+          <div key={p.id} id={isFirstOfNode ? `para-${nodeId}` : undefined}>
+            <ParagraphBlock
+              paragraph={p}
+              isFirst={i === 0}
+              onEdit={isEditable ? onEdit : undefined}
+            />
+          </div>
+        );
+      })}
       <div ref={endRef} />
     </div>
   );
