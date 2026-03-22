@@ -102,6 +102,31 @@ export default function StoryWrite() {
     } catch {}
   };
 
+  /** Reload paragraphs + state from DB so IDs match real nodes (needed for chapter headings) */
+  const reloadActiveState = async () => {
+    try {
+      const [activeNodes, allStoryNodes] = await Promise.all([
+        getStoryNodes(storyId!),
+        getAllStoryNodes(storyId!),
+      ]);
+      setAllNodes(allStoryNodes);
+
+      const paras: StoryParagraph[] = [];
+      activeNodes.forEach((node) => {
+        const texts = (node.text || "").split("\n\n").filter(Boolean);
+        texts.forEach((t, i) => {
+          paras.push({ id: `${node.id}-${i}`, text: t });
+        });
+      });
+      setParagraphs(paras);
+
+      const lastNode = activeNodes[activeNodes.length - 1];
+      setLastNodeId(lastNode?.id || null);
+      setSummary(lastNode?.summary || "");
+      setStoryState(lastNode?.story_state || {});
+    } catch {}
+  };
+
   const generateOpening = async () => {
     setIsGenerating(true);
     let fullText = "";
@@ -139,7 +164,7 @@ export default function StoryWrite() {
             storyState: summaryResult.story_state,
           });
           setLastNodeId(node.id);
-          refreshAllNodes();
+          await reloadActiveState();
 
           const firstLine = text.split(".")[0]?.trim();
           if (firstLine && storyTitle === "Untitled Story") {
@@ -248,7 +273,7 @@ export default function StoryWrite() {
             chosenOption: choice,
           });
           setLastNodeId(node.id);
-          refreshAllNodes();
+          await reloadActiveState();
         } catch (e) {
           console.error("Failed to save:", e);
         }
