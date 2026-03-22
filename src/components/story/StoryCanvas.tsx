@@ -83,6 +83,7 @@ export function StoryCanvas({ paragraphs, onEdit, isEditable = true, chapterHead
             <ParagraphBlock
               paragraph={p}
               isFirst={i === 0}
+              isChapterStart={isFirstOfNode && i > 0}
               onEdit={isEditable ? onEdit : undefined}
             />
           </div>
