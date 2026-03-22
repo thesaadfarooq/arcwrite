@@ -1,0 +1,1 @@
+ALTER TABLE public.story_nodes ADD COLUMN chapter_title text DEFAULT null;
