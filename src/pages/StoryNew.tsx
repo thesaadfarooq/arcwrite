@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { createStory } from "@/lib/story-api";
+import { getTierLimits } from "@/lib/subscription";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const genres = [
