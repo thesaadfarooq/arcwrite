@@ -55,6 +55,7 @@ export default function StoryWrite() {
       const story = await getStory(storyId!);
       setStoryTitle(story.title);
       setStoryMeta({ genre: story.genre || undefined, tone: story.tone || undefined, premise: story.premise || undefined });
+      setShareToken((story as any).share_token || null);
 
       const [activeNodes, allStoryNodes] = await Promise.all([
         getStoryNodes(storyId!),
