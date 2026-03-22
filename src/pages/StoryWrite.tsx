@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle } from "lucide-react";
 import { useTheme } from "@/lib/theme";
@@ -25,10 +25,12 @@ export default function StoryWrite() {
   const [lastNodeId, setLastNodeId] = useState<string | null>(null);
   const [isDesyncced, setIsDesyncced] = useState(false);
   const [loading, setLoading] = useState(true);
+  const loadedRef = useRef(false);
 
-  // Load story and nodes
+  // Load story and nodes — guarded against double-mount
   useEffect(() => {
-    if (!storyId) return;
+    if (!storyId || loadedRef.current) return;
+    loadedRef.current = true;
     loadStory();
   }, [storyId]);
 
@@ -158,7 +160,9 @@ export default function StoryWrite() {
     setChoices([]);
     setIsDesyncced(false);
 
-    const recentText = paragraphs.slice(-3).map((p) => p.text).join("\n\n");
+    // Snapshot existing paragraphs BEFORE streaming starts
+    const existingParas = paragraphs.filter((p) => !p.isStreaming);
+    const recentText = existingParas.slice(-3).map((p) => p.text).join("\n\n");
     let fullText = "";
 
     await streamSection({
@@ -171,29 +175,26 @@ export default function StoryWrite() {
       onDelta: (delta) => {
         fullText += delta;
         const newParas = fullText.split("\n\n").filter(Boolean);
-        setParagraphs((prev) => {
-          const existing = prev.filter((p) => !p.isStreaming);
-          return [
-            ...existing,
-            ...newParas.map((t, i) => ({
-              id: `new-${Date.now()}-${i}`,
-              text: t,
-              isStreaming: i === newParas.length - 1,
-            })),
-          ];
-        });
+        setParagraphs([
+          ...existingParas,
+          ...newParas.map((t, i) => ({
+            id: `new-${i}`,
+            text: t,
+            isStreaming: i === newParas.length - 1,
+          })),
+        ]);
       },
       onDone: async (text) => {
         setIsGenerating(false);
         const newParas = text.split("\n\n").filter(Boolean);
-        setParagraphs((prev) => {
-          const existing = prev.filter((p) => !p.isStreaming);
-          return [...existing, ...newParas.map((t, i) => ({ id: `done-${Date.now()}-${i}`, text: t }))];
-        });
+        setParagraphs([
+          ...existingParas,
+          ...newParas.map((t, i) => ({ id: `done-${Date.now()}-${i}`, text: t })),
+        ]);
 
         // Summarize and save
         try {
-          const allText = [...paragraphs.filter((p) => !p.isStreaming).map((p) => p.text), ...newParas].join("\n\n");
+          const allText = [...existingParas.map((p) => p.text), ...newParas].join("\n\n");
           const summaryResult = await summarizeStory({
             fullText: allText,
             previousSummary: summary,
