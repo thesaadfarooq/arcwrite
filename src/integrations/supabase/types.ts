@@ -14,7 +14,123 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      stories: {
+        Row: {
+          created_at: string
+          genre: string | null
+          id: string
+          premise: string | null
+          status: string
+          title: string
+          tone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          genre?: string | null
+          id?: string
+          premise?: string | null
+          status?: string
+          title?: string
+          tone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          genre?: string | null
+          id?: string
+          premise?: string | null
+          status?: string
+          title?: string
+          tone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      story_nodes: {
+        Row: {
+          choices: Json | null
+          chosen_option: Json | null
+          created_at: string
+          id: string
+          is_active: boolean
+          parent_id: string | null
+          story_id: string
+          story_state: Json | null
+          summary: string | null
+          text: string
+        }
+        Insert: {
+          choices?: Json | null
+          chosen_option?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          parent_id?: string | null
+          story_id: string
+          story_state?: Json | null
+          summary?: string | null
+          text?: string
+        }
+        Update: {
+          choices?: Json | null
+          chosen_option?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          parent_id?: string | null
+          story_id?: string
+          story_state?: Json | null
+          summary?: string | null
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_nodes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "story_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_nodes_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
