@@ -97,10 +97,12 @@ export function StoryCanvas({ paragraphs, onEdit, isEditable = true, chapterHead
 function ParagraphBlock({
   paragraph,
   isFirst,
+  isChapterStart,
   onEdit,
 }: {
   paragraph: StoryParagraph;
   isFirst: boolean;
+  isChapterStart?: boolean;
   onEdit?: (id: string, newText: string) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
