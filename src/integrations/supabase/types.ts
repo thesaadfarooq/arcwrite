@@ -47,6 +47,7 @@ export type Database = {
           genre: string | null
           id: string
           premise: string | null
+          share_token: string | null
           status: string
           title: string
           tone: string | null
@@ -58,6 +59,7 @@ export type Database = {
           genre?: string | null
           id?: string
           premise?: string | null
+          share_token?: string | null
           status?: string
           title?: string
           tone?: string | null
@@ -69,6 +71,7 @@ export type Database = {
           genre?: string | null
           id?: string
           premise?: string | null
+          share_token?: string | null
           status?: string
           title?: string
           tone?: string | null
