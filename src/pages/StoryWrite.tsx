@@ -14,7 +14,9 @@ import {
   streamSection, generateChoices, summarizeStory,
   getStory, getStoryNodes, getAllStoryNodes, createStoryNode,
   updateStoryTitle, updateStoryTone, jumpToNode,
+  updateNodeChapterTitle, deleteNodeAndDescendants, splitNodeAtPosition, mergeNodeWithParent,
 } from "@/lib/story-api";
+import type { ChapterHeading } from "@/components/story/StoryCanvas";
 import { toast } from "sonner";
 
 export default function StoryWrite() {
@@ -404,11 +406,20 @@ export default function StoryWrite() {
     const activeNodes = allNodes.filter((n) => n.is_active);
     return activeNodes.map((n, i) => ({
       id: n.id,
-      title: n.chosen_option?.label || (i === 0 ? "Opening" : `Section ${i + 1}`),
+      title: (n as any).chapter_title || n.chosen_option?.label || (i === 0 ? "Opening" : `Section ${i + 1}`),
       wordCount: (n.text || "").split(/\s+/).filter(Boolean).length,
       isActive: n.id === lastNodeId,
+      isRoot: !n.parent_id,
     }));
   }, [allNodes, lastNodeId]);
+
+  const chapterHeadings: ChapterHeading[] = useMemo(() => {
+    const activeNodes = allNodes.filter((n) => n.is_active);
+    return activeNodes.map((n, i) => ({
+      nodeId: n.id,
+      title: (n as any).chapter_title || n.chosen_option?.label || (i === 0 ? "Opening" : `Section ${i + 1}`),
+    }));
+  }, [allNodes]);
 
   const timelineNodes: TimelineNode[] = useMemo(() =>
     allNodes.map((n) => ({
@@ -423,10 +434,93 @@ export default function StoryWrite() {
   );
 
   const handleChapterClick = (id: string) => {
-    // Scroll to the paragraph from this node
     const el = document.getElementById(`para-${id}`);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const handleChapterRename = async (id: string, newTitle: string) => {
+    try {
+      await updateNodeChapterTitle(id, newTitle);
+      await refreshAllNodes();
+      toast.success("Chapter renamed");
+    } catch {
+      toast.error("Failed to rename chapter");
+    }
+  };
+
+  const handleChapterDelete = async (id: string) => {
+    if (isGenerating || isProcessing) return;
+    try {
+      const newTipId = await deleteNodeAndDescendants(storyId!, id);
+      const activeNodes = await getStoryNodes(storyId!);
+      const paras: StoryParagraph[] = [];
+      activeNodes.forEach((node) => {
+        const texts = (node.text || "").split("\n\n").filter(Boolean);
+        texts.forEach((t, idx) => {
+          paras.push({ id: `${node.id}-${idx}`, text: t });
+        });
+      });
+      setParagraphs(paras);
+      const lastNode = activeNodes[activeNodes.length - 1];
+      setLastNodeId(lastNode?.id || null);
+      setSummary(lastNode?.summary || "");
+      setStoryState(lastNode?.story_state || {});
+      setChoices([]);
+      await refreshAllNodes();
+      if (lastNode) fetchChoices(paras.map((p) => p.text).join("\n\n"));
+      toast.success("Chapter deleted");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to delete chapter");
+    }
+  };
+
+  const handleChapterMerge = async (id: string) => {
+    if (isGenerating || isProcessing) return;
+    try {
+      await mergeNodeWithParent(storyId!, id);
+      const activeNodes = await getStoryNodes(storyId!);
+      const paras: StoryParagraph[] = [];
+      activeNodes.forEach((node) => {
+        const texts = (node.text || "").split("\n\n").filter(Boolean);
+        texts.forEach((t, idx) => {
+          paras.push({ id: `${node.id}-${idx}`, text: t });
+        });
+      });
+      setParagraphs(paras);
+      const lastNode = activeNodes[activeNodes.length - 1];
+      setLastNodeId(lastNode?.id || null);
+      setSummary(lastNode?.summary || "");
+      setStoryState(lastNode?.story_state || {});
+      setChoices([]);
+      await refreshAllNodes();
+      if (lastNode) fetchChoices(paras.map((p) => p.text).join("\n\n"));
+      toast.success("Chapters merged");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to merge chapters");
+    }
+  };
+
+  const handleInsertBreak = async (nodeId: string, paragraphIndex: number) => {
+    if (isGenerating || isProcessing) return;
+    try {
+      await splitNodeAtPosition(storyId!, nodeId, paragraphIndex);
+      const activeNodes = await getStoryNodes(storyId!);
+      const paras: StoryParagraph[] = [];
+      activeNodes.forEach((node) => {
+        const texts = (node.text || "").split("\n\n").filter(Boolean);
+        texts.forEach((t, idx) => {
+          paras.push({ id: `${node.id}-${idx}`, text: t });
+        });
+      });
+      setParagraphs(paras);
+      const lastNode = activeNodes[activeNodes.length - 1];
+      setLastNodeId(lastNode?.id || null);
+      await refreshAllNodes();
+      toast.success("Chapter break inserted");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to insert break");
     }
   };
 
@@ -529,6 +623,9 @@ export default function StoryWrite() {
                   chapters={chapters}
                   totalWords={wordCount}
                   onChapterClick={handleChapterClick}
+                  onRename={handleChapterRename}
+                  onDelete={handleChapterDelete}
+                  onMerge={handleChapterMerge}
                 />
               ) : (
                 <StoryTimeline
@@ -551,7 +648,12 @@ export default function StoryWrite() {
               <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground mt-1 leading-tight">{storyTitle}</h2>
             </div>
 
-            <StoryCanvas paragraphs={paragraphs} onEdit={handleEdit} />
+            <StoryCanvas
+              paragraphs={paragraphs}
+              onEdit={handleEdit}
+              chapterHeadings={chapterHeadings}
+              onInsertBreak={handleInsertBreak}
+            />
 
             {/* Processing indicator — shows after streaming ends while saving/summarizing */}
             {isProcessing && !isGenerating && (

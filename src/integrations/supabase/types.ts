@@ -82,6 +82,7 @@ export type Database = {
       }
       story_nodes: {
         Row: {
+          chapter_title: string | null
           choices: Json | null
           chosen_option: Json | null
           created_at: string
@@ -94,6 +95,7 @@ export type Database = {
           text: string
         }
         Insert: {
+          chapter_title?: string | null
           choices?: Json | null
           chosen_option?: Json | null
           created_at?: string
@@ -106,6 +108,7 @@ export type Database = {
           text?: string
         }
         Update: {
+          chapter_title?: string | null
           choices?: Json | null
           chosen_option?: Json | null
           created_at?: string
