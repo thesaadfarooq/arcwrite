@@ -108,6 +108,9 @@ export default function Dashboard() {
           <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-secondary transition-colors active:scale-95">
             {theme === "light" ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-muted-foreground" />}
           </button>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/pricing")} className="text-muted-foreground">
+            <Crown className="w-4 h-4 mr-1" /> Upgrade
+          </Button>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} className="w-6 h-6 rounded-full" alt="" />
