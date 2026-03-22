@@ -33,7 +33,7 @@ export default function StoryNew() {
   const mode = searchParams.get("mode") || "scratch";
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, tier } = useAuth();
 
   const [step, setStep] = useState(mode === "genre" ? "genre" : mode === "surprise" ? "surprise" : "premise");
   const [premise, setPremise] = useState("");
