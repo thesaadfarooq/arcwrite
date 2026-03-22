@@ -648,7 +648,12 @@ export default function StoryWrite() {
               <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground mt-1 leading-tight">{storyTitle}</h2>
             </div>
 
-            <StoryCanvas paragraphs={paragraphs} onEdit={handleEdit} />
+            <StoryCanvas
+              paragraphs={paragraphs}
+              onEdit={handleEdit}
+              chapterHeadings={chapterHeadings}
+              onInsertBreak={handleInsertBreak}
+            />
 
             {/* Processing indicator — shows after streaming ends while saving/summarizing */}
             {isProcessing && !isGenerating && (
