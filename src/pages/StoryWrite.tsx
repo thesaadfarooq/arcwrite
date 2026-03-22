@@ -1,12 +1,15 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle, Palette, GitBranch, Hash } from "lucide-react";
+import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle, Palette, GitBranch, Hash, Download, Share2, Loader2, Link, Crown } from "lucide-react";
 import { useTheme } from "@/lib/theme";
+import { useAuth } from "@/lib/auth";
+import { getTierLimits } from "@/lib/subscription";
 import { StoryCanvas, type StoryParagraph } from "@/components/story/StoryCanvas";
 import { ChoiceCards, type StoryChoice } from "@/components/story/ChoiceCards";
 import { ChapterSidebar, type Chapter } from "@/components/story/ChapterSidebar";
 import { StoryTimeline, type TimelineNode } from "@/components/story/StoryTimeline";
 import { TonePanel } from "@/components/story/TonePanel";
+import { supabase } from "@/integrations/supabase/client";
 import {
   streamSection, generateChoices, summarizeStory,
   getStory, getStoryNodes, getAllStoryNodes, createStoryNode,
@@ -18,6 +21,8 @@ export default function StoryWrite() {
   const { id: storyId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { tier } = useAuth();
+  const limits = getTierLimits(tier);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<"chapters" | "timeline">("chapters");
@@ -35,6 +40,8 @@ export default function StoryWrite() {
   const [loading, setLoading] = useState(true);
   const [toneOpen, setToneOpen] = useState(false);
   const [allNodes, setAllNodes] = useState<any[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(null);
   const loadedRef = useRef(false);
 
   useEffect(() => {
@@ -48,6 +55,7 @@ export default function StoryWrite() {
       const story = await getStory(storyId!);
       setStoryTitle(story.title);
       setStoryMeta({ genre: story.genre || undefined, tone: story.tone || undefined, premise: story.premise || undefined });
+      setShareToken((story as any).share_token || null);
 
       const [activeNodes, allStoryNodes] = await Promise.all([
         getStoryNodes(storyId!),
@@ -176,6 +184,13 @@ export default function StoryWrite() {
   };
 
   const handleChoiceSelect = async (choice: StoryChoice | { type: "custom"; label: string; preview: string }) => {
+    // Check chapter limit
+    const activeNodeCount = allNodes.filter((n) => n.is_active).length;
+    if (limits.chapters !== Infinity && activeNodeCount >= limits.chapters) {
+      toast.error(`You've reached the ${limits.chapters}-chapter limit on your plan. Upgrade for more.`);
+      return;
+    }
+
     setIsGenerating(true);
     setChoices([]);
     setIsDesyncced(false);
@@ -318,6 +333,67 @@ export default function StoryWrite() {
     }
   };
 
+  const handleExport = async () => {
+    if (!limits.export) {
+      toast.error("PDF export is available on Plus and Pro plans");
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("export-story", {
+        body: { storyId },
+      });
+      if (error) throw error;
+
+      // Open HTML in new tab for printing to PDF
+      const blob = new Blob([data.html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, "_blank");
+      if (win) {
+        win.onload = () => {
+          win.print();
+          URL.revokeObjectURL(url);
+        };
+      }
+      toast.success("PDF export opened — use your browser's print dialog to save");
+    } catch (e: any) {
+      toast.error(e.message || "Export failed");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!limits.sharing) {
+      toast.error("Public sharing is available on the Pro plan");
+      return;
+    }
+
+    try {
+      if (shareToken) {
+        // Already shared — copy link
+        const url = `${window.location.origin}/s/${shareToken}`;
+        await navigator.clipboard.writeText(url);
+        toast.success("Share link copied to clipboard");
+      } else {
+        // Generate new share token
+        const token = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+        const { error } = await supabase
+          .from("stories")
+          .update({ share_token: token } as any)
+          .eq("id", storyId);
+
+        if (error) throw error;
+        setShareToken(token);
+        const url = `${window.location.origin}/s/${token}`;
+        await navigator.clipboard.writeText(url);
+        toast.success("Story shared! Link copied to clipboard");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to share");
+    }
+  };
+
   const wordCount = useMemo(
     () => paragraphs.reduce((acc, p) => acc + p.text.split(/\s+/).filter(Boolean).length, 0),
     [paragraphs]
@@ -384,6 +460,25 @@ export default function StoryWrite() {
           >
             <Palette className="w-3 h-3" />
             <span className="hidden sm:inline">{storyMeta.tone || "Set tone"}</span>
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={isExporting}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95 disabled:opacity-50"
+            title={limits.export ? "Export as PDF" : "Upgrade to export"}
+          >
+            {isExporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+            <span className="hidden sm:inline">Export</span>
+            {!limits.export && <Crown className="w-2.5 h-2.5 text-primary" />}
+          </button>
+          <button
+            onClick={handleShare}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
+            title={limits.sharing ? (shareToken ? "Copy share link" : "Create share link") : "Upgrade to share"}
+          >
+            {shareToken ? <Link className="w-3 h-3" /> : <Share2 className="w-3 h-3" />}
+            <span className="hidden sm:inline">{shareToken ? "Shared" : "Share"}</span>
+            {!limits.sharing && <Crown className="w-2.5 h-2.5 text-primary" />}
           </button>
           <span className="text-xs text-muted-foreground tabular-nums">{wordCount.toLocaleString()} words</span>
           <button onClick={toggleTheme} className="p-1.5 rounded-md hover:bg-secondary transition-colors active:scale-95">
