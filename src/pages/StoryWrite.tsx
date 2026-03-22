@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle } from "lucide-react";
 import { useTheme } from "@/lib/theme";
@@ -25,10 +25,12 @@ export default function StoryWrite() {
   const [lastNodeId, setLastNodeId] = useState<string | null>(null);
   const [isDesyncced, setIsDesyncced] = useState(false);
   const [loading, setLoading] = useState(true);
+  const loadedRef = useRef(false);
 
-  // Load story and nodes
+  // Load story and nodes — guarded against double-mount
   useEffect(() => {
-    if (!storyId) return;
+    if (!storyId || loadedRef.current) return;
+    loadedRef.current = true;
     loadStory();
   }, [storyId]);
 
