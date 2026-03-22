@@ -83,6 +83,7 @@ export function StoryCanvas({ paragraphs, onEdit, isEditable = true, chapterHead
             <ParagraphBlock
               paragraph={p}
               isFirst={i === 0}
+              isChapterStart={isFirstOfNode && i > 0}
               onEdit={isEditable ? onEdit : undefined}
             />
           </div>
@@ -96,10 +97,12 @@ export function StoryCanvas({ paragraphs, onEdit, isEditable = true, chapterHead
 function ParagraphBlock({
   paragraph,
   isFirst,
+  isChapterStart,
   onEdit,
 }: {
   paragraph: StoryParagraph;
   isFirst: boolean;
+  isChapterStart?: boolean;
   onEdit?: (id: string, newText: string) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -151,7 +154,7 @@ function ParagraphBlock({
       onClick={() => onEdit && setIsEditing(true)}
       className={`font-story text-lg leading-[1.85] text-story-text transition-colors duration-200 py-2 ${
         onEdit ? "cursor-text hover:bg-primary/[0.02] rounded-lg px-1 -mx-1" : ""
-      } ${isFirst ? "first-letter:text-4xl first-letter:font-semibold first-letter:float-left first-letter:mr-1.5 first-letter:leading-[1] first-letter:text-primary" : ""} ${
+      } ${(isFirst || isChapterStart) ? "first-letter:text-4xl first-letter:font-semibold first-letter:float-left first-letter:mr-1.5 first-letter:leading-[1] first-letter:text-primary" : ""} ${
         paragraph.isStreaming ? "animate-fade-in" : ""
       }`}
       style={{ overflowWrap: "break-word" }}
