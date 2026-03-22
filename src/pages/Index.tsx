@@ -1,11 +1,14 @@
 import { useNavigate } from "react-router-dom";
-import { PenLine, Sparkles, Shuffle, BookOpen, Sun, Moon } from "lucide-react";
+import { PenLine, Sparkles, Shuffle, BookOpen, Sun, Moon, LogIn } from "lucide-react";
 import { useTheme } from "@/lib/theme";
+import { useAuth } from "@/lib/auth";
 import { useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
   const heroRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
 
@@ -34,13 +37,22 @@ const Index = () => {
           <BookOpen className="w-5 h-5 text-primary" />
           <span className="font-story text-lg font-semibold text-foreground tracking-tight">VibeWrite</span>
         </div>
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-lg hover:bg-secondary transition-colors active:scale-95"
-          aria-label="Toggle theme"
-        >
-          {theme === "light" ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-muted-foreground" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg hover:bg-secondary transition-colors active:scale-95"
+            aria-label="Toggle theme"
+          >
+            {theme === "light" ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-muted-foreground" />}
+          </button>
+          {user ? (
+            <Button size="sm" onClick={() => navigate("/dashboard")}>Dashboard</Button>
+          ) : (
+            <Button size="sm" variant="outline" onClick={() => navigate("/auth")}>
+              <LogIn className="w-3.5 h-3.5 mr-1" /> Sign in
+            </Button>
+          )}
+        </div>
       </nav>
 
       {/* Hero */}
