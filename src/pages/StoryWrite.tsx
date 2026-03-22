@@ -164,7 +164,7 @@ export default function StoryWrite() {
             storyState: summaryResult.story_state,
           });
           setLastNodeId(node.id);
-          refreshAllNodes();
+          await reloadActiveState();
 
           const firstLine = text.split(".")[0]?.trim();
           if (firstLine && storyTitle === "Untitled Story") {
