@@ -1,11 +1,16 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle } from "lucide-react";
+import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle, Palette, GitBranch } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { StoryCanvas, type StoryParagraph } from "@/components/story/StoryCanvas";
 import { ChoiceCards, type StoryChoice } from "@/components/story/ChoiceCards";
-import { ChapterSidebar, type Chapter } from "@/components/story/ChapterSidebar";
-import { streamSection, generateChoices, summarizeStory, getStory, getStoryNodes, createStoryNode, updateStoryTitle } from "@/lib/story-api";
+import { StoryTimeline, type TimelineNode } from "@/components/story/StoryTimeline";
+import { TonePanel } from "@/components/story/TonePanel";
+import {
+  streamSection, generateChoices, summarizeStory,
+  getStory, getStoryNodes, getAllStoryNodes, createStoryNode,
+  updateStoryTitle, updateStoryTone, deactivateNodesAfter,
+} from "@/lib/story-api";
 import { toast } from "sonner";
 
 export default function StoryWrite() {
@@ -14,6 +19,7 @@ export default function StoryWrite() {
   const { theme, toggleTheme } = useTheme();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarTab, setSidebarTab] = useState<"timeline">("timeline");
   const [paragraphs, setParagraphs] = useState<StoryParagraph[]>([]);
   const [choices, setChoices] = useState<StoryChoice[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -25,9 +31,10 @@ export default function StoryWrite() {
   const [lastNodeId, setLastNodeId] = useState<string | null>(null);
   const [isDesyncced, setIsDesyncced] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [toneOpen, setToneOpen] = useState(false);
+  const [allNodes, setAllNodes] = useState<any[]>([]);
   const loadedRef = useRef(false);
 
-  // Load story and nodes — guarded against double-mount
   useEffect(() => {
     if (!storyId || loadedRef.current) return;
     loadedRef.current = true;
@@ -40,28 +47,32 @@ export default function StoryWrite() {
       setStoryTitle(story.title);
       setStoryMeta({ genre: story.genre || undefined, tone: story.tone || undefined, premise: story.premise || undefined });
 
-      const nodes = await getStoryNodes(storyId!);
-      if (nodes.length > 0) {
+      const [activeNodes, allStoryNodes] = await Promise.all([
+        getStoryNodes(storyId!),
+        getAllStoryNodes(storyId!),
+      ]);
+
+      setAllNodes(allStoryNodes);
+
+      if (activeNodes.length > 0) {
         const paras: StoryParagraph[] = [];
-        nodes.forEach((node) => {
+        activeNodes.forEach((node) => {
           const texts = (node.text || "").split("\n\n").filter(Boolean);
           texts.forEach((t, i) => {
             paras.push({ id: `${node.id}-${i}`, text: t });
           });
         });
         setParagraphs(paras);
-        const lastNode = nodes[nodes.length - 1];
+        const lastNode = activeNodes[activeNodes.length - 1];
         setLastNodeId(lastNode.id);
         setSummary(lastNode.summary || "");
         setStoryState(lastNode.story_state || {});
         if (lastNode.choices && Array.isArray(lastNode.choices) && (lastNode.choices as any[]).length > 0) {
           setChoices(lastNode.choices as any as StoryChoice[]);
         } else {
-          // Generate choices for existing content
           fetchChoices(paras.map((p) => p.text).join("\n\n"));
         }
       } else {
-        // New story — generate the opening
         generateOpening();
       }
     } catch (err: any) {
@@ -72,12 +83,18 @@ export default function StoryWrite() {
     }
   };
 
+  const refreshAllNodes = async () => {
+    try {
+      const nodes = await getAllStoryNodes(storyId!);
+      setAllNodes(nodes);
+    } catch {}
+  };
+
   const generateOpening = async () => {
     setIsGenerating(true);
     let fullText = "";
-    const streamingId = `streaming-${Date.now()}`;
 
-    setParagraphs([{ id: streamingId, text: "", isStreaming: true }]);
+    setParagraphs([{ id: `streaming-${Date.now()}`, text: "", isStreaming: true }]);
 
     await streamSection({
       premise: storyMeta.premise,
@@ -97,7 +114,6 @@ export default function StoryWrite() {
         const paras = text.split("\n\n").filter(Boolean);
         setParagraphs(paras.map((t, i) => ({ id: `gen-${i}`, text: t })));
 
-        // Save node and generate choices
         try {
           const summaryResult = await summarizeStory({ fullText: text, storyState: {} });
           setSummary(summaryResult.summary);
@@ -110,8 +126,8 @@ export default function StoryWrite() {
             storyState: summaryResult.story_state,
           });
           setLastNodeId(node.id);
+          refreshAllNodes();
 
-          // Auto-title from first line
           const firstLine = text.split(".")[0]?.trim();
           if (firstLine && storyTitle === "Untitled Story") {
             const title = firstLine.length > 50 ? firstLine.slice(0, 50) + "…" : firstLine;
@@ -143,12 +159,11 @@ export default function StoryWrite() {
       });
       setChoices(result);
 
-      // Save choices to last node
       if (lastNodeId) {
         const { supabase } = await import("@/integrations/supabase/client");
         await supabase.from("story_nodes").update({ choices: result as any }).eq("id", lastNodeId);
       }
-    } catch (err: any) {
+    } catch {
       toast.error("Failed to generate choices");
     } finally {
       setIsLoadingChoices(false);
@@ -160,7 +175,6 @@ export default function StoryWrite() {
     setChoices([]);
     setIsDesyncced(false);
 
-    // Snapshot existing paragraphs BEFORE streaming starts
     const existingParas = paragraphs.filter((p) => !p.isStreaming);
     const recentText = existingParas.slice(-3).map((p) => p.text).join("\n\n");
     let fullText = "";
@@ -192,7 +206,6 @@ export default function StoryWrite() {
           ...newParas.map((t, i) => ({ id: `done-${Date.now()}-${i}`, text: t })),
         ]);
 
-        // Summarize and save
         try {
           const allText = [...existingParas.map((p) => p.text), ...newParas].join("\n\n");
           const summaryResult = await summarizeStory({
@@ -212,6 +225,7 @@ export default function StoryWrite() {
             chosenOption: choice,
           });
           setLastNodeId(node.id);
+          refreshAllNodes();
         } catch (e) {
           console.error("Failed to save:", e);
         }
@@ -223,6 +237,61 @@ export default function StoryWrite() {
         toast.error(err);
       },
     });
+  };
+
+  const handleJumpToNode = async (nodeId: string) => {
+    if (isGenerating) return;
+
+    try {
+      // Deactivate everything after this node, then re-activate path to this node
+      await deactivateNodesAfter(storyId!, nodeId);
+
+      // Reload
+      const activeNodes = await getStoryNodes(storyId!);
+      const paras: StoryParagraph[] = [];
+      activeNodes.forEach((node) => {
+        const texts = (node.text || "").split("\n\n").filter(Boolean);
+        texts.forEach((t, i) => {
+          paras.push({ id: `${node.id}-${i}`, text: t });
+        });
+      });
+      setParagraphs(paras);
+
+      const lastNode = activeNodes[activeNodes.length - 1];
+      setLastNodeId(lastNode?.id || null);
+      setSummary(lastNode?.summary || "");
+      setStoryState(lastNode?.story_state || {});
+      setChoices([]);
+      setIsDesyncced(false);
+
+      refreshAllNodes();
+
+      if (lastNode?.choices && (lastNode.choices as any[]).length > 0) {
+        setChoices(lastNode.choices as any as StoryChoice[]);
+      } else {
+        fetchChoices(paras.map((p) => p.text).join("\n\n"));
+      }
+
+      toast.success("Jumped to earlier point");
+    } catch {
+      toast.error("Failed to jump");
+    }
+  };
+
+  const handleForkFromNode = async (nodeId: string) => {
+    // Same as jump — we go back to that node and generate new choices
+    await handleJumpToNode(nodeId);
+    toast.info("Forked from this point — choose a new direction");
+  };
+
+  const handleToneChange = async (tone: string) => {
+    setStoryMeta((prev) => ({ ...prev, tone }));
+    try {
+      await updateStoryTone(storyId!, tone);
+      toast.success(`Tone set to "${tone}"`);
+    } catch {
+      toast.error("Failed to update tone");
+    }
   };
 
   const handleEdit = (id: string, newText: string) => {
@@ -249,9 +318,17 @@ export default function StoryWrite() {
     [paragraphs]
   );
 
-  const chapters: Chapter[] = [
-    { id: "ch1", title: storyTitle, wordCount, isActive: true },
-  ];
+  const timelineNodes: TimelineNode[] = useMemo(() =>
+    allNodes.map((n) => ({
+      id: n.id,
+      parentId: n.parent_id,
+      chosenLabel: n.chosen_option?.label || null,
+      createdAt: n.created_at,
+      isActive: n.is_active,
+      wordCount: (n.text || "").split(/\s+/).filter(Boolean).length,
+    })),
+    [allNodes]
+  );
 
   if (loading) {
     return (
@@ -262,7 +339,7 @@ export default function StoryWrite() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background transition-colors duration-500">
+    <div className="h-screen flex flex-col bg-background transition-colors duration-500 relative">
       <header className="h-12 flex items-center justify-between px-4 border-b border-border/50 bg-background/80 backdrop-blur-sm shrink-0 z-10">
         <div className="flex items-center gap-2">
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors active:scale-95">
@@ -276,7 +353,25 @@ export default function StoryWrite() {
             <span className="font-story text-sm font-semibold text-foreground truncate max-w-[200px]">{storyTitle}</span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {storyMeta.tone && (
+            <button
+              onClick={() => setToneOpen(!toneOpen)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
+            >
+              <Palette className="w-3 h-3" />
+              <span className="hidden sm:inline">{storyMeta.tone}</span>
+            </button>
+          )}
+          {!storyMeta.tone && (
+            <button
+              onClick={() => setToneOpen(!toneOpen)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
+            >
+              <Palette className="w-3 h-3" />
+              <span className="hidden sm:inline">Set tone</span>
+            </button>
+          )}
           <span className="text-xs text-muted-foreground tabular-nums">{wordCount.toLocaleString()} words</span>
           <button onClick={toggleTheme} className="p-1.5 rounded-md hover:bg-secondary transition-colors active:scale-95">
             {theme === "light" ? <Moon className="w-3.5 h-3.5 text-muted-foreground" /> : <Sun className="w-3.5 h-3.5 text-muted-foreground" />}
@@ -284,10 +379,25 @@ export default function StoryWrite() {
         </div>
       </header>
 
+      {/* Tone panel popover */}
+      <TonePanel
+        currentTone={storyMeta.tone}
+        onToneChange={handleToneChange}
+        isOpen={toneOpen}
+        onClose={() => setToneOpen(false)}
+      />
+
       <div className="flex-1 flex overflow-hidden">
         {sidebarOpen && (
           <aside className="w-56 shrink-0 border-r border-border/50 bg-card/50 overflow-hidden animate-fade-in">
-            <ChapterSidebar chapters={chapters} totalWords={wordCount} onChapterClick={() => {}} />
+            <StoryTimeline
+              nodes={timelineNodes}
+              currentNodeId={lastNodeId}
+              onJumpToNode={handleJumpToNode}
+              onForkFromNode={handleForkFromNode}
+              totalWords={wordCount}
+              storyTitle={storyTitle}
+            />
           </aside>
         )}
 
@@ -300,7 +410,6 @@ export default function StoryWrite() {
 
             <StoryCanvas paragraphs={paragraphs} onEdit={handleEdit} />
 
-            {/* Desync banner */}
             {isDesyncced && !isGenerating && (
               <div className="mt-6 p-4 rounded-xl border border-choice-risky/30 bg-choice-risky/5 flex items-center gap-3 animate-fade-in">
                 <AlertTriangle className="w-4 h-4 text-choice-risky shrink-0" />
