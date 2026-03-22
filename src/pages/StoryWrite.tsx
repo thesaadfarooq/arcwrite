@@ -160,7 +160,9 @@ export default function StoryWrite() {
     setChoices([]);
     setIsDesyncced(false);
 
-    const recentText = paragraphs.slice(-3).map((p) => p.text).join("\n\n");
+    // Snapshot existing paragraphs BEFORE streaming starts
+    const existingParas = paragraphs.filter((p) => !p.isStreaming);
+    const recentText = existingParas.slice(-3).map((p) => p.text).join("\n\n");
     let fullText = "";
 
     await streamSection({
@@ -173,29 +175,26 @@ export default function StoryWrite() {
       onDelta: (delta) => {
         fullText += delta;
         const newParas = fullText.split("\n\n").filter(Boolean);
-        setParagraphs((prev) => {
-          const existing = prev.filter((p) => !p.isStreaming);
-          return [
-            ...existing,
-            ...newParas.map((t, i) => ({
-              id: `new-${Date.now()}-${i}`,
-              text: t,
-              isStreaming: i === newParas.length - 1,
-            })),
-          ];
-        });
+        setParagraphs([
+          ...existingParas,
+          ...newParas.map((t, i) => ({
+            id: `new-${i}`,
+            text: t,
+            isStreaming: i === newParas.length - 1,
+          })),
+        ]);
       },
       onDone: async (text) => {
         setIsGenerating(false);
         const newParas = text.split("\n\n").filter(Boolean);
-        setParagraphs((prev) => {
-          const existing = prev.filter((p) => !p.isStreaming);
-          return [...existing, ...newParas.map((t, i) => ({ id: `done-${Date.now()}-${i}`, text: t }))];
-        });
+        setParagraphs([
+          ...existingParas,
+          ...newParas.map((t, i) => ({ id: `done-${Date.now()}-${i}`, text: t })),
+        ]);
 
         // Summarize and save
         try {
-          const allText = [...paragraphs.filter((p) => !p.isStreaming).map((p) => p.text), ...newParas].join("\n\n");
+          const allText = [...existingParas.map((p) => p.text), ...newParas].join("\n\n");
           const summaryResult = await summarizeStory({
             fullText: allText,
             previousSummary: summary,
