@@ -427,15 +427,15 @@ export default function StoryWrite() {
   );
 
   // Chapters are a subset of the active timeline path.
-  // Regular choice generations create new timeline nodes, but should stay in the same chapter
-  // unless a manual chapter break was inserted or the node was explicitly titled as a chapter.
+  // A chapter starts at the root node or at a node created by an explicit chapter break.
+  // Regular choice generations should extend the current chapter, not create a new one.
   const activeNodes = useMemo(
     () => allNodes.filter((n) => n.is_active),
     [allNodes]
   );
 
   const chapterNodes = useMemo(
-    () => activeNodes.filter((n) => !n.parent_id || Boolean((n as any).chapter_title) || n.chosen_option == null),
+    () => activeNodes.filter((n) => !n.parent_id || n.chosen_option == null),
     [activeNodes]
   );
 
