@@ -6,7 +6,7 @@ import { useTheme } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import {
   BookOpen, Plus, Sun, Moon, LogOut, LayoutGrid, List,
-  MoreHorizontal, Pencil, Trash2, Copy,
+  MoreHorizontal, Pencil, Trash2, Copy, Crown,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
