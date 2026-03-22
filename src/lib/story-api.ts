@@ -205,6 +205,17 @@ export async function getStoryNodes(storyId: string) {
   return data;
 }
 
+export async function getAllStoryNodes(storyId: string) {
+  const { data, error } = await supabase
+    .from("story_nodes")
+    .select("*")
+    .eq("story_id", storyId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
 export async function getStory(storyId: string) {
   const { data, error } = await supabase
     .from("stories")
@@ -221,6 +232,36 @@ export async function updateStoryTitle(storyId: string, title: string) {
     .from("stories")
     .update({ title })
     .eq("id", storyId);
+
+  if (error) throw error;
+}
+
+export async function updateStoryTone(storyId: string, tone: string) {
+  const { error } = await supabase
+    .from("stories")
+    .update({ tone })
+    .eq("id", storyId);
+
+  if (error) throw error;
+}
+
+export async function deactivateNodesAfter(storyId: string, nodeId: string) {
+  // Get the node to find its created_at
+  const { data: node, error: nodeErr } = await supabase
+    .from("story_nodes")
+    .select("created_at")
+    .eq("id", nodeId)
+    .single();
+
+  if (nodeErr) throw nodeErr;
+
+  // Deactivate all nodes created after this one
+  const { error } = await supabase
+    .from("story_nodes")
+    .update({ is_active: false } as any)
+    .eq("story_id", storyId)
+    .eq("is_active", true)
+    .gt("created_at", node.created_at);
 
   if (error) throw error;
 }
