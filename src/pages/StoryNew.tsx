@@ -44,6 +44,22 @@ export default function StoryNew() {
   const handleStart = async () => {
     if (!user) return;
     setCreating(true);
+
+    // Check story limit
+    const limits = getTierLimits(tier);
+    if (limits.stories !== Infinity) {
+      const { count, error: countErr } = await supabase
+        .from("stories")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id);
+
+      if (!countErr && count !== null && count >= limits.stories) {
+        toast.error(`You've reached the ${limits.stories}-story limit on your plan. Upgrade for more.`);
+        setCreating(false);
+        navigate("/pricing");
+        return;
+      }
+    }
     try {
       const story = await createStory({
         userId: user.id,
