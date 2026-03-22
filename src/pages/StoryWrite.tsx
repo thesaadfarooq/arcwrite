@@ -21,6 +21,8 @@ export default function StoryWrite() {
   const { id: storyId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { tier } = useAuth();
+  const limits = getTierLimits(tier);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<"chapters" | "timeline">("chapters");
