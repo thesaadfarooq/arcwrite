@@ -406,11 +406,20 @@ export default function StoryWrite() {
     const activeNodes = allNodes.filter((n) => n.is_active);
     return activeNodes.map((n, i) => ({
       id: n.id,
-      title: n.chosen_option?.label || (i === 0 ? "Opening" : `Section ${i + 1}`),
+      title: (n as any).chapter_title || n.chosen_option?.label || (i === 0 ? "Opening" : `Section ${i + 1}`),
       wordCount: (n.text || "").split(/\s+/).filter(Boolean).length,
       isActive: n.id === lastNodeId,
+      isRoot: !n.parent_id,
     }));
   }, [allNodes, lastNodeId]);
+
+  const chapterHeadings: ChapterHeading[] = useMemo(() => {
+    const activeNodes = allNodes.filter((n) => n.is_active);
+    return activeNodes.map((n, i) => ({
+      nodeId: n.id,
+      title: (n as any).chapter_title || n.chosen_option?.label || (i === 0 ? "Opening" : `Section ${i + 1}`),
+    }));
+  }, [allNodes]);
 
   const timelineNodes: TimelineNode[] = useMemo(() =>
     allNodes.map((n) => ({
