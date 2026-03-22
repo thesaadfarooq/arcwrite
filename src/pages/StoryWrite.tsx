@@ -273,7 +273,7 @@ export default function StoryWrite() {
             chosenOption: choice,
           });
           setLastNodeId(node.id);
-          refreshAllNodes();
+          await reloadActiveState();
         } catch (e) {
           console.error("Failed to save:", e);
         }
