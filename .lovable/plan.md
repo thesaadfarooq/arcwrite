@@ -1,140 +1,54 @@
 
 
-# VibeWrite — Implementation Plan
+# Chapter Management — Plan
 
-This is a large full-stack product. We'll build it incrementally, starting with the core experience and layering on features.
+## Current State
 
-## Build Order
+Chapters are **not a real data entity**. They are derived on-the-fly from active `story_nodes` — each node becomes a "chapter" in the sidebar, with titles pulled from the chosen direction label (e.g. "Opening", "Section 2"). There is no database column for chapter title, chapter number, or chapter boundaries. Users cannot rename, reorder, delete, or manually insert chapter breaks.
 
-### Step 1: Design System & Shell
-- Update CSS variables for the writerly palette (warm cream light mode, deep charcoal dark mode)
-- Add serif font (Merriweather/Lora for story text, Inter for UI)
-- Build the app shell: sidebar layout with dark/light toggle
-- Create landing/home page with "Start from scratch", "Pick a genre", "Surprise me" entry points
+## What We'll Build
 
-### Step 2: Story Setup Flow
-- Genre selection UI (cards with genre icons)
-- Premise input (textarea with placeholder guidance)
-- "Surprise me" button that will later call AI
-- Route: `/story/new` → setup wizard → redirects to `/story/:id`
+### User Experience
 
-### Step 3: Story Canvas & Reading Experience
-- Book-like canvas component with serif typography, comfortable margins
-- Chapter sidebar navigation
-- Word count display
-- Dark/light mode styling for the canvas
-- Inline text editing (contentEditable or controlled textarea per paragraph)
+1. **Rename a chapter** — Right-click (or click a "..." menu) on any chapter in the sidebar → "Rename". Inline editable text field saves a custom title to the node.
 
-### Step 4: Choice System UI
-- Choice cards component (4 types: Safe, Risky, Emotional, Chaotic)
-- Each card: icon + label + preview text
-- Free-text custom direction input
-- "Regenerate options" button
-- Loading/streaming states
+2. **Delete a chapter** — Same context menu → "Delete". Removes the node and all its descendants from the active branch, then re-activates the parent as the new tip. Confirmation dialog before deletion.
 
-### Step 5: Enable Lovable Cloud + AI Backend
-- Enable Supabase for auth and database
-- Create database tables: `stories`, `story_nodes`
-- Enable Lovable AI Gateway
-- Create edge functions:
-  - `generate-section` — takes context layers + choice, streams prose
-  - `generate-choices` — returns 4 typed choices via tool calling
-  - `summarize` — compresses story state
+3. **Insert chapter break** — Inside the story canvas, a subtle "Insert chapter break" divider appears between paragraphs on hover. Clicking it splits the current node's text at that point into two nodes (parent → child), creating a visible chapter boundary.
 
-### Step 6: Wire the Core Loop
-- Connect setup flow → first AI generation (streaming)
-- Connect choice selection → next section generation
-- Implement multi-layer context assembly (recent text + summary + story state)
-- Store nodes in tree structure (parent_id linking)
-- Sentence-aware streaming buffer on frontend
+4. **Merge with previous** — Context menu option that combines a node's text with its parent node, removing the chapter boundary.
 
-### Step 7: Editing & Continuity
-- Inline paragraph editing with desync detection
-- "Re-align" prompt that triggers re-summarization
-- Option invalidation on significant edits
+5. **Chapter title display** — Chapter titles appear as styled headings in the canvas between sections, making the structure visible while reading/writing.
 
-### Step 8: Rollback & Branching
-- Tree navigation in sidebar (visual timeline of choices)
-- Jump to any node, fork new branch
-- Branch management (rename, delete branch)
+### Data Changes
 
-### Step 9: Tone System
-- Tone selector at story creation (dropdown + custom input)
-- Tone injection into all AI prompts
-- Mid-story tone adjustment panel
+Add a `chapter_title` column to `story_nodes`:
 
-### Step 10: Auth & Dashboard
-- Supabase Auth (email + Google)
-- Email verification enforcement
-- Story dashboard: grid/list view with status, last edited, word count
-- CRUD operations on stories
-
-### Step 11: Stripe & Pricing Tiers
-- Enable Stripe integration
-- Three tiers: Free, Plus, Pro
-- Feature gating (story limits, chapter limits, model quality, PDF, sharing)
-- Rate limiting and generation caps
-
-### Step 12: Export & Sharing
-- Server-side PDF export edge function (reportlab-style)
-- Public read-only share links (Pro only)
-- Copy as formatted text
-
----
-
-## Technical Details
-
-### Database Schema
 ```text
-stories
-├── id (uuid, PK)
-├── user_id (uuid, FK → auth.users)
-├── title, genre, tone, premise
-├── status (draft | in_progress | complete)
-└── created_at, updated_at
-
 story_nodes
-├── id (uuid, PK)
-├── story_id (uuid, FK → stories)
-├── parent_id (uuid, FK → story_nodes, nullable)
-├── text (the generated prose)
-├── summary (rolling summary at this point)
-├── story_state (jsonb: characters, locations, threads)
-├── choices (jsonb: array of 4 typed choices)
-├── chosen_option (jsonb: the selected choice)
-├── is_active (boolean: current branch path)
-└── created_at
-
-user_roles (per security guidelines)
-├── id, user_id, role (app_role enum)
-
-subscriptions
-├── user_id, stripe_customer_id, tier, status
+  + chapter_title (text, nullable, default null)
 ```
 
-### AI Prompt Architecture
-Each generation call sends:
-1. System prompt (tone + role + constraints)
-2. Structured story state (characters, threads, locations)
-3. Rolling summary of earlier content
-4. Last 2-3 sections verbatim
-5. The user's chosen direction
+When `chapter_title` is set, the sidebar and canvas use it. Otherwise fall back to the current derived title ("Opening", chosen label, or "Section N").
 
-Choices use tool calling to return structured JSON with `safe`, `risky`, `emotional`, `chaotic` typed options.
+### Implementation Steps
 
-### Key Frontend Components
-- `StoryCanvas` — book-like reading/editing area
-- `ChoiceCards` — the 4-option selection UI
-- `StoryTimeline` — branch/rollback navigation
-- `StorySetup` — wizard for new stories
-- `Dashboard` — story management grid
+1. **Database migration** — Add `chapter_title` column to `story_nodes`.
 
-### Streaming Strategy
-Frontend buffers SSE tokens until sentence boundary (`. `, `! `, `? `, `\n`) before rendering, creating smooth sentence-by-sentence appearance.
+2. **API layer** — Add `updateNodeChapterTitle(nodeId, title)` and `deleteNodeAndDescendants(storyId, nodeId)` and `splitNodeAtPosition(storyId, nodeId, splitIndex)` and `mergeNodeWithParent(storyId, nodeId)` functions to `story-api.ts`.
 
----
+3. **ChapterSidebar upgrades** — Add a context menu (right-click or "..." icon) per chapter with Rename, Delete, and Merge options. Inline editing for rename. Confirmation dialog for delete.
 
-## What We Build First
+4. **StoryCanvas chapter breaks** — Render chapter title headings between node boundaries in the canvas. Add hover-triggered "insert break" buttons between paragraphs within a single node.
 
-I'll start with **Steps 1-4** (design system, shell, canvas, choice UI) to establish the visual foundation and core UX. Then we enable the backend and wire the AI loop.
+5. **StoryWrite wiring** — Connect the new sidebar actions to API calls, refresh state after mutations, handle edge cases (can't delete the only node, can't merge the root node).
+
+6. **Tests** — Add E2E tests for rename, delete, and chapter break insertion flows.
+
+### Technical Details
+
+- **Delete logic**: Walk the node tree to find all descendants of the target node, deactivate or hard-delete them, then set the parent node as the new active tip.
+- **Split logic**: Given a node and a paragraph index, create a new child node with the text after the split point, update the original node's text to only contain text before the split.
+- **Merge logic**: Append the child node's text to the parent, re-parent the child's children to the parent, then delete the child node.
+- Context menu uses the existing shadcn `DropdownMenu` component.
 
