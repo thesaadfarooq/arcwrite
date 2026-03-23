@@ -75,7 +75,7 @@ export default function SharedStory() {
       <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50">
         <div className="flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-primary" />
-          <span className="font-story text-lg font-semibold text-foreground tracking-tight">VibeWrite</span>
+          <span className="font-story text-lg font-semibold text-foreground tracking-tight">Arcwrite</span>
         </div>
         <span className="text-xs text-muted-foreground tabular-nums">{wordCount.toLocaleString()} words</span>
       </nav>
@@ -106,7 +106,7 @@ export default function SharedStory() {
         <div className="text-center mt-16 pt-8 border-t border-border/50">
           <p className="text-xs text-muted-foreground">
             Created with{" "}
-            <a href="/" className="text-primary hover:underline">VibeWrite</a>
+            <a href="/" className="text-primary hover:underline">Arcwrite</a>
           </p>
         </div>
       </main>

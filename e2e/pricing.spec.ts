@@ -44,6 +44,6 @@ test.describe("Pricing Page", () => {
 
   test("branding is visible", async ({ page }) => {
     await page.goto("/pricing");
-    await expect(page.locator("text=VibeWrite")).toBeVisible();
+    await expect(page.locator("text=Arcwrite")).toBeVisible();
   });
 });

@@ -73,7 +73,7 @@ export default function AuthPage() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-3">
             <BookOpen className="w-6 h-6 text-primary" />
-            <span className="font-story text-xl font-semibold text-foreground">VibeWrite</span>
+            <span className="font-story text-xl font-semibold text-foreground">Arcwrite</span>
           </div>
           <p className="text-muted-foreground text-sm">
             {mode === "login" ? "Welcome back" : mode === "signup" ? "Create your account" : "Reset your password"}
