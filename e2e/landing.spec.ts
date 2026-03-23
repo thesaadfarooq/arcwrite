@@ -3,7 +3,7 @@ import { test, expect } from "../playwright-fixture";
 test.describe("Landing Page", () => {
   test("renders hero section with branding", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("text=VibeWrite")).toBeVisible();
+    await expect(page.locator("text=Arcwrite")).toBeVisible();
     await expect(page.locator("h1")).toBeVisible();
   });
 
