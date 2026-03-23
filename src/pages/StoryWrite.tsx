@@ -702,7 +702,7 @@ export default function StoryWrite() {
           </button>
           <div className="flex items-center gap-1.5">
             <BookOpen className="w-4 h-4 text-primary" />
-            <span className="font-story text-sm font-semibold text-foreground truncate max-w-[200px]">{storyTitle}</span>
+            <EditableStoryTitle title={storyTitle} onRename={async (t) => { setStoryTitle(t); await updateStoryTitle(storyId!, t); }} />
           </div>
         </div>
         <div className="flex items-center gap-2">
