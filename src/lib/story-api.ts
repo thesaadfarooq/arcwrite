@@ -3,6 +3,8 @@ import type { StoryChoice } from "@/components/story/ChoiceCards";
 
 const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
+export type SectionLength = "short" | "medium" | "long" | "epic";
+
 export async function streamSection({
   premise,
   genre,
@@ -11,6 +13,7 @@ export async function streamSection({
   summary,
   recentText,
   storyState,
+  length,
   onDelta,
   onDone,
   onError,
@@ -22,6 +25,7 @@ export async function streamSection({
   summary?: string;
   recentText?: string;
   storyState?: any;
+  length?: SectionLength;
   onDelta: (text: string) => void;
   onDone: (fullText: string) => void;
   onError: (error: string) => void;
@@ -33,7 +37,7 @@ export async function streamSection({
         "Content-Type": "application/json",
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ premise, genre, tone, direction, summary, recentText, storyState }),
+      body: JSON.stringify({ premise, genre, tone, direction, summary, recentText, storyState, length: length || "medium" }),
     });
 
     if (!resp.ok) {
