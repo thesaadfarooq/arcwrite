@@ -37,7 +37,7 @@ serve(async (req) => {
         model: "gpt-5.4-mini",
         messages: allMessages,
         stream: true,
-        max_tokens: 1500,
+        max_completion_tokens: 1500,
         temperature: 0.85,
       }),
     });
