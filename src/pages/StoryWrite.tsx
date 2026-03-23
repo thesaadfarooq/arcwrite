@@ -742,19 +742,17 @@ export default function StoryWrite() {
 
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-[680px] mx-auto px-6 md:px-12 py-12 md:py-16">
-            <div className="mb-8 flex items-center gap-4">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                {chapters.length > 0 ? chapters[0].title : "Chapter 1"}
-              </span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
+            <EditableTitle
+              title={chapters.length > 0 ? chapters[0].title : "Chapter 1"}
+              onRename={chapters.length > 0 ? (newTitle: string) => handleChapterRename(chapters[0].id, newTitle) : undefined}
+            />
 
             <StoryCanvas
               paragraphs={paragraphs}
               onEdit={handleEdit}
               chapterHeadings={chapterHeadings}
               onInsertBreak={handleInsertBreak}
+              onRenameChapter={handleChapterRename}
             />
 
             {/* Processing indicator — shows after streaming ends while saving/summarizing */}
