@@ -43,6 +43,15 @@ export default function StoryNew() {
 
   const handleStart = async () => {
     if (!user) return;
+    
+    // Ensure we have a valid session before making DB calls
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error("Session expired — please sign in again");
+      navigate("/auth");
+      return;
+    }
+    
     setCreating(true);
 
     // Check story limit
