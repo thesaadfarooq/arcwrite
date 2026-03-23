@@ -237,6 +237,7 @@ export default function StoryWrite() {
       summary,
       recentText,
       storyState,
+      length: sectionLength,
       onDelta: (delta) => {
         fullText += delta;
         const newParas = fullText.split("\n\n").filter(Boolean);
