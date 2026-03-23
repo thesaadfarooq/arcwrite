@@ -45,6 +45,8 @@ export default function StoryWrite() {
   const [allNodes, setAllNodes] = useState<any[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
+  const [sectionLength, setSectionLength] = useState<SectionLength>("medium");
+  const [lengthOpen, setLengthOpen] = useState(false);
   const loadedRef = useRef(false);
 
   useEffect(() => {
