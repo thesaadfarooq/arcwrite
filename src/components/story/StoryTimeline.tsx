@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { GitBranch, Circle, ChevronRight, RotateCcw, Trash2 } from "lucide-react";
+import { GitBranch, Circle, ChevronRight, RotateCcw, Trash2, BookOpen } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export interface TimelineNode {
   id: string;
@@ -8,6 +9,7 @@ export interface TimelineNode {
   createdAt: string;
   isActive: boolean;
   wordCount: number;
+  startsChapter?: boolean;
 }
 
 interface StoryTimelineProps {
@@ -34,7 +36,6 @@ function buildTree(nodes: TimelineNode[]): TreeNode[] {
     const treeNode = map.get(n.id)!;
     if (n.parentId && map.has(n.parentId)) {
       const parent = map.get(n.parentId)!;
-      treeNode.depth = parent.depth + 1;
       parent.children.push(treeNode);
     } else {
       roots.push(treeNode);
@@ -42,6 +43,24 @@ function buildTree(nodes: TimelineNode[]): TreeNode[] {
   });
 
   return roots;
+}
+
+/**
+ * Branch-aware depth: only increase visual depth when a node is part of
+ * a fork (its parent has multiple children). Linear continuations stay flat.
+ */
+function assignBranchDepth(roots: TreeNode[]) {
+  function walk(node: TreeNode, depth: number) {
+    node.depth = depth;
+    if (node.children.length === 1) {
+      // Single continuation — keep same depth
+      walk(node.children[0], depth);
+    } else {
+      // Fork point — children get +1 depth
+      node.children.forEach((child) => walk(child, depth + 1));
+    }
+  }
+  roots.forEach((r) => walk(r, 0));
 }
 
 function flattenTree(roots: TreeNode[]): TreeNode[] {
@@ -63,6 +82,7 @@ export function StoryTimeline({
   storyTitle,
 }: StoryTimelineProps) {
   const tree = buildTree(nodes);
+  assignBranchDepth(tree);
   const flat = flattenTree(tree);
 
   return (
@@ -89,11 +109,23 @@ export function StoryTimeline({
             {flat.map((node, i) => {
               const isCurrent = node.id === currentNodeId;
               const isOnActivePath = node.isActive;
-              const hasMultipleChildren = tree.length > 0 && 
+              const hasMultipleChildren =
                 nodes.filter((n) => n.parentId === node.id).length > 1;
 
+              // Determine label
+              let label: string;
+              if (i === 0) {
+                label = "Opening";
+              } else if (node.chosenLabel) {
+                label = node.chosenLabel;
+              } else if (node.startsChapter) {
+                label = "Chapter break";
+              } else {
+                label = `Continuation`;
+              }
+
               return (
-                <div key={node.id} style={{ paddingLeft: `${node.depth * 12}px` }}>
+                <div key={node.id} style={{ paddingLeft: `${node.depth * 16}px` }}>
                   <button
                     onClick={() => onJumpToNode(node.id)}
                     className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all duration-200 flex items-center gap-2 group active:scale-[0.97] ${
@@ -119,10 +151,11 @@ export function StoryTimeline({
                       )}
                     </div>
 
-                    <span className="truncate flex-1 text-xs">
-                      {i === 0
-                        ? "Opening"
-                        : node.chosenLabel || `Section ${i + 1}`}
+                    <span className="truncate flex-1 text-xs flex items-center gap-1.5">
+                      {label}
+                      {node.startsChapter && i > 0 && (
+                        <BookOpen className="w-3 h-3 text-primary/60 shrink-0" />
+                      )}
                     </span>
 
                     <span className="text-[10px] opacity-0 group-hover:opacity-60 transition-opacity tabular-nums shrink-0">

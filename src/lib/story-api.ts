@@ -379,6 +379,7 @@ export async function splitNodeAtPosition(storyId: string, nodeId: string, split
       choices: node.choices,
       chosen_option: null,
       is_active: node.is_active,
+      starts_chapter: true,
     } as any)
     .select()
     .single();
