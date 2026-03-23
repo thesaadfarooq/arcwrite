@@ -190,7 +190,43 @@ export default function StoryWrite() {
         } catch (e) {
           console.error("Failed to save node:", e);
         }
+        try {
+          const results = await Promise.allSettled([summarizePromise, choicesPromise]);
+          const summaryResult = results[0].status === "fulfilled" ? results[0].value : null;
+          const choicesResult = results[1].status === "fulfilled" ? results[1].value : null;
 
+          if (summaryResult) {
+            setSummary(summaryResult.summary);
+            setStoryState(summaryResult.story_state);
+          } else {
+            console.warn("Summarize failed, saving node without summary");
+          }
+          if (choicesResult) {
+            setChoices(choicesResult);
+          } else {
+            toast.error("Failed to generate choices — you can regenerate them manually");
+          }
+
+          const node = await createStoryNode({
+            storyId: storyId!,
+            text,
+            summary: summaryResult?.summary || "",
+            storyState: summaryResult?.story_state || storyState,
+            choices: choicesResult || [],
+          });
+          setLastNodeId(node.id);
+          await reloadActiveState();
+
+          const firstLine = text.split(".")[0]?.trim();
+          if (firstLine && storyTitle === "Untitled Story") {
+            const title = firstLine.length > 50 ? firstLine.slice(0, 50) + "…" : firstLine;
+            setStoryTitle(title);
+            await updateStoryTitle(storyId!, title);
+          }
+        } catch (e) {
+          console.error("Failed to save node:", e);
+          toast.error("Failed to save — please try again");
+        }
         setIsProcessing(false);
         setIsLoadingChoices(false);
       },
@@ -272,13 +308,12 @@ export default function StoryWrite() {
 
         const allText = [...existingParas.map((p) => p.text), ...newParas].join("\n\n");
 
-        // Run summarize + choices in parallel
-        const summarizePromise = summarizeStory({
+        const summarizePromise2 = summarizeStory({
           fullText: allText,
           previousSummary: summary,
           storyState,
         });
-        const choicesPromise = generateChoices({
+        const choicesPromise2 = generateChoices({
           recentText: text,
           summary,
           storyState,
@@ -287,24 +322,36 @@ export default function StoryWrite() {
         });
 
         try {
-          const [summaryResult, choicesResult] = await Promise.all([summarizePromise, choicesPromise]);
-          setSummary(summaryResult.summary);
-          setStoryState(summaryResult.story_state);
-          setChoices(choicesResult);
+          const results = await Promise.allSettled([summarizePromise2, choicesPromise2]);
+          const summaryResult = results[0].status === "fulfilled" ? results[0].value : null;
+          const choicesResult = results[1].status === "fulfilled" ? results[1].value : null;
+
+          if (summaryResult) {
+            setSummary(summaryResult.summary);
+            setStoryState(summaryResult.story_state);
+          } else {
+            console.warn("Summarize failed, saving without summary update");
+          }
+          if (choicesResult) {
+            setChoices(choicesResult);
+          } else {
+            toast.error("Failed to generate choices — you can regenerate them manually");
+          }
 
           const node = await createStoryNode({
             storyId: storyId!,
             parentId: lastNodeId || undefined,
             text,
-            summary: summaryResult.summary,
-            storyState: summaryResult.story_state,
+            summary: summaryResult?.summary || summary,
+            storyState: summaryResult?.story_state || storyState,
             chosenOption: choice,
-            choices: choicesResult,
+            choices: choicesResult || [],
           });
           setLastNodeId(node.id);
           await reloadActiveState();
         } catch (e) {
           console.error("Failed to save:", e);
+          toast.error("Failed to save — please try again");
         }
 
         setIsProcessing(false);
