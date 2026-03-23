@@ -21,12 +21,17 @@ Return your analysis using the provided tool.`;
 
     const userContent = `${previousSummary ? `Previous summary: ${previousSummary}\n\n` : ""}New text to incorporate:\n${fullText}\n\n${storyState ? `Current story state: ${JSON.stringify(storyState)}` : ""}`;
 
+    console.log("[summarize] Calling OpenAI...");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model: "gpt-5.4-mini",
         messages: [
@@ -73,6 +78,9 @@ Return your analysis using the provided tool.`;
         temperature: 0.3,
       }),
     });
+
+    clearTimeout(timeout);
+    console.log("[summarize] OpenAI responded:", response.status);
 
     if (!response.ok) {
       const errText = await response.text();
