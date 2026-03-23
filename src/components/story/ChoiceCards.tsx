@@ -1,7 +1,8 @@
-import { Shield, Flame, Heart, Zap, RefreshCw, Send } from "lucide-react";
+import { Shield, Flame, Heart, Zap, RefreshCw, Send, AlignLeft } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import type { SectionLength } from "@/lib/story-api";
 
 export interface StoryChoice {
   type: "safe" | "risky" | "emotional" | "chaotic";
@@ -9,11 +10,20 @@ export interface StoryChoice {
   preview: string;
 }
 
+const LENGTH_OPTIONS: { value: SectionLength; label: string; desc: string }[] = [
+  { value: "short", label: "Short", desc: "~100w" },
+  { value: "medium", label: "Medium", desc: "~250w" },
+  { value: "long", label: "Long", desc: "~500w" },
+  { value: "epic", label: "Epic", desc: "~1000w" },
+];
+
 interface ChoiceCardsProps {
   choices: StoryChoice[];
   onSelect: (choice: StoryChoice | { type: "custom"; label: string; preview: string }) => void;
   onRegenerate: () => void;
   isLoading?: boolean;
+  sectionLength: SectionLength;
+  onSectionLengthChange: (length: SectionLength) => void;
 }
 
 const choiceConfig = {
@@ -23,7 +33,7 @@ const choiceConfig = {
   chaotic: { icon: Zap, color: "choice-chaotic", label: "Wildcard" },
 } as const;
 
-export function ChoiceCards({ choices, onSelect, onRegenerate, isLoading }: ChoiceCardsProps) {
+export function ChoiceCards({ choices, onSelect, onRegenerate, isLoading, sectionLength, onSectionLengthChange }: ChoiceCardsProps) {
   const [customText, setCustomText] = useState("");
   const [showCustom, setShowCustom] = useState(false);
 
@@ -44,9 +54,27 @@ export function ChoiceCards({ choices, onSelect, onRegenerate, isLoading }: Choi
     <div className="mt-10 space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-muted-foreground">What happens next?</p>
-        <Button variant="ghost" size="sm" onClick={onRegenerate} className="text-muted-foreground hover:text-foreground">
-          <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> New options
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5 rounded-lg border border-border bg-secondary/50 p-0.5">
+            {LENGTH_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => onSectionLengthChange(opt.value)}
+                className={`px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${
+                  sectionLength === opt.value
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title={opt.desc}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <Button variant="ghost" size="sm" onClick={onRegenerate} className="text-muted-foreground hover:text-foreground">
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> New options
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
