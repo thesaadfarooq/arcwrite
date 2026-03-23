@@ -12,7 +12,7 @@ const ThemeContext = createContext<ThemeContextType>({ theme: "light", toggleThe
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("vibewrite-theme") as Theme;
+      const stored = localStorage.getItem("arcwrite-theme") as Theme;
       if (stored) return stored;
       return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
