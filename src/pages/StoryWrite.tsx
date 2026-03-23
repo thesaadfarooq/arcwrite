@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle, Palette, GitBranch, Hash, Download, Share2, Loader2, Link, Crown, AlignLeft } from "lucide-react";
+import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle, Palette, GitBranch, Hash, Download, Share2, Loader2, Link, Crown } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { getTierLimits } from "@/lib/subscription";
