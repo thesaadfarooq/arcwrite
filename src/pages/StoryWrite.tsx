@@ -155,16 +155,28 @@ export default function StoryWrite() {
         const paras = text.split("\n\n").filter(Boolean);
         setParagraphs(paras.map((t, i) => ({ id: `gen-${i}`, text: t })));
 
+        // Run summarize + choices in parallel
+        const summarizePromise = summarizeStory({ fullText: text, storyState: {} });
+        const choicesPromise = generateChoices({
+          recentText: text,
+          summary: "",
+          storyState: {},
+          tone: storyMeta.tone,
+          genre: storyMeta.genre,
+        });
+
         try {
-          const summaryResult = await summarizeStory({ fullText: text, storyState: {} });
+          const [summaryResult, choicesResult] = await Promise.all([summarizePromise, choicesPromise]);
           setSummary(summaryResult.summary);
           setStoryState(summaryResult.story_state);
+          setChoices(choicesResult);
 
           const node = await createStoryNode({
             storyId: storyId!,
             text,
             summary: summaryResult.summary,
             storyState: summaryResult.story_state,
+            choices: choicesResult,
           });
           setLastNodeId(node.id);
           await reloadActiveState();
@@ -180,7 +192,7 @@ export default function StoryWrite() {
         }
 
         setIsProcessing(false);
-        fetchChoices(text);
+        setIsLoadingChoices(false);
       },
       onError: (err) => {
         setIsGenerating(false);
