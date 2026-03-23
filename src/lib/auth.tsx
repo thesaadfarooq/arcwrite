@@ -73,7 +73,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) {
+        // Try refreshing the session in case the token expired during a redirect
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        if (refreshData.session) {
+          setSession(refreshData.session);
+          setUser(refreshData.session.user);
+          setLoading(false);
+          return;
+        }
+      }
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
