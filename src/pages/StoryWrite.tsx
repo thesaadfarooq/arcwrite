@@ -20,6 +20,116 @@ import type { SectionLength } from "@/lib/story-api";
 import type { ChapterHeading } from "@/components/story/StoryCanvas";
 import { toast } from "sonner";
 
+function EditableStoryTitle({ title, onRename }: { title: string; onRename: (newTitle: string) => void }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) setEditValue(title);
+  }, [title, isEditing]);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const commit = () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== title) {
+      onRename(trimmed);
+    }
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <input
+        ref={inputRef}
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") setIsEditing(false);
+        }}
+        className="font-story text-sm font-semibold text-foreground bg-secondary/50 border border-primary/30 rounded px-2 py-0.5 focus:outline-none focus:border-primary/50 max-w-[200px]"
+      />
+    );
+  }
+
+  return (
+    <span
+      className="font-story text-sm font-semibold text-foreground truncate max-w-[200px] cursor-pointer hover:text-primary transition-colors"
+      onClick={() => setIsEditing(true)}
+      title="Click to rename"
+    >
+      {title}
+    </span>
+  );
+}
+
+function EditableTitle({ title, onRename }: { title: string; onRename?: (newTitle: string) => void }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) setEditValue(title);
+  }, [title, isEditing]);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const commit = () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== title && onRename) {
+      onRename(trimmed);
+    }
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="mb-8 flex items-center gap-4">
+        <div className="h-px flex-1 bg-border" />
+        <input
+          ref={inputRef}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") setIsEditing(false);
+          }}
+          className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground bg-secondary/50 border border-primary/30 rounded px-2 py-1 text-center focus:outline-none focus:border-primary/50 max-w-[200px]"
+        />
+        <div className="h-px flex-1 bg-border" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-8 flex items-center gap-4 group/ch1">
+      <div className="h-px flex-1 bg-border" />
+      <span
+        className={`text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground ${onRename ? "cursor-pointer hover:text-foreground transition-colors" : ""}`}
+        onClick={() => onRename && setIsEditing(true)}
+        title={onRename ? "Click to rename" : undefined}
+      >
+        {title}
+      </span>
+      <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
 export default function StoryWrite() {
   const { id: storyId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -166,17 +276,28 @@ export default function StoryWrite() {
         });
 
         try {
-          const [summaryResult, choicesResult] = await Promise.all([summarizePromise, choicesPromise]);
-          setSummary(summaryResult.summary);
-          setStoryState(summaryResult.story_state);
-          setChoices(choicesResult);
+          const results = await Promise.allSettled([summarizePromise, choicesPromise]);
+          const summaryResult = results[0].status === "fulfilled" ? results[0].value : null;
+          const choicesResult = results[1].status === "fulfilled" ? results[1].value : null;
+
+          if (summaryResult) {
+            setSummary(summaryResult.summary);
+            setStoryState(summaryResult.story_state);
+          } else {
+            console.warn("Summarize failed, saving node without summary");
+          }
+          if (choicesResult) {
+            setChoices(choicesResult);
+          } else {
+            toast.error("Failed to generate choices — you can regenerate them manually");
+          }
 
           const node = await createStoryNode({
             storyId: storyId!,
             text,
-            summary: summaryResult.summary,
-            storyState: summaryResult.story_state,
-            choices: choicesResult,
+            summary: summaryResult?.summary || "",
+            storyState: summaryResult?.story_state || storyState,
+            choices: choicesResult || [],
           });
           setLastNodeId(node.id);
           await reloadActiveState();
@@ -189,8 +310,8 @@ export default function StoryWrite() {
           }
         } catch (e) {
           console.error("Failed to save node:", e);
+          toast.error("Failed to save — please try again");
         }
-
         setIsProcessing(false);
         setIsLoadingChoices(false);
       },
@@ -272,13 +393,12 @@ export default function StoryWrite() {
 
         const allText = [...existingParas.map((p) => p.text), ...newParas].join("\n\n");
 
-        // Run summarize + choices in parallel
-        const summarizePromise = summarizeStory({
+        const summarizePromise2 = summarizeStory({
           fullText: allText,
           previousSummary: summary,
           storyState,
         });
-        const choicesPromise = generateChoices({
+        const choicesPromise2 = generateChoices({
           recentText: text,
           summary,
           storyState,
@@ -287,24 +407,36 @@ export default function StoryWrite() {
         });
 
         try {
-          const [summaryResult, choicesResult] = await Promise.all([summarizePromise, choicesPromise]);
-          setSummary(summaryResult.summary);
-          setStoryState(summaryResult.story_state);
-          setChoices(choicesResult);
+          const results = await Promise.allSettled([summarizePromise2, choicesPromise2]);
+          const summaryResult = results[0].status === "fulfilled" ? results[0].value : null;
+          const choicesResult = results[1].status === "fulfilled" ? results[1].value : null;
+
+          if (summaryResult) {
+            setSummary(summaryResult.summary);
+            setStoryState(summaryResult.story_state);
+          } else {
+            console.warn("Summarize failed, saving without summary update");
+          }
+          if (choicesResult) {
+            setChoices(choicesResult);
+          } else {
+            toast.error("Failed to generate choices — you can regenerate them manually");
+          }
 
           const node = await createStoryNode({
             storyId: storyId!,
             parentId: lastNodeId || undefined,
             text,
-            summary: summaryResult.summary,
-            storyState: summaryResult.story_state,
+            summary: summaryResult?.summary || summary,
+            storyState: summaryResult?.story_state || storyState,
             chosenOption: choice,
-            choices: choicesResult,
+            choices: choicesResult || [],
           });
           setLastNodeId(node.id);
           await reloadActiveState();
         } catch (e) {
           console.error("Failed to save:", e);
+          toast.error("Failed to save — please try again");
         }
 
         setIsProcessing(false);
@@ -621,7 +753,7 @@ export default function StoryWrite() {
           </button>
           <div className="flex items-center gap-1.5">
             <BookOpen className="w-4 h-4 text-primary" />
-            <span className="font-story text-sm font-semibold text-foreground truncate max-w-[200px]">{storyTitle}</span>
+            <EditableStoryTitle title={storyTitle} onRename={async (t) => { setStoryTitle(t); await updateStoryTitle(storyId!, t); }} />
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -720,19 +852,17 @@ export default function StoryWrite() {
 
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-[680px] mx-auto px-6 md:px-12 py-12 md:py-16">
-            <div className="mb-8 flex items-center gap-4">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                {chapters.length > 0 ? chapters[0].title : "Chapter 1"}
-              </span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
+            <EditableTitle
+              title={chapters.length > 0 ? chapters[0].title : "Chapter 1"}
+              onRename={chapters.length > 0 ? (newTitle: string) => handleChapterRename(chapters[0].id, newTitle) : undefined}
+            />
 
             <StoryCanvas
               paragraphs={paragraphs}
               onEdit={handleEdit}
               chapterHeadings={chapterHeadings}
               onInsertBreak={handleInsertBreak}
+              onRenameChapter={handleChapterRename}
             />
 
             {/* Processing indicator — shows after streaming ends while saving/summarizing */}
