@@ -174,6 +174,8 @@ export async function createStoryNode({
   choices?: StoryChoice[];
   chosenOption?: any;
 }) {
+  // A node starts a chapter only if it's the root (no parent)
+  const isRoot = !parentId;
   const insertObj: Record<string, any> = {
     story_id: storyId,
     parent_id: parentId || null,
@@ -182,6 +184,7 @@ export async function createStoryNode({
     story_state: storyState || {},
     choices: (choices || []) as any,
     chosen_option: chosenOption || null,
+    starts_chapter: isRoot,
   };
   const { data, error } = await supabase
     .from("story_nodes")
