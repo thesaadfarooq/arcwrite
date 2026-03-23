@@ -25,7 +25,7 @@ interface Story {
 }
 
 export default function Dashboard() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, refreshSubscription } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [stories, setStories] = useState<Story[]>([]);
@@ -34,6 +34,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchStories();
+    // Handle checkout success redirect
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout") === "success") {
+      toast.success("Subscription activated! Refreshing your plan…");
+      refreshSubscription();
+      // Clean URL
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, []);
 
   const fetchStories = async () => {
