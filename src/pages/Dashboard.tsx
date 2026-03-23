@@ -5,13 +5,10 @@ import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import {
-  BookOpen, Plus, Sun, Moon, LogOut, LayoutGrid, List,
-  MoreHorizontal, Pencil, Trash2, Copy, Crown,
+  BookOpen, Plus, Sun, Moon, LogOut, LayoutGrid, List, Crown,
 } from "lucide-react";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { StoryGridCard, StoryListCard } from "@/components/dashboard/EditableStoryCard";
 
 interface Story {
   id: string;
@@ -34,12 +31,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchStories();
-    // Handle checkout success redirect
     const params = new URLSearchParams(window.location.search);
     if (params.get("checkout") === "success") {
       toast.success("Subscription activated! Refreshing your plan…");
       refreshSubscription();
-      // Clean URL
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -88,6 +83,15 @@ export default function Dashboard() {
     }
   };
 
+  const renameStory = async (id: string, newTitle: string) => {
+    const { error } = await supabase.from("stories").update({ title: newTitle }).eq("id", id);
+    if (error) {
+      toast.error("Failed to rename story");
+    } else {
+      setStories((prev) => prev.map((s) => s.id === id ? { ...s, title: newTitle } : s));
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "in_progress": return "text-choice-safe";
@@ -103,6 +107,8 @@ export default function Dashboard() {
       default: return "Draft";
     }
   };
+
+  const cardProps = { onDelete: deleteStory, onDuplicate: duplicateStory, onRename: renameStory, getStatusColor, getStatusLabel };
 
   return (
     <div className="min-h-screen bg-background transition-colors duration-500">
@@ -136,7 +142,6 @@ export default function Dashboard() {
       </nav>
 
       <main className="max-w-5xl mx-auto px-6 py-8">
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="font-story text-2xl font-semibold text-foreground">Your Stories</h1>
@@ -157,7 +162,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stories */}
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[0, 1, 2].map((i) => (
@@ -176,81 +180,13 @@ export default function Dashboard() {
         ) : view === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {stories.map((story, i) => (
-              <div
-                key={story.id}
-                className="group p-5 rounded-xl border border-border bg-card hover:border-primary/20 transition-all duration-300 cursor-pointer hover:shadow-[0_4px_20px_-8px_hsl(var(--primary)/0.1)] animate-fade-up"
-                style={{ animationDelay: `${i * 60}ms`, opacity: 0 }}
-                onClick={() => navigate(`/story/${story.id}`)}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-medium text-foreground line-clamp-1">{story.title}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      {story.genre && <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-md">{story.genre}</span>}
-                      <span className={`text-xs font-medium ${getStatusColor(story.status)}`}>{getStatusLabel(story.status)}</span>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <button className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-secondary transition-all">
-                        <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenuItem onClick={() => navigate(`/story/${story.id}`)}>
-                        <Pencil className="w-3.5 h-3.5 mr-2" /> Continue
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => duplicateStory(story)}>
-                        <Copy className="w-3.5 h-3.5 mr-2" /> Duplicate
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => deleteStory(story.id)} className="text-destructive">
-                        <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                {story.premise && <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{story.premise}</p>}
-                <div className="mt-3 text-xs text-muted-foreground">
-                  {new Date(story.updated_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-                </div>
-              </div>
+              <StoryGridCard key={story.id} story={story} index={i} {...cardProps} />
             ))}
           </div>
         ) : (
           <div className="space-y-2">
             {stories.map((story, i) => (
-              <div
-                key={story.id}
-                className="group flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/20 transition-all cursor-pointer animate-fade-up"
-                style={{ animationDelay: `${i * 40}ms`, opacity: 0 }}
-                onClick={() => navigate(`/story/${story.id}`)}
-              >
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-foreground truncate">{story.title}</h3>
-                  {story.premise && <p className="text-xs text-muted-foreground truncate mt-0.5">{story.premise}</p>}
-                </div>
-                {story.genre && <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-md shrink-0">{story.genre}</span>}
-                <span className={`text-xs font-medium shrink-0 ${getStatusColor(story.status)}`}>{getStatusLabel(story.status)}</span>
-                <span className="text-xs text-muted-foreground shrink-0">{new Date(story.updated_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <button className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-secondary transition-all">
-                      <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenuItem onClick={() => navigate(`/story/${story.id}`)}>
-                      <Pencil className="w-3.5 h-3.5 mr-2" /> Continue
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => duplicateStory(story)}>
-                      <Copy className="w-3.5 h-3.5 mr-2" /> Duplicate
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => deleteStory(story.id)} className="text-destructive">
-                      <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              <StoryListCard key={story.id} story={story} index={i} {...cardProps} />
             ))}
           </div>
         )}
