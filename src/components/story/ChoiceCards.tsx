@@ -54,9 +54,27 @@ export function ChoiceCards({ choices, onSelect, onRegenerate, isLoading, sectio
     <div className="mt-10 space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-muted-foreground">What happens next?</p>
-        <Button variant="ghost" size="sm" onClick={onRegenerate} className="text-muted-foreground hover:text-foreground">
-          <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> New options
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5 rounded-lg border border-border bg-secondary/50 p-0.5">
+            {LENGTH_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => onSectionLengthChange(opt.value)}
+                className={`px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${
+                  sectionLength === opt.value
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title={opt.desc}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <Button variant="ghost" size="sm" onClick={onRegenerate} className="text-muted-foreground hover:text-foreground">
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> New options
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
