@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { SplitSquareVertical } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { SplitSquareVertical, Pencil } from "lucide-react";
 
 export interface StoryParagraph {
   id: string;
@@ -18,9 +18,10 @@ interface StoryCanvasProps {
   isEditable?: boolean;
   chapterHeadings?: ChapterHeading[];
   onInsertBreak?: (nodeId: string, paragraphIndex: number) => void;
+  onRenameChapter?: (nodeId: string, newTitle: string) => void;
 }
 
-export function StoryCanvas({ paragraphs, onEdit, isEditable = true, chapterHeadings, onInsertBreak }: StoryCanvasProps) {
+export function StoryCanvas({ paragraphs, onEdit, isEditable = true, chapterHeadings, onInsertBreak, onRenameChapter }: StoryCanvasProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,13 +59,11 @@ export function StoryCanvas({ paragraphs, onEdit, isEditable = true, chapterHead
         return (
           <div key={p.id} id={isFirstOfNode ? `para-${nodeId}` : undefined}>
             {showHeading && (
-              <div className="mt-12 mb-6 flex items-center gap-4">
-                <div className="h-px flex-1 bg-border" />
-                <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                  {headingMap.get(nodeId)}
-                </span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
+              <EditableChapterHeading
+                nodeId={nodeId}
+                title={headingMap.get(nodeId) || ""}
+                onRename={onRenameChapter}
+              />
             )}
 
             {/* Insert chapter break button — between paragraphs of the same node */}
