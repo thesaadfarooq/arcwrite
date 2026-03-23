@@ -21,12 +21,17 @@ Return your analysis using the provided tool.`;
 
     const userContent = `${previousSummary ? `Previous summary: ${previousSummary}\n\n` : ""}New text to incorporate:\n${fullText}\n\n${storyState ? `Current story state: ${JSON.stringify(storyState)}` : ""}`;
 
+    console.log("[summarize] Calling OpenAI...");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model: "gpt-5.4-mini",
         messages: [
@@ -74,6 +79,9 @@ Return your analysis using the provided tool.`;
       }),
     });
 
+    clearTimeout(timeout);
+    console.log("[summarize] OpenAI responded:", response.status);
+
     if (!response.ok) {
       const errText = await response.text();
       console.error("OpenAI error:", response.status, errText);
@@ -97,9 +105,11 @@ Return your analysis using the provided tool.`;
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("summarize error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
+    const msg = e instanceof Error ? e.message : "Unknown error";
+    const isAbort = e instanceof DOMException && e.name === "AbortError";
+    console.error("summarize error:", isAbort ? "Request timed out after 25s" : msg);
+    return new Response(JSON.stringify({ error: isAbort ? "Request timed out — please retry" : msg }), {
+      status: isAbort ? 504 : 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
