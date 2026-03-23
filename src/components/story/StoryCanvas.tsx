@@ -94,6 +94,74 @@ export function StoryCanvas({ paragraphs, onEdit, isEditable = true, chapterHead
   );
 }
 
+function EditableChapterHeading({
+  nodeId,
+  title,
+  onRename,
+}: {
+  nodeId: string;
+  title: string;
+  onRename?: (nodeId: string, newTitle: string) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) setEditValue(title);
+  }, [title, isEditing]);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const commit = () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== title && onRename) {
+      onRename(nodeId, trimmed);
+    }
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="mt-12 mb-6 flex items-center gap-4">
+        <div className="h-px flex-1 bg-border" />
+        <input
+          ref={inputRef}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") setIsEditing(false);
+          }}
+          className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground bg-secondary/50 border border-primary/30 rounded px-2 py-1 text-center focus:outline-none focus:border-primary/50 max-w-[200px]"
+        />
+        <div className="h-px flex-1 bg-border" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-12 mb-6 flex items-center gap-4 group/heading">
+      <div className="h-px flex-1 bg-border" />
+      <span
+        className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5"
+        onClick={() => onRename && setIsEditing(true)}
+        title={onRename ? "Click to rename" : undefined}
+      >
+        {title}
+        {onRename && <Pencil className="w-2.5 h-2.5 opacity-0 group-hover/heading:opacity-60 transition-opacity" />}
+      </span>
+      <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
 function ParagraphBlock({
   paragraph,
   isFirst,
