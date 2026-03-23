@@ -20,6 +20,57 @@ import type { SectionLength } from "@/lib/story-api";
 import type { ChapterHeading } from "@/components/story/StoryCanvas";
 import { toast } from "sonner";
 
+function EditableStoryTitle({ title, onRename }: { title: string; onRename: (newTitle: string) => void }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) setEditValue(title);
+  }, [title, isEditing]);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const commit = () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== title) {
+      onRename(trimmed);
+    }
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <input
+        ref={inputRef}
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") setIsEditing(false);
+        }}
+        className="font-story text-sm font-semibold text-foreground bg-secondary/50 border border-primary/30 rounded px-2 py-0.5 focus:outline-none focus:border-primary/50 max-w-[200px]"
+      />
+    );
+  }
+
+  return (
+    <span
+      className="font-story text-sm font-semibold text-foreground truncate max-w-[200px] cursor-pointer hover:text-primary transition-colors"
+      onClick={() => setIsEditing(true)}
+      title="Click to rename"
+    >
+      {title}
+    </span>
+  );
+}
+
 function EditableTitle({ title, onRename }: { title: string; onRename?: (newTitle: string) => void }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
