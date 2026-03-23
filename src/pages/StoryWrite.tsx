@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle, Palette, GitBranch, Hash, Download, Share2, Loader2, Link, Crown } from "lucide-react";
+import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle, Palette, GitBranch, Hash, Download, Share2, Loader2, Link, Crown, AlignLeft } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { getTierLimits } from "@/lib/subscription";
@@ -16,6 +16,7 @@ import {
   updateStoryTitle, updateStoryTone, jumpToNode,
   updateNodeChapterTitle, deleteNodeAndDescendants, splitNodeAtPosition, mergeNodeWithParent,
 } from "@/lib/story-api";
+import type { SectionLength } from "@/lib/story-api";
 import type { ChapterHeading } from "@/components/story/StoryCanvas";
 import { toast } from "sonner";
 
@@ -44,6 +45,8 @@ export default function StoryWrite() {
   const [allNodes, setAllNodes] = useState<any[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
+  const [sectionLength, setSectionLength] = useState<SectionLength>("medium");
+  const [lengthOpen, setLengthOpen] = useState(false);
   const loadedRef = useRef(false);
 
   useEffect(() => {
@@ -137,6 +140,7 @@ export default function StoryWrite() {
       premise: storyMeta.premise,
       genre: storyMeta.genre,
       tone: storyMeta.tone,
+      length: sectionLength,
       onDelta: (delta) => {
         fullText += delta;
         const paras = fullText.split("\n\n").filter(Boolean);
@@ -233,6 +237,7 @@ export default function StoryWrite() {
       summary,
       recentText,
       storyState,
+      length: sectionLength,
       onDelta: (delta) => {
         fullText += delta;
         const newParas = fullText.split("\n\n").filter(Boolean);
@@ -591,6 +596,39 @@ export default function StoryWrite() {
             <Palette className="w-3 h-3" />
             <span className="hidden sm:inline">{storyMeta.tone || "Set tone"}</span>
           </button>
+          <div className="relative">
+            <button
+              onClick={() => setLengthOpen(!lengthOpen)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
+            >
+              <AlignLeft className="w-3 h-3" />
+              <span className="hidden sm:inline capitalize">{sectionLength}</span>
+            </button>
+            {lengthOpen && (
+              <div className="absolute right-0 top-8 z-30 w-44 p-2 rounded-xl border border-border bg-card shadow-lg animate-fade-in">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-2 pb-1.5">Section length</p>
+                {([
+                  { value: "short", label: "Short", desc: "~100 words" },
+                  { value: "medium", label: "Medium", desc: "~250 words" },
+                  { value: "long", label: "Long", desc: "~500 words" },
+                  { value: "epic", label: "Epic", desc: "~1000 words" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => { setSectionLength(opt.value); setLengthOpen(false); }}
+                    className={`w-full text-left px-2 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between ${
+                      sectionLength === opt.value
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    <span className="text-[10px] opacity-60">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             onClick={handleExport}
             disabled={isExporting}

@@ -5,20 +5,28 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const LENGTH_PRESETS: Record<string, { paragraphs: string; maxTokens: number }> = {
+  short:  { paragraphs: "1-2 paragraphs (~100 words)", maxTokens: 500 },
+  medium: { paragraphs: "2-3 paragraphs (~250 words)", maxTokens: 1200 },
+  long:   { paragraphs: "4-6 paragraphs (~500 words)", maxTokens: 2500 },
+  epic:   { paragraphs: "8-10 paragraphs (~1000 words)", maxTokens: 4000 },
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, tone, storyState, summary, recentText, direction, premise, genre } = await req.json();
+    const { messages, tone, storyState, summary, recentText, direction, premise, genre, length } = await req.json();
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
-    const systemPrompt = buildSystemPrompt({ tone, storyState, summary, recentText, premise, genre });
+    const preset = LENGTH_PRESETS[length] || LENGTH_PRESETS.medium;
+    const systemPrompt = buildSystemPrompt({ tone, storyState, summary, recentText, premise, genre, paragraphInstruction: preset.paragraphs });
 
     const userMessage = direction
       ? `Continue the story based on this direction: ${direction}`
       : premise
-      ? `Write the opening section (2-3 paragraphs) of a story with this premise: ${premise}`
+      ? `Write the opening section of a story with this premise: ${premise}`
       : "Continue the story naturally.";
 
     const allMessages = [
@@ -37,7 +45,7 @@ serve(async (req) => {
         model: "gpt-5.4-mini",
         messages: allMessages,
         stream: true,
-        max_completion_tokens: 1500,
+        max_completion_tokens: preset.maxTokens,
         temperature: 0.85,
       }),
     });
@@ -76,6 +84,7 @@ function buildSystemPrompt({
   recentText,
   premise,
   genre,
+  paragraphInstruction,
 }: {
   tone?: string;
   storyState?: any;
@@ -83,11 +92,12 @@ function buildSystemPrompt({
   recentText?: string;
   premise?: string;
   genre?: string;
+  paragraphInstruction: string;
 }) {
   let prompt = `You are a master storyteller and prose writer. Write rich, immersive narrative prose.
 
 RULES:
-- Write 2-3 paragraphs of polished, publishable prose
+- Write ${paragraphInstruction} of polished, publishable prose
 - Show, don't tell. Use vivid sensory details
 - Maintain consistent characterization and plot continuity
 - End at a natural decision point where the reader could choose what happens next
