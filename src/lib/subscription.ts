@@ -17,8 +17,8 @@ export const TIERS = {
   pro: {
     name: "Pro",
     price: 15.99,
-    price_id: "price_1TE8iAInpGHZDZbfGk9BVZoR",
-    product_id: "prod_UCXnuu1wKr1phJ",
+    price_id: "price_1TE8mSDln8cBHnbWHnQv2nwK",
+    product_id: "prod_UCXsdTxzZXQZ36",
     limits: { stories: Infinity, chapters: Infinity, export: true, sharing: true },
   },
 } as const;
