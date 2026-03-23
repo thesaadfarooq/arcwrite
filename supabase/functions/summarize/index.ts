@@ -28,7 +28,7 @@ Return your analysis using the provided tool.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4.1-mini",
+        model: "gpt-5.4-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userContent },
