@@ -20,6 +20,65 @@ import type { SectionLength } from "@/lib/story-api";
 import type { ChapterHeading } from "@/components/story/StoryCanvas";
 import { toast } from "sonner";
 
+function EditableTitle({ title, onRename }: { title: string; onRename?: (newTitle: string) => void }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) setEditValue(title);
+  }, [title, isEditing]);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const commit = () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== title && onRename) {
+      onRename(trimmed);
+    }
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="mb-8 flex items-center gap-4">
+        <div className="h-px flex-1 bg-border" />
+        <input
+          ref={inputRef}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") setIsEditing(false);
+          }}
+          className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground bg-secondary/50 border border-primary/30 rounded px-2 py-1 text-center focus:outline-none focus:border-primary/50 max-w-[200px]"
+        />
+        <div className="h-px flex-1 bg-border" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-8 flex items-center gap-4 group/ch1">
+      <div className="h-px flex-1 bg-border" />
+      <span
+        className={`text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground ${onRename ? "cursor-pointer hover:text-foreground transition-colors" : ""}`}
+        onClick={() => onRename && setIsEditing(true)}
+        title={onRename ? "Click to rename" : undefined}
+      >
+        {title}
+      </span>
+      <div className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
 export default function StoryWrite() {
   const { id: storyId } = useParams<{ id: string }>();
   const navigate = useNavigate();
