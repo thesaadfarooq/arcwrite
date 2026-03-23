@@ -1,127 +1,49 @@
 
-## Timeline + Chapter Reconciliation Plan
 
-## What’s going wrong now
+## Section Length Control
 
-The app currently uses one tree for two different ideas:
+**Problem**: The generation length is hardcoded — `max_completion_tokens: 1500` and the system prompt forces "2-3 paragraphs." Users have no way to control how much text gets generated per section.
 
-1. **Narrative history / forks** — the timeline tree  
-2. **Reading structure / chapters** — the chapter system
+**Solution**: Add a "Section Length" control to the writing UI that lets users pick how long the next generated section should be. Pass that preference to the edge function, which adjusts both the system prompt wording and `max_completion_tokens` accordingly.
 
-Right now every newly generated node becomes a child of the previous node, so the timeline depth keeps increasing forever. Then manual chapter splits also create child nodes, which makes chapter boundaries look like deeper branches even when they are really just structural breaks in the same storyline.
+---
 
-There are two core issues in the current code:
+### Length Presets
 
-- **Chapter detection is too implicit**  
-  A chapter start is inferred with `chosen_option == null`, which is fragile and mixes “opening”, “manual split”, and other cases.
+| Preset | Label | Paragraphs | max_completion_tokens |
+|--------|-------|-----------|----------------------|
+| short | Short (~100 words) | 1-2 paragraphs | 500 |
+| medium | Medium (~250 words) | 2-3 paragraphs | 1200 |
+| long | Long (~500 words) | 4-6 paragraphs | 2500 |
+| epic | Epic (~1000 words) | 8-10 paragraphs | 4000 |
 
-- **Timeline depth is based on parent depth, not branch depth**  
-  `depth = parent.depth + 1` makes a simple linear continuation look more and more nested, even when nothing actually forked.
+Default: **medium** (current behavior).
 
-## What I’ll change
+---
 
-### 1. Separate chapter semantics from timeline semantics
-Add an explicit chapter marker to story nodes, instead of inferring it from `chosen_option`.
+### Changes
 
-Recommended shape:
-```text
-story_nodes
-  + starts_chapter boolean default false
-```
+**1. Edge function `generate-section/index.ts`**
+- Accept a new `length` parameter (short/medium/long/epic)
+- Map it to paragraph count instruction in the system prompt and `max_completion_tokens` in the API call
+- Fall back to "medium" if not provided
 
-Rules:
-- opening node: `starts_chapter = true`
-- manual split-created node: `starts_chapter = true`
-- regular choice continuation: `starts_chapter = false`
+**2. Client API `src/lib/story-api.ts`**
+- Add `length` to the `streamSection` parameters and pass it in the request body
 
-This makes chapters stable and predictable.
+**3. Story writing page `src/pages/StoryWrite.tsx`**
+- Add a `sectionLength` state (default: "medium")
+- Pass it to both `generateOpening` and `handleChoiceSelected` calls
+- Add a length selector UI near the tone panel or generation controls — a simple segmented button group or select dropdown
 
-### 2. Keep chapter UI driven only by chapter markers
-Update `StoryWrite` so chapters/headings/sidebar are derived from:
+**4. UI placement**
+- Place the length selector in the TonePanel or as a small control row near the "generating..." area, so it's accessible but not cluttering the main canvas
 
-```text
-active nodes where starts_chapter = true
-```
+---
 
-instead of:
-```text
-chosen_option == null
-```
+### Technical Details
 
-That keeps:
-- normal choices extending the current chapter
-- manual chapter breaks creating a real new chapter
-- renamed chapter titles staying attached to real chapter-start nodes
+- The system prompt line changes from hardcoded "2-3 paragraphs" to dynamic based on the length map
+- `max_completion_tokens` scales accordingly to avoid cutting off longer outputs
+- No database changes needed — length is a per-generation preference, not persisted
 
-### 3. Redesign timeline indentation so linear progress stays flat
-Update `StoryTimeline` tree layout so indentation reflects **forking**, not simple continuation.
-
-New display rule:
-- if a node is just the single continuation of a chain, keep it at the same visual depth
-- only increase indentation when a node comes from a branching point / alternate path
-
-Effect:
-- Opening → Section 2 → Section 3 stays visually aligned as one storyline
-- actual branches/forks become nested
-- chapter splits no longer make the timeline look like it is spiraling inward
-
-### 4. Preserve split/merge behavior, but mark chapter boundaries properly
-Update split/merge logic so chapter structure remains consistent:
-
-- **split**  
-  - original node stays in current chapter
-  - new child node becomes `starts_chapter = true`
-- **merge**
-  - remove the child chapter boundary
-  - keep parent as the chapter start if appropriate
-- **normal generation after a split**
-  - new node continues from the current tip
-  - does not create a new chapter
-  - does not increase timeline nesting unless it’s a real fork
-
-### 5. Improve timeline labels so they match the mental model
-Adjust timeline naming so it reads like history, not chapters.
-
-Example approach:
-- first node: `Opening`
-- regular continuation: chosen option label or `Continuation`
-- split-created chapter boundary: small badge like `Chapter break`
-- real alternate branch: `Fork`
-
-That keeps the Timeline about history, while Chapters remains about structure.
-
-## Files I’d update
-
-- `src/pages/StoryWrite.tsx`
-  - derive chapters from explicit chapter-start metadata
-  - keep timeline data separate from chapter data
-- `src/components/story/StoryTimeline.tsx`
-  - replace current parent-depth indentation with branch-aware indentation
-  - improve labels / badges for split vs fork
-- `src/lib/story-api.ts`
-  - set explicit chapter-start metadata on opening and split nodes
-  - preserve it correctly on merge/delete flows
-- database migration
-  - add `starts_chapter` boolean to `story_nodes`
-
-## Expected result
-
-After this fix:
-
-- generating the next section will **continue the current chapter**
-- inserting a chapter break will create a **real new chapter**
-- the timeline will no longer drift deeper and deeper for normal progression
-- only true forks will appear nested
-- chapter sidebar, canvas headings, and timeline will all stay in sync
-
-## Technical note
-
-The cleanest mental model is:
-
-```text
-story_nodes = history graph
-starts_chapter = reading structure marker
-timeline depth = branch depth, not ancestry length
-```
-
-That separation is what will stop chapter splits and timeline nesting from fighting each other.
