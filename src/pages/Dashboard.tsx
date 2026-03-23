@@ -110,7 +110,7 @@ export default function Dashboard() {
       <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50">
         <div className="flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-primary" />
-          <span className="font-story text-lg font-semibold text-foreground tracking-tight">VibeWrite</span>
+          <span className="font-story text-lg font-semibold text-foreground tracking-tight">Arcwrite</span>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-secondary transition-colors active:scale-95">

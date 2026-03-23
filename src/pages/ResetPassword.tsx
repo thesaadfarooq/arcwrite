@@ -33,7 +33,7 @@ export default function ResetPassword() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-3">
             <BookOpen className="w-6 h-6 text-primary" />
-            <span className="font-story text-xl font-semibold text-foreground">VibeWrite</span>
+            <span className="font-story text-xl font-semibold text-foreground">Arcwrite</span>
           </div>
           <p className="text-muted-foreground text-sm">Set your new password</p>
         </div>

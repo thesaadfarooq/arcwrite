@@ -4,7 +4,7 @@ test.describe("Responsive Design", () => {
   test("landing page renders on mobile viewport", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/");
-    await expect(page.locator("text=VibeWrite")).toBeVisible();
+    await expect(page.locator("text=Arcwrite")).toBeVisible();
     await expect(page.locator("h1")).toBeVisible();
   });
 
@@ -27,7 +27,7 @@ test.describe("Responsive Design", () => {
   test("landing page renders on tablet viewport", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto("/");
-    await expect(page.locator("text=VibeWrite")).toBeVisible();
+    await expect(page.locator("text=Arcwrite")).toBeVisible();
   });
 
   test("pricing page renders on wide desktop", async ({ page }) => {
