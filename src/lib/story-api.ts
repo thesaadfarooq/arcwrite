@@ -37,7 +37,7 @@ export async function streamSection({
         "Content-Type": "application/json",
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
       },
-      body: JSON.stringify({ premise, genre, tone, direction, summary, recentText, storyState }),
+      body: JSON.stringify({ premise, genre, tone, direction, summary, recentText, storyState, length: length || "medium" }),
     });
 
     if (!resp.ok) {
