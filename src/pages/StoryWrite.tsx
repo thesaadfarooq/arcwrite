@@ -596,39 +596,6 @@ export default function StoryWrite() {
             <Palette className="w-3 h-3" />
             <span className="hidden sm:inline">{storyMeta.tone || "Set tone"}</span>
           </button>
-          <div className="relative">
-            <button
-              onClick={() => setLengthOpen(!lengthOpen)}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
-            >
-              <AlignLeft className="w-3 h-3" />
-              <span className="hidden sm:inline capitalize">{sectionLength}</span>
-            </button>
-            {lengthOpen && (
-              <div className="absolute right-0 top-8 z-30 w-44 p-2 rounded-xl border border-border bg-card shadow-lg animate-fade-in">
-                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-2 pb-1.5">Section length</p>
-                {([
-                  { value: "short", label: "Short", desc: "~100 words" },
-                  { value: "medium", label: "Medium", desc: "~250 words" },
-                  { value: "long", label: "Long", desc: "~500 words" },
-                  { value: "epic", label: "Epic", desc: "~1000 words" },
-                ] as const).map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => { setSectionLength(opt.value); setLengthOpen(false); }}
-                    className={`w-full text-left px-2 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between ${
-                      sectionLength === opt.value
-                        ? "bg-primary/10 text-primary font-medium"
-                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    }`}
-                  >
-                    <span>{opt.label}</span>
-                    <span className="text-[10px] opacity-60">{opt.desc}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
           <button
             onClick={handleExport}
             disabled={isExporting}

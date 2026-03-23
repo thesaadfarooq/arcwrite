@@ -1,7 +1,8 @@
-import { Shield, Flame, Heart, Zap, RefreshCw, Send } from "lucide-react";
+import { Shield, Flame, Heart, Zap, RefreshCw, Send, AlignLeft } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import type { SectionLength } from "@/lib/story-api";
 
 export interface StoryChoice {
   type: "safe" | "risky" | "emotional" | "chaotic";
@@ -9,11 +10,20 @@ export interface StoryChoice {
   preview: string;
 }
 
+const LENGTH_OPTIONS: { value: SectionLength; label: string; desc: string }[] = [
+  { value: "short", label: "Short", desc: "~100w" },
+  { value: "medium", label: "Medium", desc: "~250w" },
+  { value: "long", label: "Long", desc: "~500w" },
+  { value: "epic", label: "Epic", desc: "~1000w" },
+];
+
 interface ChoiceCardsProps {
   choices: StoryChoice[];
   onSelect: (choice: StoryChoice | { type: "custom"; label: string; preview: string }) => void;
   onRegenerate: () => void;
   isLoading?: boolean;
+  sectionLength: SectionLength;
+  onSectionLengthChange: (length: SectionLength) => void;
 }
 
 const choiceConfig = {
