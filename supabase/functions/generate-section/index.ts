@@ -34,7 +34,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4.1",
+        model: "gpt-5.4-nano",
         messages: allMessages,
         stream: true,
         max_tokens: 1500,
