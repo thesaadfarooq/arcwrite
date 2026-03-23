@@ -396,10 +396,22 @@ export default function StoryWrite() {
     }
     setIsExporting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("export-story", {
-        body: { storyId },
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-story`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ storyId }),
       });
-      if (error) throw error;
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Export failed" }));
+        throw new Error(err.error || "Export failed");
+      }
+      const data = await resp.json();
 
       // Open HTML in new tab for printing to PDF
       const blob = new Blob([data.html], { type: "text/html" });
