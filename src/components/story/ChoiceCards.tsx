@@ -33,7 +33,7 @@ const choiceConfig = {
   chaotic: { icon: Zap, color: "choice-chaotic", label: "Wildcard" },
 } as const;
 
-export function ChoiceCards({ choices, onSelect, onRegenerate, isLoading }: ChoiceCardsProps) {
+export function ChoiceCards({ choices, onSelect, onRegenerate, isLoading, sectionLength, onSectionLengthChange }: ChoiceCardsProps) {
   const [customText, setCustomText] = useState("");
   const [showCustom, setShowCustom] = useState(false);
 
