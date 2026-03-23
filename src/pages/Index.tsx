@@ -35,7 +35,7 @@ const Index = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50">
         <div className="flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-primary" />
-          <span className="font-story text-lg font-semibold text-foreground tracking-tight">VibeWrite</span>
+          <span className="font-story text-lg font-semibold text-foreground tracking-tight">Arcwrite</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -99,7 +99,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border/50 py-8 px-6">
         <div className="max-w-3xl mx-auto flex items-center justify-between text-sm text-muted-foreground">
-          <span className="font-story">VibeWrite</span>
+          <span className="font-story">Arcwrite</span>
           <span>Stories you direct, AI delivers.</span>
         </div>
       </footer>

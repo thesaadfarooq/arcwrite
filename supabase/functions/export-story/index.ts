@@ -86,7 +86,7 @@ serve(async (req) => {
   </div>
   ${htmlSections}
   <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-    <p style="font-size: 11px; color: #999;">Created with VibeWrite</p>
+    <p style="font-size: 11px; color: #999;">Created with Arcwrite</p>
   </div>
 </body>
 </html>`;

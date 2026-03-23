@@ -10,7 +10,7 @@ test.describe("Auth Page - Complete Coverage", () => {
 
   test("shows branding", async ({ page }) => {
     await page.goto("/auth");
-    await expect(page.locator("text=VibeWrite")).toBeVisible();
+    await expect(page.locator("text=Arcwrite")).toBeVisible();
   });
 
   test("shows Google sign-in button in login mode", async ({ page }) => {

@@ -8,14 +8,14 @@ test.describe("Shared Story Page - Full Coverage", () => {
 
   test("shows branding", async ({ page }) => {
     await page.goto("/s/some-token");
-    await expect(page.locator("text=VibeWrite")).toBeVisible();
+    await expect(page.locator("text=Arcwrite")).toBeVisible();
   });
 
   test("shows back/home button", async ({ page }) => {
     await page.goto("/s/some-token");
     // Wait for either error message or content to load
     await page.waitForTimeout(2000);
-    await expect(page.locator("text=VibeWrite")).toBeVisible();
+    await expect(page.locator("text=Arcwrite")).toBeVisible();
   });
 
   test("handles missing token gracefully", async ({ page }) => {

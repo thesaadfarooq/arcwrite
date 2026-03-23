@@ -3,7 +3,7 @@ import { test, expect } from "../playwright-fixture";
 test.describe("Reset Password Page", () => {
   test("renders reset password form", async ({ page }) => {
     await page.goto("/reset-password");
-    await expect(page.locator("text=VibeWrite")).toBeVisible();
+    await expect(page.locator("text=Arcwrite")).toBeVisible();
     await expect(page.locator("text=Set your new password")).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
     await expect(page.locator("text=Update password")).toBeVisible();
