@@ -166,31 +166,6 @@ export default function StoryWrite() {
         });
 
         try {
-          const [summaryResult, choicesResult] = await Promise.all([summarizePromise, choicesPromise]);
-          setSummary(summaryResult.summary);
-          setStoryState(summaryResult.story_state);
-          setChoices(choicesResult);
-
-          const node = await createStoryNode({
-            storyId: storyId!,
-            text,
-            summary: summaryResult.summary,
-            storyState: summaryResult.story_state,
-            choices: choicesResult,
-          });
-          setLastNodeId(node.id);
-          await reloadActiveState();
-
-          const firstLine = text.split(".")[0]?.trim();
-          if (firstLine && storyTitle === "Untitled Story") {
-            const title = firstLine.length > 50 ? firstLine.slice(0, 50) + "…" : firstLine;
-            setStoryTitle(title);
-            await updateStoryTitle(storyId!, title);
-          }
-        } catch (e) {
-          console.error("Failed to save node:", e);
-        }
-        try {
           const results = await Promise.allSettled([summarizePromise, choicesPromise]);
           const summaryResult = results[0].status === "fulfilled" ? results[0].value : null;
           const choicesResult = results[1].status === "fulfilled" ? results[1].value : null;
