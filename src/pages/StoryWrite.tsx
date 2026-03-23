@@ -464,6 +464,7 @@ export default function StoryWrite() {
       createdAt: n.created_at,
       isActive: n.is_active,
       wordCount: (n.text || "").split(/\s+/).filter(Boolean).length,
+      startsChapter: (n as any).starts_chapter === true,
     })),
     [allNodes]
   );
