@@ -105,9 +105,11 @@ Return your analysis using the provided tool.`;
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("summarize error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
+    const msg = e instanceof Error ? e.message : "Unknown error";
+    const isAbort = e instanceof DOMException && e.name === "AbortError";
+    console.error("summarize error:", isAbort ? "Request timed out after 25s" : msg);
+    return new Response(JSON.stringify({ error: isAbort ? "Request timed out — please retry" : msg }), {
+      status: isAbort ? 504 : 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
