@@ -89,6 +89,7 @@ export type Database = {
           id: string
           is_active: boolean
           parent_id: string | null
+          starts_chapter: boolean
           story_id: string
           story_state: Json | null
           summary: string | null
@@ -102,6 +103,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           parent_id?: string | null
+          starts_chapter?: boolean
           story_id: string
           story_state?: Json | null
           summary?: string | null
@@ -115,6 +117,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           parent_id?: string | null
+          starts_chapter?: boolean
           story_id?: string
           story_state?: Json | null
           summary?: string | null
