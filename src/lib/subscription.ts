@@ -10,8 +10,8 @@ export const TIERS = {
   plus: {
     name: "Plus",
     price: 9.99,
-    price_id: "price_1TE8hsDln8cBHnbWnSfOpnkl",
-    product_id: "prod_UCXn2oduB6moNf",
+    price_id: "price_1TE8rWInpGHZDZbfw6nq5vUi",
+    product_id: "prod_UCXxD7k8Xe3vRO",
     limits: { stories: 15, chapters: 20, export: true, sharing: false },
   },
   pro: {
