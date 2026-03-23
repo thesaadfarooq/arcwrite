@@ -36,12 +36,17 @@ ${storyState ? `Story state: ${JSON.stringify(storyState)}` : ""}
 
 Generate 4 story direction choices.`;
 
+    console.log("[generate-choices] Calling OpenAI...");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model: "gpt-5.4-nano",
         messages: [
@@ -81,6 +86,9 @@ Generate 4 story direction choices.`;
         temperature: 0.9,
       }),
     });
+
+    clearTimeout(timeout);
+    console.log("[generate-choices] OpenAI responded:", response.status);
 
     if (!response.ok) {
       const errText = await response.text();
