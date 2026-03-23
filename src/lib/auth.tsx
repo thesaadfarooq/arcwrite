@@ -35,6 +35,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshSubscription = useCallback(async () => {
     try {
+      // Ensure we have a valid user session before calling
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession?.access_token) {
+        console.warn("No valid session for subscription check, skipping");
+        return;
+      }
       const { data, error } = await supabase.functions.invoke("check-subscription");
       if (error) {
         console.error("Subscription check error:", error);
