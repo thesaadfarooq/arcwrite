@@ -10,15 +10,15 @@ export const TIERS = {
   plus: {
     name: "Plus",
     price: 9.99,
-    price_id: "price_1TDpsnDln8cBHnbWdNwTOLX1",
-    product_id: "prod_UCEL7aG3T6qi0u",
+    price_id: "price_1TE8hsDln8cBHnbWnSfOpnkl",
+    product_id: "prod_UCXn2oduB6moNf",
     limits: { stories: 15, chapters: 20, export: true, sharing: false },
   },
   pro: {
     name: "Pro",
-    price: 19.99,
-    price_id: "price_1TDptBDln8cBHnbWpASmf2RN",
-    product_id: "prod_UCELIjWkMkLh9l",
+    price: 15.99,
+    price_id: "price_1TE8iAInpGHZDZbfGk9BVZoR",
+    product_id: "prod_UCXnuu1wKr1phJ",
     limits: { stories: Infinity, chapters: Infinity, export: true, sharing: true },
   },
 } as const;
