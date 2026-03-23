@@ -140,6 +140,7 @@ export default function StoryWrite() {
       premise: storyMeta.premise,
       genre: storyMeta.genre,
       tone: storyMeta.tone,
+      length: sectionLength,
       onDelta: (delta) => {
         fullText += delta;
         const paras = fullText.split("\n\n").filter(Boolean);
