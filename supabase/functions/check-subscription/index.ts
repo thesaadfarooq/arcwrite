@@ -32,13 +32,12 @@ serve(async (req) => {
     if (!authHeader) throw new Error("No authorization header provided");
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) throw new Error(`Authentication error: ${claimsError?.message || "invalid token"}`);
-    
-    const userId = claimsData.claims.sub;
-    const email = claimsData.claims.email as string;
-    if (!email) throw new Error("User email not available in token");
-    logStep("User authenticated", { userId, email });
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    const user = userData.user;
+    if (!user?.email) throw new Error("User not authenticated or email not available");
+    const email = user.email;
+    logStep("User authenticated", { userId: user.id, email });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email, limit: 1 });
