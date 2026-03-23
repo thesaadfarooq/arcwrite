@@ -16,6 +16,7 @@ import {
   updateStoryTitle, updateStoryTone, jumpToNode,
   updateNodeChapterTitle, deleteNodeAndDescendants, splitNodeAtPosition, mergeNodeWithParent,
 } from "@/lib/story-api";
+import type { SectionLength } from "@/lib/story-api";
 import type { ChapterHeading } from "@/components/story/StoryCanvas";
 import { toast } from "sonner";
 
