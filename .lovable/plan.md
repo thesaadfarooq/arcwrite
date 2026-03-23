@@ -1,54 +1,127 @@
 
+## Timeline + Chapter Reconciliation Plan
 
-# Chapter Management — Plan
+## What’s going wrong now
 
-## Current State
+The app currently uses one tree for two different ideas:
 
-Chapters are **not a real data entity**. They are derived on-the-fly from active `story_nodes` — each node becomes a "chapter" in the sidebar, with titles pulled from the chosen direction label (e.g. "Opening", "Section 2"). There is no database column for chapter title, chapter number, or chapter boundaries. Users cannot rename, reorder, delete, or manually insert chapter breaks.
+1. **Narrative history / forks** — the timeline tree  
+2. **Reading structure / chapters** — the chapter system
 
-## What We'll Build
+Right now every newly generated node becomes a child of the previous node, so the timeline depth keeps increasing forever. Then manual chapter splits also create child nodes, which makes chapter boundaries look like deeper branches even when they are really just structural breaks in the same storyline.
 
-### User Experience
+There are two core issues in the current code:
 
-1. **Rename a chapter** — Right-click (or click a "..." menu) on any chapter in the sidebar → "Rename". Inline editable text field saves a custom title to the node.
+- **Chapter detection is too implicit**  
+  A chapter start is inferred with `chosen_option == null`, which is fragile and mixes “opening”, “manual split”, and other cases.
 
-2. **Delete a chapter** — Same context menu → "Delete". Removes the node and all its descendants from the active branch, then re-activates the parent as the new tip. Confirmation dialog before deletion.
+- **Timeline depth is based on parent depth, not branch depth**  
+  `depth = parent.depth + 1` makes a simple linear continuation look more and more nested, even when nothing actually forked.
 
-3. **Insert chapter break** — Inside the story canvas, a subtle "Insert chapter break" divider appears between paragraphs on hover. Clicking it splits the current node's text at that point into two nodes (parent → child), creating a visible chapter boundary.
+## What I’ll change
 
-4. **Merge with previous** — Context menu option that combines a node's text with its parent node, removing the chapter boundary.
+### 1. Separate chapter semantics from timeline semantics
+Add an explicit chapter marker to story nodes, instead of inferring it from `chosen_option`.
 
-5. **Chapter title display** — Chapter titles appear as styled headings in the canvas between sections, making the structure visible while reading/writing.
-
-### Data Changes
-
-Add a `chapter_title` column to `story_nodes`:
-
+Recommended shape:
 ```text
 story_nodes
-  + chapter_title (text, nullable, default null)
+  + starts_chapter boolean default false
 ```
 
-When `chapter_title` is set, the sidebar and canvas use it. Otherwise fall back to the current derived title ("Opening", chosen label, or "Section N").
+Rules:
+- opening node: `starts_chapter = true`
+- manual split-created node: `starts_chapter = true`
+- regular choice continuation: `starts_chapter = false`
 
-### Implementation Steps
+This makes chapters stable and predictable.
 
-1. **Database migration** — Add `chapter_title` column to `story_nodes`.
+### 2. Keep chapter UI driven only by chapter markers
+Update `StoryWrite` so chapters/headings/sidebar are derived from:
 
-2. **API layer** — Add `updateNodeChapterTitle(nodeId, title)` and `deleteNodeAndDescendants(storyId, nodeId)` and `splitNodeAtPosition(storyId, nodeId, splitIndex)` and `mergeNodeWithParent(storyId, nodeId)` functions to `story-api.ts`.
+```text
+active nodes where starts_chapter = true
+```
 
-3. **ChapterSidebar upgrades** — Add a context menu (right-click or "..." icon) per chapter with Rename, Delete, and Merge options. Inline editing for rename. Confirmation dialog for delete.
+instead of:
+```text
+chosen_option == null
+```
 
-4. **StoryCanvas chapter breaks** — Render chapter title headings between node boundaries in the canvas. Add hover-triggered "insert break" buttons between paragraphs within a single node.
+That keeps:
+- normal choices extending the current chapter
+- manual chapter breaks creating a real new chapter
+- renamed chapter titles staying attached to real chapter-start nodes
 
-5. **StoryWrite wiring** — Connect the new sidebar actions to API calls, refresh state after mutations, handle edge cases (can't delete the only node, can't merge the root node).
+### 3. Redesign timeline indentation so linear progress stays flat
+Update `StoryTimeline` tree layout so indentation reflects **forking**, not simple continuation.
 
-6. **Tests** — Add E2E tests for rename, delete, and chapter break insertion flows.
+New display rule:
+- if a node is just the single continuation of a chain, keep it at the same visual depth
+- only increase indentation when a node comes from a branching point / alternate path
 
-### Technical Details
+Effect:
+- Opening → Section 2 → Section 3 stays visually aligned as one storyline
+- actual branches/forks become nested
+- chapter splits no longer make the timeline look like it is spiraling inward
 
-- **Delete logic**: Walk the node tree to find all descendants of the target node, deactivate or hard-delete them, then set the parent node as the new active tip.
-- **Split logic**: Given a node and a paragraph index, create a new child node with the text after the split point, update the original node's text to only contain text before the split.
-- **Merge logic**: Append the child node's text to the parent, re-parent the child's children to the parent, then delete the child node.
-- Context menu uses the existing shadcn `DropdownMenu` component.
+### 4. Preserve split/merge behavior, but mark chapter boundaries properly
+Update split/merge logic so chapter structure remains consistent:
 
+- **split**  
+  - original node stays in current chapter
+  - new child node becomes `starts_chapter = true`
+- **merge**
+  - remove the child chapter boundary
+  - keep parent as the chapter start if appropriate
+- **normal generation after a split**
+  - new node continues from the current tip
+  - does not create a new chapter
+  - does not increase timeline nesting unless it’s a real fork
+
+### 5. Improve timeline labels so they match the mental model
+Adjust timeline naming so it reads like history, not chapters.
+
+Example approach:
+- first node: `Opening`
+- regular continuation: chosen option label or `Continuation`
+- split-created chapter boundary: small badge like `Chapter break`
+- real alternate branch: `Fork`
+
+That keeps the Timeline about history, while Chapters remains about structure.
+
+## Files I’d update
+
+- `src/pages/StoryWrite.tsx`
+  - derive chapters from explicit chapter-start metadata
+  - keep timeline data separate from chapter data
+- `src/components/story/StoryTimeline.tsx`
+  - replace current parent-depth indentation with branch-aware indentation
+  - improve labels / badges for split vs fork
+- `src/lib/story-api.ts`
+  - set explicit chapter-start metadata on opening and split nodes
+  - preserve it correctly on merge/delete flows
+- database migration
+  - add `starts_chapter` boolean to `story_nodes`
+
+## Expected result
+
+After this fix:
+
+- generating the next section will **continue the current chapter**
+- inserting a chapter break will create a **real new chapter**
+- the timeline will no longer drift deeper and deeper for normal progression
+- only true forks will appear nested
+- chapter sidebar, canvas headings, and timeline will all stay in sync
+
+## Technical note
+
+The cleanest mental model is:
+
+```text
+story_nodes = history graph
+starts_chapter = reading structure marker
+timeline depth = branch depth, not ancestry length
+```
+
+That separation is what will stop chapter splits and timeline nesting from fighting each other.
