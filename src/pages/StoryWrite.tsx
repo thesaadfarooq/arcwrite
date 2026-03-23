@@ -435,7 +435,7 @@ export default function StoryWrite() {
   );
 
   const chapterNodes = useMemo(
-    () => activeNodes.filter((n) => !n.parent_id || n.chosen_option == null),
+    () => activeNodes.filter((n) => (n as any).starts_chapter === true),
     [activeNodes]
   );
 
@@ -464,6 +464,7 @@ export default function StoryWrite() {
       createdAt: n.created_at,
       isActive: n.is_active,
       wordCount: (n.text || "").split(/\s+/).filter(Boolean).length,
+      startsChapter: (n as any).starts_chapter === true,
     })),
     [allNodes]
   );
