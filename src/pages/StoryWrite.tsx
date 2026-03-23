@@ -726,6 +726,8 @@ export default function StoryWrite() {
                 onSelect={handleChoiceSelect}
                 onRegenerate={() => fetchChoices(paragraphs.slice(-3).map((p) => p.text).join("\n\n"))}
                 isLoading={isGenerating || isLoadingChoices}
+                sectionLength={sectionLength}
+                onSectionLengthChange={setSectionLength}
               />
             )}
 
