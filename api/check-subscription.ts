@@ -49,6 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         product_id: TIER_PRODUCT_MAP[profile.tier_override],
         subscription_end: null,
         cancel_at_period_end: false,
+        tier_override: profile.tier_override,
       });
     }
 

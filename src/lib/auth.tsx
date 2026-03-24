@@ -53,7 +53,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const data = await resp.json();
       if (data) {
-        setTier(getTierByProductId(data.product_id));
+        // If a tier_override is set, use it directly instead of matching product IDs
+        if (data.tier_override && (data.tier_override === "plus" || data.tier_override === "pro")) {
+          setTier(data.tier_override);
+        } else {
+          setTier(getTierByProductId(data.product_id));
+        }
         setSubscriptionEnd(data.subscription_end);
         setCancelAtPeriodEnd(!!data.cancel_at_period_end);
       }
