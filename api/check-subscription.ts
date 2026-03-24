@@ -47,13 +47,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0] as any;
-      const periodEnd = subscription.current_period_end;
-      try {
-        if (typeof periodEnd === "number") {
-          subscriptionEnd = new Date(periodEnd * 1000).toISOString();
-        }
-      } catch {
-        subscriptionEnd = null;
+      // Try multiple fields — API version may vary which are present
+      const periodEnd = subscription.current_period_end ?? subscription.cancel_at;
+      if (typeof periodEnd === "number") {
+        subscriptionEnd = new Date(periodEnd * 1000).toISOString();
+      } else if (typeof periodEnd === "string") {
+        subscriptionEnd = periodEnd;
       }
       productId = subscription.items.data[0].price.product;
       cancelAtPeriodEnd = !!subscription.cancel_at_period_end;

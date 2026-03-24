@@ -142,11 +142,14 @@ export default function Dashboard() {
       </nav>
 
       <main className="max-w-5xl mx-auto px-6 py-8">
-        {cancelAtPeriodEnd && subscriptionEnd && (
+        {cancelAtPeriodEnd && (
           <div className="mb-6 p-4 rounded-xl border border-primary/20 bg-primary/[0.04]">
             <p className="text-sm text-foreground">
-              Your <span className="font-medium">{tier.charAt(0).toUpperCase() + tier.slice(1)}</span> plan has been cancelled. You'll have access until{" "}
-              <span className="font-medium">{new Date(subscriptionEnd).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</span>.
+              Your <span className="font-medium">{tier.charAt(0).toUpperCase() + tier.slice(1)}</span> plan has been cancelled.{" "}
+              {subscriptionEnd
+                ? <>You'll have access until <span className="font-medium">{new Date(subscriptionEnd).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</span>.</>
+                : <>You'll have access until the end of your billing period.</>
+              }
             </p>
           </div>
         )}
