@@ -1,3 +1,4 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 
 export const config = { runtime: "nodejs", maxDuration: 10 };
@@ -10,11 +11,11 @@ function escapeHtml(str: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export default async function handler(req: Request) {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204 });
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === "OPTIONS") return res.status(204).end();
 
   try {
-    const { storyId } = await req.json();
+    const { storyId } = req.body;
     if (!storyId) throw new Error("storyId is required");
 
     const supabase = createClient(
@@ -22,7 +23,7 @@ export default async function handler(req: Request) {
       process.env.SUPABASE_PUBLISHABLE_KEY!
     );
 
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.authorization || "";
     if (!authHeader) throw new Error("Not authenticated");
     const token = authHeader.replace("Bearer ", "");
     const { data: userData } = await supabase.auth.getUser(token);
@@ -88,9 +89,9 @@ export default async function handler(req: Request) {
 </body>
 </html>`;
 
-    return Response.json({ html, title, wordCount });
+    return res.json({ html, title, wordCount });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    return Response.json({ error: msg }, { status: 500 });
+    return res.status(500).json({ error: msg });
   }
 }

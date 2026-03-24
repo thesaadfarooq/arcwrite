@@ -1,10 +1,11 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
 export const config = { runtime: "nodejs", maxDuration: 10 };
 
-export default async function handler(req: Request) {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204 });
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === "OPTIONS") return res.status(204).end();
 
   try {
     const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -15,20 +16,20 @@ export default async function handler(req: Request) {
       process.env.SUPABASE_PUBLISHABLE_KEY!
     );
 
-    const authHeader = req.headers.get("Authorization")!;
+    const authHeader = req.headers.authorization || "";
     const token = authHeader.replace("Bearer ", "");
     const { data } = await supabase.auth.getUser(token);
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
 
-    const { priceId } = await req.json();
+    const { priceId } = req.body;
     if (!priceId) throw new Error("priceId is required");
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     const customerId = customers.data.length > 0 ? customers.data[0].id : undefined;
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const origin = (req.headers.origin as string) || "http://localhost:8080";
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -38,9 +39,9 @@ export default async function handler(req: Request) {
       cancel_url: `${origin}/pricing?checkout=cancelled`,
     });
 
-    return Response.json({ url: session.url });
+    return res.json({ url: session.url });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    return Response.json({ error: msg }, { status: 500 });
+    return res.status(500).json({ error: msg });
   }
 }
