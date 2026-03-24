@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Sparkles, BookOpen, Skull, Heart, Wand2, Search, Rocket, Ghost, Sun, Moon } from "lucide-react";
+import { ArrowLeft, ArrowRight, Sparkles, BookOpen, Skull, Heart, Wand2, Search, Rocket, Ghost, Sun, Moon, Crown, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useTheme } from "@/lib/theme";
@@ -40,6 +40,22 @@ export default function StoryNew() {
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [selectedTone, setSelectedTone] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [atLimit, setAtLimit] = useState(false);
+  const [storyCount, setStoryCount] = useState(0);
+  const limits = getTierLimits(tier);
+
+  useEffect(() => {
+    if (!user || limits.stories === Infinity) return;
+    supabase
+      .from("stories")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .then(({ count }) => {
+        const c = count ?? 0;
+        setStoryCount(c);
+        setAtLimit(c >= limits.stories);
+      });
+  }, [user, limits.stories]);
 
   const handleStart = async () => {
     if (!user) return;
@@ -104,7 +120,30 @@ export default function StoryNew() {
       </nav>
 
       <main className="pt-24 pb-16 px-6 max-w-2xl mx-auto">
-        {step === "premise" && (
+        {atLimit && (
+          <div className="animate-fade-up text-center py-8">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+              <Lock className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="font-story text-3xl font-semibold text-foreground mb-2 text-balance">Story limit reached</h1>
+            <p className="text-muted-foreground mb-2 max-w-md mx-auto">
+              You've used all {limits.stories} {limits.stories === 1 ? "story" : "stories"} available on the <span className="font-medium text-foreground">{tier.charAt(0).toUpperCase() + tier.slice(1)}</span> plan.
+            </p>
+            <p className="text-sm text-muted-foreground mb-8 max-w-md mx-auto">
+              Upgrade your plan to create more stories and unlock additional features.
+            </p>
+            <div className="flex justify-center gap-3">
+              <Button variant="outline" onClick={() => navigate("/dashboard")}>
+                <ArrowLeft className="w-4 h-4 mr-1" /> Back to stories
+              </Button>
+              <Button onClick={() => navigate("/pricing")}>
+                <Crown className="w-4 h-4 mr-1" /> View plans
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {!atLimit && step === "premise" && (
           <div className="animate-fade-up">
             <h1 className="font-story text-3xl font-semibold text-foreground mb-2 text-balance">What's your story about?</h1>
             <p className="text-muted-foreground mb-8">Describe your idea in a few sentences. The more detail, the richer the opening.</p>
@@ -123,7 +162,7 @@ export default function StoryNew() {
           </div>
         )}
 
-        {step === "genre" && (
+        {!atLimit && step === "genre" && (
           <div className="animate-fade-up">
             <h1 className="font-story text-3xl font-semibold text-foreground mb-2 text-balance">Pick a genre</h1>
             <p className="text-muted-foreground mb-8">Choose the world you want to explore.</p>
@@ -151,7 +190,7 @@ export default function StoryNew() {
           </div>
         )}
 
-        {step === "surprise" && (
+        {!atLimit && step === "surprise" && (
           <div className="animate-fade-up text-center">
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
               <Sparkles className="w-8 h-8 text-primary" />
@@ -167,7 +206,7 @@ export default function StoryNew() {
           </div>
         )}
 
-        {step === "tone" && (
+        {!atLimit && step === "tone" && (
           <div className="animate-fade-up">
             <h1 className="font-story text-3xl font-semibold text-foreground mb-2 text-balance">Set the tone</h1>
             <p className="text-muted-foreground mb-8">How should your story feel?</p>

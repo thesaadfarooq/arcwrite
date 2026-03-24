@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
+import { getTierLimits } from "@/lib/subscription";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
-  BookOpen, Plus, Sun, Moon, LogOut, LayoutGrid, List, Crown,
+  BookOpen, Plus, Sun, Moon, LogOut, LayoutGrid, List, Crown, Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { StoryGridCard, StoryListCard } from "@/components/dashboard/EditableStoryCard";
@@ -28,6 +30,9 @@ export default function Dashboard() {
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"grid" | "list">("grid");
+  const limits = getTierLimits(tier);
+  const storyCount = stories.length;
+  const atStoryLimit = limits.stories !== Infinity && storyCount >= limits.stories;
 
   useEffect(() => {
     fetchStories();
@@ -153,10 +158,33 @@ export default function Dashboard() {
             </p>
           </div>
         )}
+        {atStoryLimit && (
+          <div className="mb-6 p-4 rounded-xl border border-primary/20 bg-primary/[0.04] flex items-center gap-3">
+            <Lock className="w-4 h-4 text-primary shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm text-foreground font-medium">Story limit reached</p>
+              <p className="text-xs text-muted-foreground">
+                You've used all {limits.stories} stories on the {tier.charAt(0).toUpperCase() + tier.slice(1)} plan.
+                Upgrade to create more.
+              </p>
+            </div>
+            <Button size="sm" onClick={() => navigate("/pricing")}>
+              <Crown className="w-3.5 h-3.5 mr-1" /> Upgrade
+            </Button>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="font-story text-2xl font-semibold text-foreground">Your Stories</h1>
-            <p className="text-sm text-muted-foreground mt-1">{stories.length} {stories.length === 1 ? "story" : "stories"}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {storyCount} {storyCount === 1 ? "story" : "stories"}
+              {limits.stories !== Infinity && (
+                <span className={atStoryLimit ? " text-primary font-medium" : ""}>
+                  {" · "}{storyCount}/{limits.stories} used
+                </span>
+              )}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center border border-border rounded-lg p-0.5">
@@ -167,9 +195,24 @@ export default function Dashboard() {
                 <List className="w-3.5 h-3.5" />
               </button>
             </div>
-            <Button onClick={() => navigate("/story/new")}>
-              <Plus className="w-4 h-4 mr-1" /> New Story
-            </Button>
+            {atStoryLimit ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button disabled>
+                      <Lock className="w-4 h-4 mr-1" /> New Story
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>You've reached the {limits.stories}-story limit on the {tier.charAt(0).toUpperCase() + tier.slice(1)} plan</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Button onClick={() => navigate("/story/new")}>
+                <Plus className="w-4 h-4 mr-1" /> New Story
+              </Button>
+            )}
           </div>
         </div>
 
