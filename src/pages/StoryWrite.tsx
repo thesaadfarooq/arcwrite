@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle, Palette, GitBranch, Hash, Download, Share2, Loader2, Link, Crown } from "lucide-react";
+import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle, Palette, GitBranch, Hash, Download, Share2, Loader2, Link, Crown, Lock } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { getTierLimits } from "@/lib/subscription";
@@ -771,25 +772,59 @@ export default function StoryWrite() {
             <Palette className="w-3 h-3" />
             <span className="hidden sm:inline">{storyMeta.tone || "Set tone"}</span>
           </button>
-          <button
-            onClick={handleExport}
-            disabled={isExporting}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95 disabled:opacity-50"
-            title={limits.export ? "Export as PDF" : "Upgrade to export"}
-          >
-            {isExporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-            <span className="hidden sm:inline">Export</span>
-            {!limits.export && <Crown className="w-2.5 h-2.5 text-primary" />}
-          </button>
-          <button
-            onClick={handleShare}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
-            title={limits.sharing ? (shareToken ? "Copy share link" : "Create share link") : "Upgrade to share"}
-          >
-            {shareToken ? <Link className="w-3 h-3" /> : <Share2 className="w-3 h-3" />}
-            <span className="hidden sm:inline">{shareToken ? "Shared" : "Share"}</span>
-            {!limits.sharing && <Crown className="w-2.5 h-2.5 text-primary" />}
-          </button>
+          {!limits.export ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => navigate("/pricing")}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
+                >
+                  <Lock className="w-3 h-3" />
+                  <span className="hidden sm:inline">Export</span>
+                  <Crown className="w-2.5 h-2.5 text-primary" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>PDF export requires a Plus or Pro plan</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95 disabled:opacity-50"
+              title="Export as PDF"
+            >
+              {isExporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+              <span className="hidden sm:inline">Export</span>
+            </button>
+          )}
+          {!limits.sharing ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => navigate("/pricing")}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
+                >
+                  <Lock className="w-3 h-3" />
+                  <span className="hidden sm:inline">Share</span>
+                  <Crown className="w-2.5 h-2.5 text-primary" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Public sharing requires a Pro plan</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
+              title={shareToken ? "Copy share link" : "Create share link"}
+            >
+              {shareToken ? <Link className="w-3 h-3" /> : <Share2 className="w-3 h-3" />}
+              <span className="hidden sm:inline">{shareToken ? "Shared" : "Share"}</span>
+            </button>
+          )}
           <span className="text-xs text-muted-foreground tabular-nums">{wordCount.toLocaleString()} words</span>
           <button onClick={toggleTheme} className="p-1.5 rounded-md hover:bg-secondary transition-colors active:scale-95">
             {theme === "light" ? <Moon className="w-3.5 h-3.5 text-muted-foreground" /> : <Sun className="w-3.5 h-3.5 text-muted-foreground" />}
@@ -901,6 +936,8 @@ export default function StoryWrite() {
                 isLoading={isGenerating || isLoadingChoices}
                 sectionLength={sectionLength}
                 onSectionLengthChange={setSectionLength}
+                chapterCount={limits.chapters !== Infinity ? activeNodes.length : undefined}
+                chapterLimit={limits.chapters !== Infinity ? limits.chapters : undefined}
               />
             )}
 
