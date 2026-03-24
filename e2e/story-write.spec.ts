@@ -1,4 +1,4 @@
-import { test, expect } from "../playwright-fixture";
+import { test, expect } from "@playwright/test";
 
 test.describe("Story Write Page (unauthenticated)", () => {
   test("redirects to auth when not logged in", async ({ page }) => {

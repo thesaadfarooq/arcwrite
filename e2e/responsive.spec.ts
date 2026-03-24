@@ -1,4 +1,4 @@
-import { test, expect } from "../playwright-fixture";
+import { test, expect } from "@playwright/test";
 
 test.describe("Responsive Design", () => {
   test("landing page renders on mobile viewport", async ({ page }) => {

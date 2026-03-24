@@ -1,4 +1,4 @@
-import { test, expect } from "../playwright-fixture";
+import { test, expect } from "@playwright/test";
 
 test.describe("Navigation & Routing", () => {
   test("unauthenticated user cannot access dashboard", async ({ page }) => {

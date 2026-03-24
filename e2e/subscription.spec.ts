@@ -1,4 +1,4 @@
-import { test, expect } from "../playwright-fixture";
+import { test, expect } from "@playwright/test";
 
 test.describe("Subscription & Tier Logic (Unit-like)", () => {
   test("pricing page renders current plan badge for free users", async ({ page }) => {

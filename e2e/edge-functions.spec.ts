@@ -1,4 +1,4 @@
-import { test, expect } from "../playwright-fixture";
+import { test, expect } from "@playwright/test";
 
 test.describe("Edge Function Integration (Unauthenticated)", () => {
   test("check-subscription fails gracefully without auth", async ({ page }) => {

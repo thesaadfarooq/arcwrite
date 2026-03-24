@@ -1,4 +1,4 @@
-import { test, expect } from "../playwright-fixture";
+import { test, expect } from "@playwright/test";
 
 test.describe("Auth Page - Complete Coverage", () => {
   test("renders login form by default", async ({ page }) => {

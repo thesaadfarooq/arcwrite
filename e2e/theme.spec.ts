@@ -1,4 +1,4 @@
-import { test, expect } from "../playwright-fixture";
+import { test, expect } from "@playwright/test";
 
 test.describe("Theme Toggle", () => {
   test("landing page has a theme toggle", async ({ page }) => {
