@@ -4,25 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Arcwrite is an AI-assisted interactive fiction writing platform. Users create branching choose-your-own-adventure stories with AI-generated text and choices. Built with React + Supabase, with Stripe subscriptions (Free/Plus/Pro tiers).
+Arcwrite is an AI-assisted interactive fiction writing platform. Users create branching choose-your-own-adventure stories with AI-generated text and choices. Built with React + Supabase + Vercel, with Stripe subscriptions (Free/Plus/Pro tiers).
 
 ## Commands
 
 ```bash
-bun run dev          # Dev server (Vite, port 8080)
-bun run build        # Production build
-bun run lint         # ESLint
-bun run test         # Vitest (single run)
-bun run test:watch   # Vitest (watch mode)
+npm run dev          # Dev server (Vercel dev, port 8080 — serves frontend + API routes)
+npm run dev:vite     # Vite-only dev server (no API routes)
+npm run build        # Production build
+npm run lint         # ESLint
+npm run test         # Vitest (single run)
+npm run test:watch   # Vitest (watch mode)
 ```
 
 E2E tests use Playwright (`e2e/` directory) — run with `npx playwright test`.
 
 ## Architecture
 
-**Stack:** React 18 + TypeScript, Vite + SWC, Tailwind CSS, shadcn/ui (Radix), Supabase (DB + Auth + Edge Functions), Stripe.
+**Stack:** React 18 + TypeScript, Vite + SWC, Tailwind CSS, shadcn/ui (Radix), Supabase (DB + Auth), Vercel (API routes), Stripe, OpenAI.
 
 **Path alias:** `@/` maps to `src/`.
+
+**Deployment:** Vercel. Frontend is a static Vite build. Backend logic lives in `api/` as Vercel functions.
 
 ### Provider hierarchy (App.tsx)
 
@@ -41,7 +44,7 @@ E2E tests use Playwright (`e2e/` directory) — run with `npx playwright test`.
 ### Key modules
 
 - `src/lib/auth.tsx` — Auth context with Supabase Auth, exposes `useAuth()` (user, session, tier, profile)
-- `src/lib/story-api.ts` — All Supabase DB operations and edge function calls for stories
+- `src/lib/story-api.ts` — Story CRUD (Supabase direct) + AI/export calls (via `/api/` routes)
 - `src/lib/subscription.ts` — Tier definitions with Stripe price/product IDs and limits
 - `src/lib/theme.tsx` — Light/dark theme context
 - `src/integrations/supabase/client.ts` — Supabase client initialization
@@ -51,15 +54,26 @@ E2E tests use Playwright (`e2e/` directory) — run with `npx playwright test`.
 
 Stories use a tree structure: `stories` table (metadata: title, genre, tone, premise) → `story_nodes` table (tree nodes with parent_id self-reference). Each node has text content, summary, choices (JSON), story_state (JSON), and an `is_active` flag to track the current path. All tables use RLS — users can only access their own data.
 
-### Supabase Edge Functions (`supabase/functions/`)
+### Vercel API Routes (`api/`)
 
-Deno-based TypeScript functions:
-- `generate-section` — Streams AI text via OpenAI API (supports length presets: short/medium/long/epic)
-- `generate-choices` — Generates 4 branching choices (safe, risky, emotional, chaotic)
-- `summarize` — Summarizes story progress for context window management
+AI functions (Edge runtime, streaming):
+- `generate-section` — Streams AI text via OpenAI SSE (length presets: short/medium/long/epic)
+- `generate-choices` — Streams OpenAI tool calls server-side, returns assembled JSON with 4 choices
+- `summarize` — Streams OpenAI tool calls server-side, returns summary + story state
+
+Stripe/export functions (Node.js runtime):
 - `check-subscription` — Validates user tier via Stripe
 - `create-checkout` / `customer-portal` — Stripe payment flows
-- `export-story` — PDF/HTML export
+- `export-story` — HTML export (uses Supabase admin client)
+
+### Environment variables
+
+Client-side (`VITE_` prefix, exposed to browser):
+- `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+Server-side (API routes only):
+- `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`
+- `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`
 
 ### UI patterns
 
