@@ -2,6 +2,12 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
+// Map tier_override values to their corresponding Stripe product IDs
+const TIER_PRODUCT_MAP: Record<string, string> = {
+  plus: process.env.STRIPE_PLUS_PRODUCT_ID || "prod_UCXxD7k8Xe3vRO",
+  pro: process.env.STRIPE_PRO_PRODUCT_ID || "prod_UCXsdTxzZXQZ36",
+};
+
 export const config = { runtime: "nodejs", maxDuration: 10 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -10,6 +16,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+
+    const supabaseAdmin = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SECRET_KEY!
+    );
 
     const supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -24,6 +35,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
+
+    // Check for tier override in profiles (for testing/manual assignment)
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("tier_override")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profile?.tier_override && TIER_PRODUCT_MAP[profile.tier_override]) {
+      return res.json({
+        subscribed: true,
+        product_id: TIER_PRODUCT_MAP[profile.tier_override],
+        subscription_end: null,
+        cancel_at_period_end: false,
+      });
+    }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
