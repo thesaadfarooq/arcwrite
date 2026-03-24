@@ -1,4 +1,4 @@
-import { test, expect } from "../playwright-fixture";
+import { test, expect } from "@playwright/test";
 
 test.describe("Shared Story Page - Full Coverage", () => {
   test("shows error for invalid share token", async ({ page }) => {

@@ -1,4 +1,4 @@
-import { test, expect } from "../playwright-fixture";
+import { test, expect } from "@playwright/test";
 
 test.describe("Landing Page", () => {
   test("renders hero section with branding", async ({ page }) => {
@@ -14,7 +14,7 @@ test.describe("Landing Page", () => {
     await expect(page.locator("text=Surprise me")).toBeVisible();
   });
 
-  test("theme toggle switches between light and dark", async ({ page }) => {
+  test("theme toggle works", async ({ page }) => {
     await page.goto("/");
     const html = page.locator("html");
     const initialClass = await html.getAttribute("class");
@@ -28,13 +28,13 @@ test.describe("Landing Page", () => {
     await expect(page.locator("text=Sign in")).toBeVisible();
   });
 
-  test("clicking sign-in navigates to auth page", async ({ page }) => {
+  test("sign-in button navigates to auth page", async ({ page }) => {
     await page.goto("/");
     await page.click("text=Sign in");
     await expect(page).toHaveURL(/\/auth/);
   });
 
-  test("clicking a story mode card redirects to auth if not logged in", async ({ page }) => {
+  test("story mode card redirects to auth if not logged in", async ({ page }) => {
     await page.goto("/");
     await page.click("text=Start from scratch");
     await expect(page).toHaveURL(/\/auth/);

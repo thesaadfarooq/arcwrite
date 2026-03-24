@@ -1,4 +1,4 @@
-import { test, expect } from "../playwright-fixture";
+import { test, expect } from "@playwright/test";
 
 test.describe("Pricing Page", () => {
   test("renders all three pricing tiers", async ({ page }) => {

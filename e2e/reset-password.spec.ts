@@ -1,4 +1,4 @@
-import { test, expect } from "../playwright-fixture";
+import { test, expect } from "@playwright/test";
 
 test.describe("Reset Password Page", () => {
   test("renders reset password form", async ({ page }) => {
