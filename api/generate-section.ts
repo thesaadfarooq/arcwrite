@@ -100,6 +100,7 @@ RULES:
 - Do NOT include meta-commentary, options, or questions — just write the story
 - Each paragraph should be separated by a blank line`;
 
+  if (premise) prompt += `\n\nORIGINAL PREMISE: ${premise}\nAlways stay true to this premise. Characters, settings, and plot should be consistent with what the user described.`;
   if (tone) prompt += `\n\nTONE: Write in a ${tone} style. Maintain this tone consistently.`;
   if (genre) prompt += `\n\nGENRE: ${genre}`;
   if (storyState && Object.keys(storyState).length > 0) {

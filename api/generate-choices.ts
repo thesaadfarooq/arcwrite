@@ -6,7 +6,7 @@ export default async function handler(req: Request) {
   }
 
   try {
-    const { recentText, summary, storyState, tone, genre } = await req.json();
+    const { recentText, summary, storyState, tone, genre, premise } = await req.json();
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
@@ -24,6 +24,7 @@ For each direction, provide:
 - label: a short 4-8 word description
 - preview: a 1-2 sentence preview of what would happen
 
+${premise ? `ORIGINAL PREMISE: ${premise}\nAll choices must stay consistent with this premise, its characters, and setting.` : ""}
 ${tone ? `TONE: ${tone}` : ""}
 ${genre ? `GENRE: ${genre}` : ""}`;
 

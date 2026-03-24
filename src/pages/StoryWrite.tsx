@@ -273,6 +273,7 @@ export default function StoryWrite() {
           storyState: {},
           tone: storyMeta.tone,
           genre: storyMeta.genre,
+          premise: storyMeta.premise,
         });
 
         try {
@@ -332,6 +333,7 @@ export default function StoryWrite() {
         storyState,
         tone: storyMeta.tone,
         genre: storyMeta.genre,
+        premise: storyMeta.premise,
       });
       setChoices(result);
 
@@ -364,6 +366,7 @@ export default function StoryWrite() {
 
     await streamSection({
       direction: choice.type === "custom" ? choice.preview : `${choice.label}: ${choice.preview}`,
+      premise: storyMeta.premise,
       tone: storyMeta.tone,
       genre: storyMeta.genre,
       summary,
@@ -404,6 +407,7 @@ export default function StoryWrite() {
           storyState,
           tone: storyMeta.tone,
           genre: storyMeta.genre,
+          premise: storyMeta.premise,
         });
 
         try {

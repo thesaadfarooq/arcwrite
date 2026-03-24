@@ -67,14 +67,14 @@ export async function streamSection({
 }
 
 export async function generateChoices({
-  recentText, summary, storyState, tone, genre,
+  recentText, summary, storyState, tone, genre, premise,
 }: {
-  recentText: string; summary?: string; storyState?: any; tone?: string; genre?: string;
+  recentText: string; summary?: string; storyState?: any; tone?: string; genre?: string; premise?: string;
 }): Promise<StoryChoice[]> {
   const resp = await fetch("/api/generate-choices", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ recentText, summary, storyState, tone, genre }),
+    body: JSON.stringify({ recentText, summary, storyState, tone, genre, premise }),
   });
 
   if (!resp.ok) {
