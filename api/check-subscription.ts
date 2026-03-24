@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
-      const periodEnd = subscription.current_period_end;
+      const periodEnd = (subscription as any).current_period_end;
       try {
         if (typeof periodEnd === "number") {
           subscriptionEnd = new Date(periodEnd * 1000).toISOString();
