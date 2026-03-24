@@ -1,10 +1,11 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
 export const config = { runtime: "nodejs", maxDuration: 10 };
 
-export default async function handler(req: Request) {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204 });
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === "OPTIONS") return res.status(204).end();
 
   try {
     const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -15,7 +16,7 @@ export default async function handler(req: Request) {
       process.env.SUPABASE_PUBLISHABLE_KEY!
     );
 
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.authorization || "";
     if (!authHeader) throw new Error("No authorization header provided");
 
     const token = authHeader.replace("Bearer ", "");
@@ -28,7 +29,7 @@ export default async function handler(req: Request) {
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
     if (customers.data.length === 0) {
-      return Response.json({ subscribed: false });
+      return res.json({ subscribed: false });
     }
 
     const customerId = customers.data[0].id;
@@ -55,9 +56,9 @@ export default async function handler(req: Request) {
       productId = subscription.items.data[0].price.product;
     }
 
-    return Response.json({ subscribed: hasActiveSub, product_id: productId, subscription_end: subscriptionEnd });
+    return res.json({ subscribed: hasActiveSub, product_id: productId, subscription_end: subscriptionEnd });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    return Response.json({ error: msg }, { status: 500 });
+    return res.status(500).json({ error: msg });
   }
 }
