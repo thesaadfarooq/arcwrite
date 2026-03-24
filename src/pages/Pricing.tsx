@@ -17,7 +17,7 @@ const tierFeatures: Record<TierKey, string[]> = {
 };
 
 export default function Pricing() {
-  const { user, tier: currentTier, refreshSubscription } = useAuth();
+  const { user, tier: currentTier, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [loadingTier, setLoadingTier] = useState<TierKey | null>(null);
@@ -190,6 +190,15 @@ export default function Pricing() {
             );
           })}
         </div>
+
+        {cancelAtPeriodEnd && subscriptionEnd && (
+          <div className="mt-8 p-4 rounded-xl border border-primary/20 bg-primary/[0.04] text-center">
+            <p className="text-sm text-foreground">
+              Your <span className="font-medium">{TIERS[currentTier].name}</span> plan has been cancelled. You'll have access until{" "}
+              <span className="font-medium">{new Date(subscriptionEnd).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</span>.
+            </p>
+          </div>
+        )}
 
         {currentTier !== "free" && (
           <div className="text-center mt-8">

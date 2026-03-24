@@ -10,6 +10,7 @@ interface AuthContextType {
   profile: { display_name: string | null; avatar_url: string | null } | null;
   tier: TierKey;
   subscriptionEnd: string | null;
+  cancelAtPeriodEnd: boolean;
   refreshSubscription: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   tier: "free",
   subscriptionEnd: null,
+  cancelAtPeriodEnd: false,
   refreshSubscription: async () => {},
   signOut: async () => {},
 });
@@ -32,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
   const [tier, setTier] = useState<TierKey>("free");
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
+  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
 
   const refreshSubscription = useCallback(async () => {
     try {
@@ -52,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data) {
         setTier(getTierByProductId(data.product_id));
         setSubscriptionEnd(data.subscription_end);
+        setCancelAtPeriodEnd(!!data.cancel_at_period_end);
       }
     } catch (e) {
       console.error("Failed to check subscription:", e);
@@ -79,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         setTier("free");
         setSubscriptionEnd(null);
+        setCancelAtPeriodEnd(false);
       }
     });
 
@@ -113,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, profile, tier, subscriptionEnd, refreshSubscription, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, profile, tier, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription, signOut }}>
       {children}
     </AuthContext.Provider>
   );
