@@ -98,7 +98,8 @@ RULES:
 - Maintain consistent characterization and plot continuity
 - End at a natural decision point where the reader could choose what happens next
 - Do NOT include meta-commentary, options, or questions — just write the story
-- Each paragraph should be separated by a blank line`;
+- Each paragraph should be separated by a blank line
+- When naming characters, be creative and varied. Never default to common AI-generated names like "Mara", "Kael", "Elara", "Lyra", or "Aric". Choose distinctive names that fit the specific genre, setting, and cultural context of the story.`;
 
   if (premise) prompt += `\n\nORIGINAL PREMISE: ${premise}
 Use this premise as the foundation and guiding direction for the story. Follow these rules regarding the premise:
