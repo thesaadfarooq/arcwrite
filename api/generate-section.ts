@@ -1,3 +1,5 @@
+import { getAuthenticatedUser, unauthorizedResponse } from "./_lib/auth";
+
 export const config = { runtime: "edge" };
 
 const LENGTH_PRESETS: Record<string, { paragraphs: string; maxTokens: number }> = {
@@ -13,6 +15,9 @@ export default async function handler(req: Request) {
   }
 
   try {
+    const user = await getAuthenticatedUser(req.headers.get("authorization"));
+    if (!user) return unauthorizedResponse();
+
     const body = await req.json();
     const { tone, storyState, summary, recentText, direction, premise, genre, length } = body;
 

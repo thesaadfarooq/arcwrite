@@ -17,10 +17,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
 
     const authHeader = req.headers.authorization || "";
+    if (!authHeader) throw new Error("No authorization header provided");
     const token = authHeader.replace("Bearer ", "");
-    const { data } = await supabase.auth.getUser(token);
+    const { data, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !data.user?.email) throw new Error("User not authenticated or email not available");
     const user = data.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
 
     const { priceId } = req.body;
     if (!priceId) throw new Error("priceId is required");

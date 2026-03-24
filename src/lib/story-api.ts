@@ -3,6 +3,12 @@ import type { StoryChoice } from "@/components/story/ChoiceCards";
 
 export type SectionLength = "short" | "medium" | "long" | "epic";
 
+async function getAccessToken(): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("Not authenticated");
+  return session.access_token;
+}
+
 export async function streamSection({
   premise, genre, tone, direction, summary, recentText, storyState, length, onDelta, onDone, onError,
 }: {
@@ -11,9 +17,10 @@ export async function streamSection({
   onDelta: (text: string) => void; onDone: (fullText: string) => void; onError: (error: string) => void;
 }) {
   try {
+    const accessToken = await getAccessToken();
     const resp = await fetch("/api/generate-section", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({ premise, genre, tone, direction, summary, recentText, storyState, length: length || "medium" }),
     });
 
@@ -71,9 +78,10 @@ export async function generateChoices({
 }: {
   recentText: string; summary?: string; storyState?: any; tone?: string; genre?: string; premise?: string;
 }): Promise<StoryChoice[]> {
+  const accessToken = await getAccessToken();
   const resp = await fetch("/api/generate-choices", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
     body: JSON.stringify({ recentText, summary, storyState, tone, genre, premise }),
   });
 
@@ -91,9 +99,10 @@ export async function summarizeStory({
 }: {
   fullText: string; previousSummary?: string; storyState?: any;
 }): Promise<{ summary: string; story_state: any }> {
+  const accessToken = await getAccessToken();
   const resp = await fetch("/api/summarize", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
     body: JSON.stringify({ fullText, previousSummary, storyState }),
   });
 
