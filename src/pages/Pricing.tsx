@@ -34,10 +34,21 @@ export default function Pricing() {
 
     setLoadingTier(tierKey);
     try {
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId },
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      const resp = await fetch("/api/create-checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ priceId }),
       });
-      if (error) throw error;
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Failed to start checkout" }));
+        throw new Error(err.error);
+      }
+      const data = await resp.json();
       if (data?.url) {
         window.open(data.url, "_blank");
       }
@@ -50,8 +61,19 @@ export default function Pricing() {
 
   const handleManage = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("customer-portal");
-      if (error) throw error;
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      const resp = await fetch("/api/customer-portal", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Failed to open portal" }));
+        throw new Error(err.error);
+      }
+      const data = await resp.json();
       if (data?.url) {
         window.open(data.url, "_blank");
       }

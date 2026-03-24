@@ -1,42 +1,19 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { StoryChoice } from "@/components/story/ChoiceCards";
 
-const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
-
 export type SectionLength = "short" | "medium" | "long" | "epic";
 
 export async function streamSection({
-  premise,
-  genre,
-  tone,
-  direction,
-  summary,
-  recentText,
-  storyState,
-  length,
-  onDelta,
-  onDone,
-  onError,
+  premise, genre, tone, direction, summary, recentText, storyState, length, onDelta, onDone, onError,
 }: {
-  premise?: string;
-  genre?: string;
-  tone?: string;
-  direction?: string;
-  summary?: string;
-  recentText?: string;
-  storyState?: any;
-  length?: SectionLength;
-  onDelta: (text: string) => void;
-  onDone: (fullText: string) => void;
-  onError: (error: string) => void;
+  premise?: string; genre?: string; tone?: string; direction?: string;
+  summary?: string; recentText?: string; storyState?: any; length?: SectionLength;
+  onDelta: (text: string) => void; onDone: (fullText: string) => void; onError: (error: string) => void;
 }) {
   try {
-    const resp = await fetch(`${FUNCTIONS_URL}/generate-section`, {
+    const resp = await fetch("/api/generate-section", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ premise, genre, tone, direction, summary, recentText, storyState, length: length || "medium" }),
     });
 
@@ -46,10 +23,7 @@ export async function streamSection({
       return;
     }
 
-    if (!resp.body) {
-      onError("No response body");
-      return;
-    }
+    if (!resp.body) { onError("No response body"); return; }
 
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
@@ -86,7 +60,6 @@ export async function streamSection({
         }
       }
     }
-
     onDone(fullText);
   } catch (e) {
     onError(e instanceof Error ? e.message : "Unknown error");
@@ -94,41 +67,42 @@ export async function streamSection({
 }
 
 export async function generateChoices({
-  recentText,
-  summary,
-  storyState,
-  tone,
-  genre,
+  recentText, summary, storyState, tone, genre,
 }: {
-  recentText: string;
-  summary?: string;
-  storyState?: any;
-  tone?: string;
-  genre?: string;
+  recentText: string; summary?: string; storyState?: any; tone?: string; genre?: string;
 }): Promise<StoryChoice[]> {
-  const { data, error } = await supabase.functions.invoke("generate-choices", {
-    body: { recentText, summary, storyState, tone, genre },
+  const resp = await fetch("/api/generate-choices", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ recentText, summary, storyState, tone, genre }),
   });
 
-  if (error) throw new Error(error.message || "Failed to generate choices");
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ error: "Failed to generate choices" }));
+    throw new Error(err.error || "Failed to generate choices");
+  }
+
+  const data = await resp.json();
   return data.choices || data;
 }
 
 export async function summarizeStory({
-  fullText,
-  previousSummary,
-  storyState,
+  fullText, previousSummary, storyState,
 }: {
-  fullText: string;
-  previousSummary?: string;
-  storyState?: any;
+  fullText: string; previousSummary?: string; storyState?: any;
 }): Promise<{ summary: string; story_state: any }> {
-  const { data, error } = await supabase.functions.invoke("summarize", {
-    body: { fullText, previousSummary, storyState },
+  const resp = await fetch("/api/summarize", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fullText, previousSummary, storyState }),
   });
 
-  if (error) throw new Error(error.message || "Failed to summarize");
-  return data;
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ error: "Failed to summarize" }));
+    throw new Error(err.error || "Failed to summarize");
+  }
+
+  return resp.json();
 }
 
 export async function createStory({

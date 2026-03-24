@@ -41,11 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn("No valid session for subscription check, skipping");
         return;
       }
-      const { data, error } = await supabase.functions.invoke("check-subscription");
-      if (error) {
-        console.error("Subscription check error:", error);
+      const resp = await fetch("/api/check-subscription", {
+        headers: { Authorization: `Bearer ${currentSession.access_token}` },
+      });
+      if (!resp.ok) {
+        console.error("Subscription check error:", resp.status);
         return;
       }
+      const data = await resp.json();
       if (data) {
         setTier(getTierByProductId(data.product_id));
         setSubscriptionEnd(data.subscription_end);

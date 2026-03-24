@@ -530,12 +530,11 @@ export default function StoryWrite() {
     try {
       const session = await supabase.auth.getSession();
       const accessToken = session.data.session?.access_token;
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-story`, {
+      const resp = await fetch("/api/export-story", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({ storyId }),
       });
