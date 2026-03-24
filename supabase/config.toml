@@ -1,1 +1,14 @@
 project_id = "nbajdrxgybzxchgxpjzd"
+
+[auth.email]
+[auth.email.template.confirmation]
+subject = "Welcome to Arcwrite — confirm your email"
+content_path = "./templates/confirm-signup.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Arcwrite password"
+content_path = "./templates/reset-password.html"
+
+[auth.email.template.magic_link]
+subject = "Sign in to Arcwrite"
+content_path = "./templates/magic-link.html"

@@ -27,6 +27,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { auth: { persistSession: false } }
     );
 
+    // Server-side tier check: export requires Plus or Pro
+    const { data: profile } = await adminClient
+      .from("profiles")
+      .select("tier_override")
+      .eq("user_id", userData.user.id)
+      .single();
+
+    const tierOverride = profile?.tier_override;
+    if (tierOverride !== "plus" && tierOverride !== "pro") {
+      // Check Stripe for actual subscription
+      const Stripe = (await import("stripe")).default;
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-08-27.basil" as any });
+      const customers = await stripe.customers.list({ email: userData.user.email!, limit: 1 });
+      if (customers.data.length === 0) {
+        return res.status(403).json({ error: "PDF export requires a Plus or Pro plan" });
+      }
+      const subs = await stripe.subscriptions.list({ customer: customers.data[0].id, status: "active", limit: 1 });
+      if (subs.data.length === 0) {
+        return res.status(403).json({ error: "PDF export requires a Plus or Pro plan" });
+      }
+    }
+
     const { data: story, error: storyErr } = await adminClient
       .from("stories")
       .select("*")

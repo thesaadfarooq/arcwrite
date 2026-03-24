@@ -1,3 +1,5 @@
+import { getAuthenticatedUser, unauthorizedResponse } from "./_lib/auth";
+
 export const config = { runtime: "edge" };
 
 export default async function handler(req: Request) {
@@ -6,6 +8,9 @@ export default async function handler(req: Request) {
   }
 
   try {
+    const user = await getAuthenticatedUser(req.headers.get("authorization"));
+    if (!user) return unauthorizedResponse();
+
     const { fullText, previousSummary, storyState } = await req.json();
 
     const apiKey = process.env.OPENAI_API_KEY;

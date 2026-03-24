@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Arcwrite</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0f0f17; font-family: Georgia, 'Times New Roman', serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #0f0f17; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="background-color: #1a1a2e; border-radius: 12px; overflow: hidden;">
+
+          <!-- Header accent bar -->
+          <tr>
+            <td style="height: 4px; background: linear-gradient(90deg, #8B4513, #B8651A);"></td>
+          </tr>
+
+          <!-- Logo area -->
+          <tr>
+            <td style="padding: 36px 40px 20px; text-align: center;">
+              <span style="font-size: 32px; font-weight: bold; color: #f0e6d3; letter-spacing: 2px;">Arcwrite</span>
+            </td>
+          </tr>
+
+          <!-- Main content -->
+          <tr>
+            <td style="padding: 0 40px 32px;">
+              <h1 style="margin: 0 0 16px; font-size: 24px; color: #f0e6d3; text-align: center; font-weight: normal;">
+                Welcome, storyteller
+              </h1>
+              <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #a0a0b8; text-align: center;">
+                You're one step away from creating branching stories where you direct the plot and AI writes the prose. Confirm your email to get started.
+              </p>
+
+              <!-- CTA Button -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding: 8px 0 24px;">
+                    <a href="{{ .ConfirmationURL }}"
+                       style="display: inline-block; padding: 14px 36px; background-color: #8B4513; color: #f0e6d3; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold; letter-spacing: 0.5px;">
+                      Confirm my email
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0 0 8px; font-size: 13px; line-height: 1.5; color: #6b6b80; text-align: center;">
+                If the button doesn't work, copy and paste this link into your browser:
+              </p>
+              <p style="margin: 0 0 24px; font-size: 13px; line-height: 1.5; color: #8B4513; text-align: center; word-break: break-all;">
+                {{ .ConfirmationURL }}
+              </p>
+
+              <!-- Divider -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding: 8px 0; border-top: 1px solid #2a2a3e;"></td>
+                </tr>
+              </table>
+
+              <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #4a4a5e; text-align: center;">
+                If you didn't create an account on Arcwrite, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 40px 28px; text-align: center; border-top: 1px solid #2a2a3e;">
+              <p style="margin: 0; font-size: 12px; color: #4a4a5e;">
+                <a href="https://arcwrite.app" style="color: #8B4513; text-decoration: none;">arcwrite.app</a>
+                &nbsp;&middot;&nbsp; Stories you direct, AI delivers.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
