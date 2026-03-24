@@ -100,7 +100,13 @@ RULES:
 - Do NOT include meta-commentary, options, or questions — just write the story
 - Each paragraph should be separated by a blank line`;
 
-  if (premise) prompt += `\n\nORIGINAL PREMISE: ${premise}\nAlways stay true to this premise. Characters, settings, and plot should be consistent with what the user described.`;
+  if (premise) prompt += `\n\nORIGINAL PREMISE: ${premise}
+Use this premise as the foundation and guiding direction for the story. Follow these rules regarding the premise:
+- If the premise names specific characters, use those names and keep them consistent
+- If the premise describes characters generically (e.g. "a man", "a warrior"), you may give them fitting names that match the tone and genre, and develop their personality naturally
+- You are free to introduce new characters, locations, and plot elements as the story naturally demands — the premise is a starting point, not a cage
+- The premise establishes the core concept and direction; honor its spirit while letting the story breathe and evolve organically
+- Never contradict established details from the premise or from earlier in the story`;
   if (tone) prompt += `\n\nTONE: Write in a ${tone} style. Maintain this tone consistently.`;
   if (genre) prompt += `\n\nGENRE: ${genre}`;
   if (storyState && Object.keys(storyState).length > 0) {
