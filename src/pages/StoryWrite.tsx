@@ -197,7 +197,7 @@ export default function StoryWrite() {
           fetchChoices(paras.map((p) => p.text).join("\n\n"));
         }
       } else {
-        generateOpening();
+        generateOpening({ premise: story.premise || undefined, genre: story.genre || undefined, tone: story.tone || undefined });
       }
     } catch (err: any) {
       toast.error("Failed to load story");
@@ -239,16 +239,17 @@ export default function StoryWrite() {
     } catch {}
   };
 
-  const generateOpening = async () => {
+  const generateOpening = async (meta?: { premise?: string; genre?: string; tone?: string }) => {
+    const useMeta = meta || storyMeta;
     setIsGenerating(true);
     let fullText = "";
 
     setParagraphs([{ id: `streaming-${Date.now()}`, text: "", isStreaming: true }]);
 
     await streamSection({
-      premise: storyMeta.premise,
-      genre: storyMeta.genre,
-      tone: storyMeta.tone,
+      premise: useMeta.premise,
+      genre: useMeta.genre,
+      tone: useMeta.tone,
       length: sectionLength,
       onDelta: (delta) => {
         fullText += delta;
@@ -271,9 +272,9 @@ export default function StoryWrite() {
           recentText: text,
           summary: "",
           storyState: {},
-          tone: storyMeta.tone,
-          genre: storyMeta.genre,
-          premise: storyMeta.premise,
+          tone: useMeta.tone,
+          genre: useMeta.genre,
+          premise: useMeta.premise,
         });
 
         try {
