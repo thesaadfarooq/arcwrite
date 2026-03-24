@@ -43,9 +43,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let productId = null;
     let subscriptionEnd = null;
 
+    let cancelAtPeriodEnd = false;
+
     if (hasActiveSub) {
-      const subscription = subscriptions.data[0];
-      const periodEnd = (subscription as any).current_period_end;
+      const subscription = subscriptions.data[0] as any;
+      const periodEnd = subscription.current_period_end;
       try {
         if (typeof periodEnd === "number") {
           subscriptionEnd = new Date(periodEnd * 1000).toISOString();
@@ -54,9 +56,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         subscriptionEnd = null;
       }
       productId = subscription.items.data[0].price.product;
+      cancelAtPeriodEnd = !!subscription.cancel_at_period_end;
     }
 
-    return res.json({ subscribed: hasActiveSub, product_id: productId, subscription_end: subscriptionEnd });
+    return res.json({ subscribed: hasActiveSub, product_id: productId, subscription_end: subscriptionEnd, cancel_at_period_end: cancelAtPeriodEnd });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     return res.status(500).json({ error: msg });

@@ -22,7 +22,7 @@ interface Story {
 }
 
 export default function Dashboard() {
-  const { user, profile, signOut, refreshSubscription } = useAuth();
+  const { user, profile, tier, subscriptionEnd, cancelAtPeriodEnd, signOut, refreshSubscription } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [stories, setStories] = useState<Story[]>([]);
@@ -142,6 +142,14 @@ export default function Dashboard() {
       </nav>
 
       <main className="max-w-5xl mx-auto px-6 py-8">
+        {cancelAtPeriodEnd && subscriptionEnd && (
+          <div className="mb-6 p-4 rounded-xl border border-primary/20 bg-primary/[0.04]">
+            <p className="text-sm text-foreground">
+              Your <span className="font-medium">{tier.charAt(0).toUpperCase() + tier.slice(1)}</span> plan has been cancelled. You'll have access until{" "}
+              <span className="font-medium">{new Date(subscriptionEnd).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</span>.
+            </p>
+          </div>
+        )}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="font-story text-2xl font-semibold text-foreground">Your Stories</h1>
