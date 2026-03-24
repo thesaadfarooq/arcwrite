@@ -86,16 +86,21 @@ Return your analysis using the provided tool.`;
     const reader = response.body!.getReader();
     const decoder = new TextDecoder();
     let argsBuffer = "";
+    let leftover = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const text = decoder.decode(value, { stream: true });
-      for (const line of text.split("\n")) {
-        if (!line.startsWith("data: ") || line.includes("[DONE]")) continue;
+      const text = leftover + decoder.decode(value, { stream: true });
+      const lines = text.split("\n");
+      leftover = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data: ") || trimmed.includes("[DONE]")) continue;
         try {
-          const parsed = JSON.parse(line.slice(6));
+          const parsed = JSON.parse(trimmed.slice(6));
           const delta = parsed.choices?.[0]?.delta;
           if (delta?.tool_calls?.[0]?.function?.arguments) {
             argsBuffer += delta.tool_calls[0].function.arguments;
