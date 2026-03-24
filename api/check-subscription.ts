@@ -44,6 +44,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (profile?.tier_override && TIER_PRODUCT_MAP[profile.tier_override]) {
+      // Sync tier to profiles so DB triggers can enforce limits
+      await supabaseAdmin
+        .from("profiles")
+        .update({ tier: profile.tier_override })
+        .eq("user_id", user.id);
+
       return res.json({
         subscribed: true,
         product_id: TIER_PRODUCT_MAP[profile.tier_override],
@@ -57,6 +63,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
     if (customers.data.length === 0) {
+      // Sync tier as free
+      await supabaseAdmin
+        .from("profiles")
+        .update({ tier: "free" })
+        .eq("user_id", user.id);
+
       return res.json({ subscribed: false });
     }
 
@@ -70,12 +82,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const hasActiveSub = subscriptions.data.length > 0;
     let productId = null;
     let subscriptionEnd = null;
-
     let cancelAtPeriodEnd = false;
+
+    // Determine tier from Stripe product ID
+    let resolvedTier = "free";
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0] as any;
-      // current_period_end is now on items, not the subscription object
       const item = subscription.items.data[0];
       const periodEnd = item.current_period_end ?? subscription.cancel_at;
       if (typeof periodEnd === "number") {
@@ -85,7 +98,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       productId = item.price.product;
       cancelAtPeriodEnd = !!subscription.cancel_at_period_end;
+
+      // Map product ID to tier name
+      if (productId === TIER_PRODUCT_MAP.pro) {
+        resolvedTier = "pro";
+      } else if (productId === TIER_PRODUCT_MAP.plus) {
+        resolvedTier = "plus";
+      }
     }
+
+    // Sync resolved tier to profiles for DB-level enforcement
+    await supabaseAdmin
+      .from("profiles")
+      .update({ tier: resolvedTier })
+      .eq("user_id", user.id);
 
     return res.json({ subscribed: hasActiveSub, product_id: productId, subscription_end: subscriptionEnd, cancel_at_period_end: cancelAtPeriodEnd });
   } catch (error) {
