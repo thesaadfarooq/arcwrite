@@ -191,11 +191,14 @@ export default function Pricing() {
           })}
         </div>
 
-        {cancelAtPeriodEnd && subscriptionEnd && (
+        {cancelAtPeriodEnd && (
           <div className="mt-8 p-4 rounded-xl border border-primary/20 bg-primary/[0.04] text-center">
             <p className="text-sm text-foreground">
-              Your <span className="font-medium">{TIERS[currentTier].name}</span> plan has been cancelled. You'll have access until{" "}
-              <span className="font-medium">{new Date(subscriptionEnd).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</span>.
+              Your <span className="font-medium">{TIERS[currentTier].name}</span> plan has been cancelled.{" "}
+              {subscriptionEnd
+                ? <>You'll have access until <span className="font-medium">{new Date(subscriptionEnd).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}</span>.</>
+                : <>You'll have access until the end of your billing period.</>
+              }
             </p>
           </div>
         )}
