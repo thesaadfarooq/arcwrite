@@ -24,7 +24,7 @@ For each direction, provide:
 - label: a short 4-8 word description
 - preview: a 1-2 sentence preview of what would happen
 
-${premise ? `ORIGINAL PREMISE: ${premise}\nAll choices must stay consistent with this premise, its characters, and setting.` : ""}
+${premise ? `ORIGINAL PREMISE: ${premise}\nChoices should be consistent with the premise's core concept and any established characters/settings. However, choices may introduce new characters, locations, or plot developments — the premise is a foundation, not a boundary. Never contradict what has already been established.` : ""}
 ${tone ? `TONE: ${tone}` : ""}
 ${genre ? `GENRE: ${genre}` : ""}`;
 
