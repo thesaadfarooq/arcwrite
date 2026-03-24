@@ -20,6 +20,18 @@ import type { SectionLength } from "@/lib/story-api";
 import type { ChapterHeading } from "@/components/story/StoryCanvas";
 import { toast } from "sonner";
 
+async function retry<T>(fn: () => Promise<T>, attempts = 3, delayMs = 1000): Promise<T> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (i === attempts - 1) throw e;
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw new Error("Retry exhausted");
+}
+
 function EditableStoryTitle({ title, onRename }: { title: string; onRename: (newTitle: string) => void }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
@@ -294,13 +306,13 @@ export default function StoryWrite() {
             toast.error("Failed to generate choices — you can regenerate them manually");
           }
 
-          const node = await createStoryNode({
+          const node = await retry(() => createStoryNode({
             storyId: storyId!,
             text,
             summary: summaryResult?.summary || "",
             storyState: summaryResult?.story_state || storyState,
             choices: choicesResult || [],
-          });
+          }));
           setLastNodeId(node.id);
           await reloadActiveState();
 
@@ -312,7 +324,7 @@ export default function StoryWrite() {
           }
         } catch (e) {
           console.error("Failed to save node:", e);
-          toast.error("Failed to save — please try again");
+          toast.error("Failed to save after retries — please try again");
         }
         setIsProcessing(false);
         setIsLoadingChoices(false);
@@ -428,7 +440,7 @@ export default function StoryWrite() {
             toast.error("Failed to generate choices — you can regenerate them manually");
           }
 
-          const node = await createStoryNode({
+          const node = await retry(() => createStoryNode({
             storyId: storyId!,
             parentId: lastNodeId || undefined,
             text,
@@ -436,12 +448,12 @@ export default function StoryWrite() {
             storyState: summaryResult?.story_state || storyState,
             chosenOption: choice,
             choices: choicesResult || [],
-          });
+          }));
           setLastNodeId(node.id);
           await reloadActiveState();
         } catch (e) {
           console.error("Failed to save:", e);
-          toast.error("Failed to save — please try again");
+          toast.error("Failed to save after retries — please try again");
         }
 
         setIsProcessing(false);
@@ -548,18 +560,9 @@ export default function StoryWrite() {
         throw new Error(err.error || "Export failed");
       }
       const data = await resp.json();
-
-      // Open HTML in new tab for printing to PDF
-      const blob = new Blob([data.html], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      const win = window.open(url, "_blank");
-      if (win) {
-        win.onload = () => {
-          win.print();
-          URL.revokeObjectURL(url);
-        };
-      }
-      toast.success("PDF export opened — use your browser's print dialog to save");
+      const { generatePDF } = await import("@/lib/pdf-export");
+      generatePDF(data);
+      toast.success("PDF downloaded");
     } catch (e: any) {
       toast.error(e.message || "Export failed");
     } finally {
