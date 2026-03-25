@@ -7,6 +7,7 @@ import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { createStory } from "@/lib/story-api";
 import { getTierLimits } from "@/lib/subscription";
+import { GENRE_STARTERS, PREMISE_STARTERS } from "@/lib/story-starters";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -45,6 +46,7 @@ export default function StoryNew() {
   const [atLimit, setAtLimit] = useState(false);
   const [storyCount, setStoryCount] = useState(0);
   const limits = getTierLimits(tier);
+  const selectedGenreStarters = selectedGenre ? GENRE_STARTERS[selectedGenre] ?? [] : [];
 
   useEffect(() => {
     if (!user || limits.stories === Infinity) return;
@@ -156,6 +158,26 @@ export default function StoryNew() {
               className="min-h-[160px] font-story text-base leading-relaxed resize-none bg-card"
               autoFocus
             />
+            <div className="mt-6">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <h2 className="text-sm font-medium text-foreground">Need a starting point?</h2>
+                  <p className="text-xs text-muted-foreground">Pick a starter prompt and edit it however you like.</p>
+                </div>
+              </div>
+              <div className="grid gap-3">
+                {PREMISE_STARTERS.map((starter) => (
+                  <div key={starter} className="rounded-xl border border-border bg-card p-4">
+                    <p className="text-sm text-foreground leading-relaxed">{starter}</p>
+                    <div className="mt-3">
+                      <Button type="button" variant="outline" size="sm" onClick={() => setPremise(starter)}>
+                        Try this starter
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="flex justify-end gap-3 mt-6">
               <Button variant="outline" onClick={() => setStep("tone")} disabled={!canProceed}>
                 Choose tone <ArrowRight className="w-4 h-4 ml-1" />
@@ -183,6 +205,24 @@ export default function StoryNew() {
                 </button>
               ))}
             </div>
+            {selectedGenreStarters.length > 0 && (
+              <div className="mt-6 rounded-2xl border border-border bg-card p-5">
+                <h2 className="text-sm font-medium text-foreground mb-1">Starter prompts for {genres.find((g) => g.id === selectedGenre)?.label}</h2>
+                <p className="text-xs text-muted-foreground mb-4">Use one as your premise, then move on to tone.</p>
+                <div className="grid gap-3">
+                  {selectedGenreStarters.map((starter) => (
+                    <div key={starter} className="rounded-xl border border-border/70 bg-background px-4 py-3">
+                      <p className="text-sm text-foreground leading-relaxed">{starter}</p>
+                      <div className="mt-3">
+                        <Button type="button" variant="outline" size="sm" onClick={() => setPremise(starter)}>
+                          Try this starter
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex justify-end gap-3 mt-6">
               <Button variant="outline" onClick={() => setStep("premise")}>Add a premise</Button>
               <Button variant="outline" onClick={() => setStep("tone")} disabled={!canProceed}>

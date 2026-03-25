@@ -1,51 +1,77 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { BookOpen, ArrowLeft } from "lucide-react";
+import { BookOpen, ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
+import { getGuestOrAuthedHref, getSharedStorySecondaryCta } from "@/lib/story-starters";
+
+type SharedStoryData = {
+  id: string;
+  title: string;
+  genre: string | null;
+};
+
+type SharedStoryNode = {
+  text: string | null;
+  chosen_option: string | null;
+};
 
 export default function SharedStory() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const [story, setStory] = useState<any>(null);
-  const [nodes, setNodes] = useState<any[]>([]);
+  const { user } = useAuth();
+  const [story, setStory] = useState<SharedStoryData | null>(null);
+  const [nodes, setNodes] = useState<SharedStoryNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const secondaryCta = getSharedStorySecondaryCta(story?.genre);
+  const createStoryHref = getGuestOrAuthedHref("/story/new", !!user);
 
-  useEffect(() => {
+  const loadSharedStory = useCallback(async () => {
     if (!token) return;
-    loadSharedStory();
-  }, [token]);
-
-  const loadSharedStory = async () => {
     try {
       const { data: storyData, error: storyErr } = await supabase
         .from("stories")
-        .select("*")
+        .select("id, title, genre")
         .eq("share_token", token)
         .single();
 
-      if (storyErr || !storyData) {
+      const sharedStory = storyData as SharedStoryData | null;
+
+      if (storyErr || !sharedStory) {
         setError("Story not found or link has expired");
         setLoading(false);
         return;
       }
 
-      setStory(storyData);
+      setStory(sharedStory);
 
       const { data: nodesData } = await supabase
         .from("story_nodes")
         .select("text, chosen_option")
-        .eq("story_id", storyData.id)
+        .eq("story_id", sharedStory.id)
         .eq("is_active", true)
         .order("created_at", { ascending: true });
 
-      setNodes(nodesData || []);
+      setNodes((nodesData as SharedStoryNode[] | null) || []);
     } catch {
       setError("Failed to load story");
     } finally {
       setLoading(false);
     }
+  }, [token]);
+
+  useEffect(() => {
+    loadSharedStory();
+  }, [loadSharedStory]);
+
+  const handleCreateOwnStory = () => {
+    navigate(createStoryHref);
+  };
+
+  const handleSecondaryAction = () => {
+    navigate(secondaryCta.href);
   };
 
   if (loading) {
@@ -58,12 +84,22 @@ export default function SharedStory() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
-        <BookOpen className="w-12 h-12 text-muted-foreground/30" />
-        <p className="text-muted-foreground">{error}</p>
-        <Button variant="outline" onClick={() => navigate("/")}>
-          <ArrowLeft className="w-4 h-4 mr-1" /> Go home
-        </Button>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
+        <div className="max-w-xl w-full text-center space-y-6">
+          <BookOpen className="w-12 h-12 text-muted-foreground/30 mx-auto" />
+          <div className="space-y-2">
+            <p className="text-lg font-medium text-foreground">This story is unavailable</p>
+            <p className="text-muted-foreground">{error}</p>
+          </div>
+          <div className="flex flex-col sm:flex-row justify-center gap-3">
+            <Button onClick={handleCreateOwnStory}>
+              Create your own story <ArrowRight className="w-4 h-4 ml-1.5" />
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/")}>
+              <ArrowLeft className="w-4 h-4 mr-1" /> Go home
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -82,11 +118,11 @@ export default function SharedStory() {
 
       <main className="max-w-[680px] mx-auto px-6 md:px-12 py-12 md:py-16">
         <div className="mb-10 text-center">
-          {story.genre && (
+          {story?.genre && (
             <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">{story.genre}</span>
           )}
           <h1 className="font-story text-2xl md:text-3xl font-semibold text-foreground mt-1 leading-tight text-balance">
-            {story.title}
+            {story?.title ?? ""}
           </h1>
         </div>
 
@@ -102,6 +138,29 @@ export default function SharedStory() {
             );
           })}
         </article>
+
+        <section className="mt-16 pt-10 border-t border-border/50">
+          <div className="max-w-2xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              Keep writing
+            </div>
+            <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground mt-4 text-balance">
+              Want to make a story of your own?
+            </h2>
+            <p className="text-muted-foreground mt-3 max-w-lg mx-auto">
+              Start from scratch or jump straight into a new prompt. You keep the momentum, Arcwrite handles the first draft.
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center gap-3 mt-8">
+              <Button size="lg" onClick={handleCreateOwnStory}>
+                Create your own story <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Button>
+              <Button size="lg" variant="outline" onClick={handleSecondaryAction}>
+                {secondaryCta.label}
+              </Button>
+            </div>
+          </div>
+        </section>
 
         <div className="text-center mt-16 pt-8 border-t border-border/50">
           <p className="text-xs text-muted-foreground">
