@@ -6,6 +6,10 @@
     {
       "source": "/s/:token",
       "destination": "/api/og-shared-story?token=:token"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }
