@@ -363,10 +363,10 @@ export default function StoryWrite() {
   };
 
   const handleChoiceSelect = async (choice: StoryChoice | { type: "custom"; label: string; preview: string }) => {
-    // Check chapter limit
+    // Check turn limit
     const activeNodeCount = allNodes.filter((n) => n.is_active).length;
-    if (limits.chapters !== Infinity && activeNodeCount >= limits.chapters) {
-      toast.error(`You've reached the ${limits.chapters}-chapter limit on your plan. Upgrade for more.`);
+    if (limits.turns !== Infinity && activeNodeCount >= limits.turns) {
+      toast.error(`You've reached the ${limits.turns}-turn limit on your plan. Upgrade for more.`);
       return;
     }
 
@@ -936,8 +936,8 @@ export default function StoryWrite() {
                 isLoading={isGenerating || isLoadingChoices}
                 sectionLength={sectionLength}
                 onSectionLengthChange={setSectionLength}
-                chapterCount={limits.chapters !== Infinity ? activeNodes.length : undefined}
-                chapterLimit={limits.chapters !== Infinity ? limits.chapters : undefined}
+                turnCount={limits.turns !== Infinity ? activeNodes.length : undefined}
+                turnLimit={limits.turns !== Infinity ? limits.turns : undefined}
               />
             )}
 

@@ -24,15 +24,15 @@ describe("subscription utilities", () => {
     it("returns correct free tier limits", () => {
       const limits = getTierLimits("free");
       expect(limits.stories).toBe(2);
-      expect(limits.chapters).toBe(5);
+      expect(limits.turns).toBe(10);
       expect(limits.export).toBe(false);
       expect(limits.sharing).toBe(false);
     });
 
     it("returns correct plus tier limits", () => {
       const limits = getTierLimits("plus");
-      expect(limits.stories).toBe(15);
-      expect(limits.chapters).toBe(20);
+      expect(limits.stories).toBe(10);
+      expect(limits.turns).toBe(Infinity);
       expect(limits.export).toBe(true);
       expect(limits.sharing).toBe(false);
     });
@@ -40,7 +40,7 @@ describe("subscription utilities", () => {
     it("returns correct pro tier limits", () => {
       const limits = getTierLimits("pro");
       expect(limits.stories).toBe(Infinity);
-      expect(limits.chapters).toBe(Infinity);
+      expect(limits.turns).toBe(Infinity);
       expect(limits.export).toBe(true);
       expect(limits.sharing).toBe(true);
     });

@@ -15,7 +15,7 @@ const FEATURES = [
   {
     icon: GitBranch,
     title: "Branching Choices",
-    description: "Every chapter ends with four AI-generated choices — safe, risky, emotional, and chaotic. Pick one, or write your own direction to steer the plot.",
+    description: "Every turn ends with four AI-generated choices — safe, risky, emotional, and chaotic. Pick one, or write your own direction to steer the plot.",
   },
   {
     icon: Palette,
@@ -25,7 +25,7 @@ const FEATURES = [
   {
     icon: Network,
     title: "Story Tree",
-    description: "Visualize your entire narrative as a branching tree. See every path you've taken, revisit earlier chapters, and explore the roads not traveled.",
+    description: "Visualize your entire narrative as a branching tree. See every path you've taken, revisit earlier turns, and explore the roads not traveled.",
   },
   {
     icon: FileDown,
@@ -44,19 +44,19 @@ const HOW_IT_WORKS = [
     icon: PenLine,
     step: 1,
     title: "Describe your idea",
-    description: "Start with a premise — a sentence, a paragraph, or just a mood. Tell Arcwrite what kind of story you want, and it generates a rich opening chapter.",
+    description: "Start with a premise — a sentence, a paragraph, or just a mood. Tell Arcwrite what kind of story you want, and it generates a rich opening.",
   },
   {
     icon: GitBranch,
     step: 2,
     title: "Make choices",
-    description: "At the end of each chapter, you're presented with four directions. Each choice type — safe, risky, emotional, chaotic — pushes the story in a different direction. Or write your own.",
+    description: "At the end of each turn, you're presented with four directions. Each choice type — safe, risky, emotional, chaotic — pushes the story in a different direction. Or write your own.",
   },
   {
     icon: Sparkles,
     step: 3,
     title: "AI writes the prose",
-    description: "Based on your choice, the AI writes the next chapter. It remembers your characters, plot threads, and tone — building on everything that came before.",
+    description: "Based on your choice, the AI writes the next turn. It remembers your characters, plot threads, and tone — building on everything that came before.",
   },
 ];
 
