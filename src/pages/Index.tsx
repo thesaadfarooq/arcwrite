@@ -4,6 +4,8 @@ import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import SEO from "@/components/SEO";
+import Footer from "@/components/Footer";
 
 // ── Fake story data for the hero animation ──────────────────────────
 const DEMO_PARAGRAPHS = [
@@ -103,6 +105,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background transition-colors duration-500">
+      <SEO
+        title="Arcwrite — AI Story Generator | Interactive Choose-Your-Own-Adventure Fiction"
+        description="Create branching choose-your-own-adventure stories with AI. You direct the plot, AI writes the prose. Free interactive fiction writing tool with meaningful choices."
+        canonical="/"
+      />
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50">
         <div className="flex items-center gap-2">
@@ -263,16 +270,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/50 py-8 px-6">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-primary" />
-            <span className="font-story">Arcwrite</span>
-          </div>
-          <span className="text-xs">Stories you direct, AI delivers.</span>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

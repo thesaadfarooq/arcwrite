@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BookOpen } from "lucide-react";
 import { toast } from "sonner";
+import SEO from "@/components/SEO";
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
@@ -29,6 +30,7 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6">
+      <SEO title="Reset Password — Arcwrite" noindex />
       <div className="w-full max-w-sm animate-fade-up">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-3">
