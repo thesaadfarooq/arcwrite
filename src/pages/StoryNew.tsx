@@ -37,7 +37,9 @@ export default function StoryNew() {
 
   const [step, setStep] = useState(mode === "genre" ? "genre" : mode === "surprise" ? "surprise" : "premise");
   const [premise, setPremise] = useState("");
-  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(
+    searchParams.get("genre") || null
+  );
   const [selectedTone, setSelectedTone] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [atLimit, setAtLimit] = useState(false);

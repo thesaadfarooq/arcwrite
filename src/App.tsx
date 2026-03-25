@@ -15,6 +15,7 @@ import Auth from "./pages/Auth.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Features from "./pages/Features.tsx";
+import GenreLanding from "./pages/GenreLanding.tsx";
 import Pricing from "./pages/Pricing.tsx";
 import SharedStory from "./pages/SharedStory.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -44,6 +45,7 @@ const AppRoutes = () => (
     <Route path="/story/new" element={<ProtectedRoute><StoryNew /></ProtectedRoute>} />
     <Route path="/story/:id" element={<ProtectedRoute><StoryWrite /></ProtectedRoute>} />
     <Route path="/features" element={<Features />} />
+    <Route path="/genres/:genre" element={<GenreLanding />} />
     <Route path="/pricing" element={<Pricing />} />
     <Route path="/s/:token" element={<SharedStory />} />
     <Route path="*" element={<NotFound />} />
