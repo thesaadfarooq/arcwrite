@@ -17,8 +17,9 @@ describe("vercel.json configuration", () => {
       (r: any) => r.destination === "/index.html"
     );
     expect(catchAll).toBeDefined();
-    // The source pattern should use a negative lookahead to exclude /api/ routes
+    // The source pattern should exclude /api/ and Vite dev-server paths
     expect(catchAll.source).toContain("(?!api/");
+    expect(catchAll.source).toContain("@vite");
   });
 
   it("has shared story OG rewrite before the catch-all", () => {
