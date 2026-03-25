@@ -74,7 +74,7 @@ export default function StoryNew() {
     
     setCreating(true);
 
-    // Check story limit
+    // Check story limit — fail closed (block on error)
     const limits = getTierLimits(tier);
     if (limits.stories !== Infinity) {
       const { count, error: countErr } = await supabase
@@ -82,7 +82,13 @@ export default function StoryNew() {
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id);
 
-      if (!countErr && count !== null && count >= limits.stories) {
+      if (countErr || count === null) {
+        toast.error("Could not verify your story limit. Please try again.");
+        setCreating(false);
+        return;
+      }
+
+      if (count >= limits.stories) {
         toast.error(`You've reached the ${limits.stories}-story limit on your plan. Upgrade for more.`);
         setCreating(false);
         navigate("/pricing");
