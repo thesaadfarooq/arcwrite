@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { BookOpen, Sun, Moon, LogIn, PenLine, GitBranch, Sparkles, ArrowRight, Shield, Flame, Heart, Zap } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
+import { QUICK_START_OPTIONS, getGuestOrAuthedHref } from "@/lib/story-starters";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import SEO from "@/components/SEO";
@@ -37,6 +38,8 @@ const HOW_IT_WORKS = [
     description: "Your story grows chapter by chapter, branching into paths only you can explore.",
   },
 ];
+
+const LANDING_QUICK_STARTS = QUICK_START_OPTIONS.filter((option) => option.id !== "scratch");
 
 // ── Typewriter hook ─────────────────────────────────────────────────
 function useTypewriter(texts: string[], charDelay = 18, paragraphPause = 600) {
@@ -76,6 +79,7 @@ const Index = () => {
   const { user } = useAuth();
   const heroRef = useRef<HTMLDivElement>(null);
   const howRef = useRef<HTMLDivElement>(null);
+  const resolveStartHref = (href: string) => getGuestOrAuthedHref(href, !!user);
 
   const { displayed, done: typingDone } = useTypewriter(DEMO_PARAGRAPHS, 16, 500);
   const [showChoices, setShowChoices] = useState(false);
@@ -148,12 +152,24 @@ const Index = () => {
               Shape plots, steer characters, and craft entire novels — without writing a single paragraph yourself.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button size="lg" onClick={() => navigate(user ? "/story/new" : "/auth")}>
+              <Button size="lg" onClick={() => navigate(resolveStartHref("/story/new"))}>
                 Start writing <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
               <Button size="lg" variant="outline" onClick={() => navigate("/pricing")}>
                 View plans
               </Button>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {LANDING_QUICK_STARTS.map((option) => (
+                <Button
+                  key={option.id}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate(resolveStartHref(option.href))}
+                >
+                  {option.label}
+                </Button>
+              ))}
             </div>
           </div>
 
@@ -264,9 +280,21 @@ const Index = () => {
           <p className="text-muted-foreground mb-8 max-w-md mx-auto">
             Start for free. No credit card required.
           </p>
-          <Button size="lg" onClick={() => navigate(user ? "/story/new" : "/auth")}>
-            Get started <ArrowRight className="w-4 h-4 ml-1.5" />
-          </Button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Button size="lg" onClick={() => navigate(resolveStartHref("/story/new"))}>
+              Get started <ArrowRight className="w-4 h-4 ml-1.5" />
+            </Button>
+            {LANDING_QUICK_STARTS.map((option) => (
+              <Button
+                key={option.id}
+                size="lg"
+                variant="outline"
+                onClick={() => navigate(resolveStartHref(option.href))}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
         </div>
       </section>
 

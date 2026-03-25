@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { getTierLimits } from "@/lib/subscription";
+import { QUICK_START_OPTIONS } from "@/lib/story-starters";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
@@ -227,9 +228,24 @@ export default function Dashboard() {
             <BookOpen className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
             <h2 className="font-story text-xl text-foreground mb-2">No stories yet</h2>
             <p className="text-muted-foreground mb-6">Start your first story and let AI bring it to life.</p>
-            <Button onClick={() => navigate("/story/new")}>
-              <Plus className="w-4 h-4 mr-1" /> Create your first story
-            </Button>
+            <div className="mx-auto grid max-w-4xl gap-3 sm:grid-cols-3">
+              {QUICK_START_OPTIONS.map((option, index) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => navigate(option.href)}
+                  className={`rounded-xl border p-4 text-left transition-colors hover:bg-secondary/60 hover:border-border focus:outline-none focus:ring-2 focus:ring-ring/40 ${
+                    index === 0 ? "border-primary/25 bg-primary/[0.04]" : "border-border bg-card/60"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <span className="font-medium text-foreground">{option.label}</span>
+                    {index === 0 && <Plus className="w-4 h-4 text-primary shrink-0" />}
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{option.description}</p>
+                </button>
+              ))}
+            </div>
           </div>
         ) : view === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
