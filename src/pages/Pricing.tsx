@@ -8,8 +8,36 @@ import { Button } from "@/components/ui/button";
 import { BookOpen, Sun, Moon, ArrowLeft, Check, Loader2, Crown } from "lucide-react";
 import { toast } from "sonner";
 import SEO from "@/components/SEO";
+import Footer from "@/components/Footer";
 
 const tierOrder: TierKey[] = ["free", "plus", "pro"];
+
+const FAQ_ITEMS = [
+  {
+    question: "Can I try Arcwrite for free?",
+    answer: "Yes. The Free plan lets you create 2 stories with up to 5 chapters each. No credit card required.",
+  },
+  {
+    question: "What happens when I hit my story limit?",
+    answer: "You can still read and share your existing stories. To create new ones, upgrade your plan or delete an existing story to free up a slot.",
+  },
+  {
+    question: "Can I cancel anytime?",
+    answer: "Yes. You can cancel your subscription at any time from the customer portal. You'll keep access until the end of your billing period.",
+  },
+  {
+    question: "What AI models does Arcwrite use?",
+    answer: "Free and Plus plans use standard AI models optimized for interactive fiction. Pro unlocks the best available models for richer, more nuanced prose.",
+  },
+  {
+    question: "Can I export my stories?",
+    answer: "Plus and Pro plans include PDF export. Your story is formatted as a readable document with all the chapters you've written.",
+  },
+  {
+    question: "What are public sharing links?",
+    answer: "Pro users can generate a public link for any story. Anyone with the link can read the full story — no account needed. Great for sharing your work.",
+  },
+];
 
 const tierFeatures: Record<TierKey, string[]> = {
   free: ["2 stories", "5 chapters per story", "Standard AI models"],
@@ -89,6 +117,7 @@ export default function Pricing() {
         title="Pricing & Plans — Arcwrite"
         description="Choose the right Arcwrite plan for your interactive fiction writing. Start free with 2 stories, or upgrade for more stories, PDF export, and the best AI models."
         canonical="/pricing"
+        faqItems={FAQ_ITEMS}
       />
       <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50">
         <div className="flex items-center gap-2">
@@ -216,7 +245,65 @@ export default function Pricing() {
             </button>
           </div>
         )}
+        {/* What's included */}
+        <section className="mt-16 mb-16">
+          <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-8">
+            What's included in every plan
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+            {["AI-powered story generation", "Branching narrative choices", "Story tree visualization", "Six genres and six tones", "Dark and light themes", "Auto-save"].map((item) => (
+              <div key={item} className="flex items-start gap-2 text-sm text-foreground">
+                <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                {item}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Who each plan is for */}
+        <section className="mb-16">
+          <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-8">
+            Who each plan is for
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-5 rounded-2xl border border-border bg-card">
+              <h3 className="font-medium text-foreground mb-2">Free</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Perfect for trying out interactive fiction or writing a short story. Get a feel for AI-assisted storytelling with two full stories.
+              </p>
+            </div>
+            <div className="p-5 rounded-2xl border border-border bg-card">
+              <h3 className="font-medium text-foreground mb-2">Plus</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                For regular writers who want longer stories and more of them. Includes PDF export so you can keep polished copies of your work.
+              </p>
+            </div>
+            <div className="p-5 rounded-2xl border border-border bg-card">
+              <h3 className="font-medium text-foreground mb-2">Pro</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                For power users who want unlimited creation, public sharing links, and the best AI models for richer, more nuanced prose.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="mb-8">
+          <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-8">
+            Frequently asked questions
+          </h2>
+          <div className="max-w-2xl mx-auto space-y-6">
+            {FAQ_ITEMS.map((item) => (
+              <div key={item.question}>
+                <h3 className="font-medium text-foreground mb-1">{item.question}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.answer}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
+
+      <Footer />
     </div>
   );
 }
