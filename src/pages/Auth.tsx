@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { BookOpen, Mail, Eye, EyeOff, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { toast } from "sonner";
+import SEO from "@/components/SEO";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
@@ -63,6 +64,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6 transition-colors duration-500">
+      <SEO title="Sign In — Arcwrite" noindex />
       {/* Theme toggle */}
       <button onClick={toggleTheme} className="fixed top-4 right-4 p-2 rounded-lg hover:bg-secondary transition-colors active:scale-95">
         {theme === "light" ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-muted-foreground" />}

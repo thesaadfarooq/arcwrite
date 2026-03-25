@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Sun, Moon, ArrowLeft, Check, Loader2, Crown } from "lucide-react";
 import { toast } from "sonner";
+import SEO from "@/components/SEO";
 
 const tierOrder: TierKey[] = ["free", "plus", "pro"];
 
@@ -84,6 +85,11 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-background transition-colors duration-500">
+      <SEO
+        title="Pricing & Plans — Arcwrite"
+        description="Choose the right Arcwrite plan for your interactive fiction writing. Start free with 2 stories, or upgrade for more stories, PDF export, and the best AI models."
+        canonical="/pricing"
+      />
       <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50">
         <div className="flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-primary" />
