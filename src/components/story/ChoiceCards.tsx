@@ -25,8 +25,8 @@ interface ChoiceCardsProps {
   isLoading?: boolean;
   sectionLength: SectionLength;
   onSectionLengthChange: (length: SectionLength) => void;
-  chapterCount?: number;
-  chapterLimit?: number;
+  turnCount?: number;
+  turnLimit?: number;
 }
 
 const choiceConfig = {
@@ -36,11 +36,11 @@ const choiceConfig = {
   chaotic: { icon: Zap, color: "choice-chaotic", label: "Wildcard" },
 } as const;
 
-export function ChoiceCards({ choices, onSelect, onRegenerate, isLoading, sectionLength, onSectionLengthChange, chapterCount, chapterLimit }: ChoiceCardsProps) {
+export function ChoiceCards({ choices, onSelect, onRegenerate, isLoading, sectionLength, onSectionLengthChange, turnCount, turnLimit }: ChoiceCardsProps) {
   const [customText, setCustomText] = useState("");
   const [showCustom, setShowCustom] = useState(false);
   const navigate = useNavigate();
-  const atChapterLimit = chapterLimit !== undefined && chapterCount !== undefined && chapterCount >= chapterLimit;
+  const atTurnLimit = turnLimit !== undefined && turnCount !== undefined && turnCount >= turnLimit;
 
   if (isLoading) {
     return (
@@ -55,14 +55,14 @@ export function ChoiceCards({ choices, onSelect, onRegenerate, isLoading, sectio
     );
   }
 
-  if (atChapterLimit) {
+  if (atTurnLimit) {
     return (
       <div className="mt-10 space-y-4">
         <div className="p-5 rounded-xl border border-primary/20 bg-primary/[0.04] text-center">
           <Lock className="w-5 h-5 text-primary mx-auto mb-2" />
-          <p className="text-sm font-medium text-foreground mb-1">Chapter limit reached</p>
+          <p className="text-sm font-medium text-foreground mb-1">Turn limit reached</p>
           <p className="text-xs text-muted-foreground mb-4">
-            You've used all {chapterLimit} chapters available on your current plan.
+            You've used all {turnLimit} turns available on your current plan.
             Upgrade to continue this story.
           </p>
           <Button size="sm" onClick={() => navigate("/pricing")}>
@@ -75,12 +75,12 @@ export function ChoiceCards({ choices, onSelect, onRegenerate, isLoading, sectio
 
   return (
     <div className="mt-10 space-y-4">
-      {chapterLimit !== undefined && chapterCount !== undefined && chapterCount >= chapterLimit - 1 && (
+      {turnLimit !== undefined && turnCount !== undefined && turnCount >= turnLimit - 1 && (
         <div className="p-3 rounded-lg border border-primary/15 bg-primary/[0.03] flex items-center gap-2">
           <Crown className="w-3.5 h-3.5 text-primary shrink-0" />
           <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">{chapterCount}/{chapterLimit} chapters used</span>
-            {" · "}You have {chapterLimit - chapterCount} chapter{chapterLimit - chapterCount === 1 ? "" : "s"} remaining.{" "}
+            <span className="font-medium text-foreground">{turnCount}/{turnLimit} turns used</span>
+            {" · "}You have {turnLimit - turnCount} turn{turnLimit - turnCount === 1 ? "" : "s"} remaining.{" "}
             <button onClick={() => navigate("/pricing")} className="text-primary hover:underline font-medium">Upgrade</button>
           </p>
         </div>

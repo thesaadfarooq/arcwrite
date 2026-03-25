@@ -29,7 +29,7 @@ const HOW_IT_WORKS = [
   {
     icon: GitBranch,
     title: "Choose what happens",
-    description: "After each section, pick from AI-generated directions — or write your own twist.",
+    description: "After each turn, pick from AI-generated directions — or write your own twist.",
   },
   {
     icon: Sparkles,

@@ -15,7 +15,7 @@ const tierOrder: TierKey[] = ["free", "plus", "pro"];
 const FAQ_ITEMS = [
   {
     question: "Can I try Arcwrite for free?",
-    answer: "Yes. The Free plan lets you create 2 stories with up to 5 chapters each. No credit card required.",
+    answer: "Yes. The Free plan lets you create 2 stories with up to 10 turns each. No credit card required.",
   },
   {
     question: "What happens when I hit my story limit?",
@@ -31,7 +31,7 @@ const FAQ_ITEMS = [
   },
   {
     question: "Can I export my stories?",
-    answer: "Plus and Pro plans include PDF export. Your story is formatted as a readable document with all the chapters you've written.",
+    answer: "Plus and Pro plans include PDF export. Your story is formatted as a readable document with everything you've written.",
   },
   {
     question: "What are public sharing links?",
@@ -40,9 +40,9 @@ const FAQ_ITEMS = [
 ];
 
 const tierFeatures: Record<TierKey, string[]> = {
-  free: ["2 stories", "5 chapters per story", "Standard AI models"],
-  plus: ["15 stories", "20 chapters per story", "PDF export", "Standard AI models"],
-  pro: ["Unlimited stories", "Unlimited chapters", "PDF export", "Public sharing links", "Best AI models"],
+  free: ["2 stories", "10 turns per story", "Standard AI models"],
+  plus: ["10 stories", "Unlimited turns", "PDF export", "Standard AI models"],
+  pro: ["Unlimited stories", "Unlimited turns", "PDF export", "Public sharing links", "Best AI models"],
 };
 
 export default function Pricing() {
