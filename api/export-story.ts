@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { query, queryOne } from "./_db";
-import { getAuthenticatedUser } from "./_lib/auth";
+import { query, queryOne } from "./_db.js";
+import { getAuthenticatedUser } from "./_lib/auth.js";
 
 export const config = { runtime: "nodejs", maxDuration: 10 };
 

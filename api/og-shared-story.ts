@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { queryOne } from "./_db";
+import { queryOne } from "./_db.js";
 
 export const config = {
   runtime: "nodejs",

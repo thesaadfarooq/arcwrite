@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { query, queryOne } from "../../_db";
+import { query, queryOne } from "../../_db.js";
 
 export const config = { runtime: "nodejs", maxDuration: 10 };
 
