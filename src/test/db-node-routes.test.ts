@@ -145,6 +145,7 @@ describe("node database routes", () => {
     await handler(
       {
         method: "POST",
+        query: {},
         headers: { authorization: "Bearer token" },
         body: {
           story_id: "story-4",
@@ -175,7 +176,7 @@ describe("node database routes", () => {
   it("returns 404 when patching a node outside the user's story", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-5" });
     queryOneMock.mockResolvedValueOnce(null);
-    const handler = (await import("../../api/db/nodes/[id]/index")).default;
+    const handler = (await import("../../api/db/nodes")).default;
     const res = createResponse();
 
     await handler(
@@ -201,7 +202,7 @@ describe("node database routes", () => {
     queryOneMock
       .mockResolvedValueOnce({ id: "node-6" })
       .mockResolvedValueOnce({ id: "node-6", text: "Updated" });
-    const handler = (await import("../../api/db/nodes/[id]/index")).default;
+    const handler = (await import("../../api/db/nodes")).default;
     const res = createResponse();
 
     await handler(
@@ -242,13 +243,13 @@ describe("node database routes", () => {
         ],
       })
       .mockResolvedValueOnce({ rows: [] });
-    const handler = (await import("../../api/db/nodes/[id]/jump")).default;
+    const handler = (await import("../../api/db/nodes")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "POST",
-        query: { id: "leaf" },
+        query: { id: "leaf", action: "jump" },
         headers: { authorization: "Bearer token" },
       } as any,
       res as any
@@ -295,13 +296,13 @@ describe("node database routes", () => {
         ],
       })
       .mockResolvedValueOnce({ rows: [] });
-    const handler = (await import("../../api/db/nodes/[id]/subtree")).default;
+    const handler = (await import("../../api/db/nodes")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "DELETE",
-        query: { id: "node-8" },
+        query: { id: "node-8", action: "subtree" },
         headers: { authorization: "Bearer token" },
       } as any,
       res as any
@@ -352,13 +353,13 @@ describe("node database routes", () => {
       .mockResolvedValueOnce({ rows: [{ id: "child-9" }] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
-    const handler = (await import("../../api/db/nodes/[id]/split")).default;
+    const handler = (await import("../../api/db/nodes")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "POST",
-        query: { id: "node-9" },
+        query: { id: "node-9", action: "split" },
         headers: { authorization: "Bearer token" },
         body: { position: 1 },
       } as any,
@@ -433,13 +434,13 @@ describe("node database routes", () => {
       .mockResolvedValueOnce({ rows: [{ id: "grandchild-10" }] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
-    const handler = (await import("../../api/db/nodes/[id]/merge")).default;
+    const handler = (await import("../../api/db/nodes")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "POST",
-        query: { id: "node-10" },
+        query: { id: "node-10", action: "merge" },
         headers: { authorization: "Bearer token" },
       } as any,
       res as any
@@ -493,15 +494,15 @@ describe("node database routes", () => {
 
   it("returns a generic 500 when a node transaction fails", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-12" });
-    queryOneMock.mockResolvedValue({ story_id: "story-12" });
+    queryOneMock.mockResolvedValue({ id: "node-12", story_id: "story-12", parent_id: null });
     withTransactionMock.mockRejectedValue(new Error("transaction blew up"));
-    const handler = (await import("../../api/db/nodes/[id]/jump")).default;
+    const handler = (await import("../../api/db/nodes")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "POST",
-        query: { id: "node-12" },
+        query: { id: "node-12", action: "jump" },
         headers: { authorization: "Bearer token" },
       } as any,
       res as any
