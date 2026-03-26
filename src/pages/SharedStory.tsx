@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { BookOpen, ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { getGuestOrAuthedHref, getSharedStorySecondaryCta } from "@/lib/story-starters";
+import { apiClient } from "@/lib/api-client";
 
 type SharedStoryData = {
   id: string;
@@ -14,7 +14,7 @@ type SharedStoryData = {
 
 type SharedStoryNode = {
   text: string | null;
-  chosen_option: string | null;
+  chosen_option: { label?: string } | null;
 };
 
 export default function SharedStory() {
@@ -31,32 +31,21 @@ export default function SharedStory() {
   const loadSharedStory = useCallback(async () => {
     if (!token) return;
     try {
-      const { data: storyData, error: storyErr } = await supabase
-        .from("stories")
-        .select("id, title, genre")
-        .eq("share_token", token)
-        .single();
-
-      const sharedStory = storyData as SharedStoryData | null;
-
-      if (storyErr || !sharedStory) {
+      const data = await apiClient.getSharedStory(token);
+      if (!data.story) {
         setError("Story not found or link has expired");
-        setLoading(false);
         return;
       }
 
-      setStory(sharedStory);
-
-      const { data: nodesData } = await supabase
-        .from("story_nodes")
-        .select("text, chosen_option")
-        .eq("story_id", sharedStory.id)
-        .eq("is_active", true)
-        .order("created_at", { ascending: true });
-
-      setNodes((nodesData as SharedStoryNode[] | null) || []);
-    } catch {
-      setError("Failed to load story");
+      setStory(data.story as SharedStoryData);
+      setNodes((data.nodes as SharedStoryNode[]) || []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      setError(
+        message.toLowerCase().includes("not found")
+          ? "Story not found or link has expired"
+          : "Failed to load story"
+      );
     } finally {
       setLoading(false);
     }

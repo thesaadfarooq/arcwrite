@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { createStory } from "@/lib/story-api";
 import { getTierLimits } from "@/lib/subscription";
 import { GENRE_STARTERS, PREMISE_STARTERS } from "@/lib/story-starters";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
 
 const genres = [
@@ -50,39 +50,30 @@ export default function StoryNew() {
 
   useEffect(() => {
     if (!user || limits.stories === Infinity) return;
-    supabase
-      .from("stories")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .then(({ count }) => {
-        const c = count ?? 0;
-        setStoryCount(c);
-        setAtLimit(c >= limits.stories);
+    apiClient
+      .getStoryCount()
+      .then((count) => {
+        setStoryCount(count);
+        setAtLimit(count >= limits.stories);
+      })
+      .catch(() => {
+        setStoryCount(0);
+        setAtLimit(false);
       });
   }, [user, limits.stories]);
 
   const handleStart = async () => {
     if (!user) return;
-    
-    // Ensure we have a valid session before making DB calls
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      toast.error("Session expired — please sign in again");
-      navigate("/auth");
-      return;
-    }
-    
+
     setCreating(true);
 
     // Check story limit — fail closed (block on error)
     const limits = getTierLimits(tier);
     if (limits.stories !== Infinity) {
-      const { count, error: countErr } = await supabase
-        .from("stories")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id);
-
-      if (countErr || count === null) {
+      let count: number;
+      try {
+        count = await apiClient.getStoryCount();
+      } catch {
         toast.error("Could not verify your story limit. Please try again.");
         setCreating(false);
         return;

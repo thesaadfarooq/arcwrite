@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+import { query, queryOne } from "./_db";
+import { getAuthenticatedUser } from "./_lib/auth";
 
 // Map tier_override values to their corresponding Stripe product IDs
 const TIER_PRODUCT_MAP: Record<string, string> = {
@@ -10,6 +11,19 @@ const TIER_PRODUCT_MAP: Record<string, string> = {
 
 export const config = { runtime: "nodejs", maxDuration: 10 };
 
+function getAuthorizationHeader(req: VercelRequest): string | null {
+  const header = req.headers.authorization;
+  return typeof header === "string" ? header : null;
+}
+
+async function upsertProfileTier(userId: string, tier: string) {
+  await query(
+    `INSERT INTO profiles (user_id, tier) VALUES ($1, $2)
+     ON CONFLICT (user_id) DO UPDATE SET tier = EXCLUDED.tier`,
+    [userId, tier]
+  );
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") return res.status(204).end();
 
@@ -17,38 +31,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
-    const supabaseAdmin = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SECRET_KEY!
-    );
-
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_PUBLISHABLE_KEY!
-    );
-
-    const authHeader = req.headers.authorization || "";
-    if (!authHeader) throw new Error("No authorization header provided");
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
+    const user = await getAuthenticatedUser(getAuthorizationHeader(req));
+    if (!user) return res.status(401).json({ error: "Unauthorized" });
+    if (!user.email) throw new Error("User email not available");
 
     // Check for tier override in profiles (for testing/manual assignment)
-    const { data: profile } = await supabaseAdmin
-      .from("profiles")
-      .select("tier_override")
-      .eq("user_id", user.id)
-      .single();
+    const profile = await queryOne<{ tier_override: string | null }>(
+      "SELECT tier_override FROM profiles WHERE user_id = $1",
+      [user.id]
+    );
 
     if (profile?.tier_override && TIER_PRODUCT_MAP[profile.tier_override]) {
       // Sync tier to profiles so DB triggers can enforce limits
-      await supabaseAdmin
-        .from("profiles")
-        .update({ tier: profile.tier_override })
-        .eq("user_id", user.id);
+      await upsertProfileTier(user.id, profile.tier_override);
 
       return res.json({
         subscribed: true,
@@ -64,10 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (customers.data.length === 0) {
       // Sync tier as free
-      await supabaseAdmin
-        .from("profiles")
-        .update({ tier: "free" })
-        .eq("user_id", user.id);
+      await upsertProfileTier(user.id, "free");
 
       return res.json({ subscribed: false });
     }
@@ -108,14 +100,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Sync resolved tier to profiles for DB-level enforcement
-    await supabaseAdmin
-      .from("profiles")
-      .update({ tier: resolvedTier })
-      .eq("user_id", user.id);
+    await upsertProfileTier(user.id, resolvedTier);
 
     return res.json({ subscribed: hasActiveSub, product_id: productId, subscription_end: subscriptionEnd, cancel_at_period_end: cancelAtPeriodEnd });
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return res.status(500).json({ error: msg });
+  } catch {
+    return res.status(500).json({ error: "Internal server error" });
   }
 }

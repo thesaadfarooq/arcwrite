@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { getTierByProductId, type TierKey } from "@/lib/subscription";
+import { apiClient } from "@/lib/api-client";
 
 interface AuthContextType {
   user: User | null;
@@ -75,12 +76,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (session?.user) {
         setTimeout(async () => {
-          const { data } = await supabase
-            .from("profiles")
-            .select("display_name, avatar_url")
-            .eq("user_id", session.user.id)
-            .single();
-          setProfile(data);
+          try {
+            const data = await apiClient.getProfile();
+            setProfile({
+              display_name: data?.display_name ?? null,
+              avatar_url: data?.avatar_url ?? null,
+            });
+          } catch {
+            setProfile(null);
+          }
         }, 0);
         // Check subscription after auth
         setTimeout(() => refreshSubscription(), 100);

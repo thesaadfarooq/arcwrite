@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { getTierLimits } from "@/lib/subscription";
 import { QUICK_START_OPTIONS } from "@/lib/story-starters";
+import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
@@ -46,55 +46,47 @@ export default function Dashboard() {
   }, []);
 
   const fetchStories = async () => {
-    const { data, error } = await supabase
-      .from("stories")
-      .select("*")
-      .order("updated_at", { ascending: false });
-    if (error) {
-      toast.error("Failed to load stories");
-    } else {
+    try {
+      const data = await apiClient.getStories();
       setStories(data || []);
+    } catch {
+      toast.error("Failed to load stories");
     }
     setLoading(false);
   };
 
   const deleteStory = async (id: string) => {
-    const { error } = await supabase.from("stories").delete().eq("id", id);
-    if (error) {
-      toast.error("Failed to delete story");
-    } else {
+    try {
+      await apiClient.deleteStory(id);
       setStories((prev) => prev.filter((s) => s.id !== id));
       toast.success("Story deleted");
+    } catch {
+      toast.error("Failed to delete story");
     }
   };
 
   const duplicateStory = async (story: Story) => {
-    const { data, error } = await supabase
-      .from("stories")
-      .insert({
-        user_id: user!.id,
+    try {
+      const data = await apiClient.createStory({
         title: `${story.title} (copy)`,
         genre: story.genre,
         tone: story.tone,
         premise: story.premise,
         status: "draft",
-      })
-      .select()
-      .single();
-    if (error) {
-      toast.error("Failed to duplicate story");
-    } else {
+      });
       setStories((prev) => [data, ...prev]);
       toast.success("Story duplicated");
+    } catch {
+      toast.error("Failed to duplicate story");
     }
   };
 
   const renameStory = async (id: string, newTitle: string) => {
-    const { error } = await supabase.from("stories").update({ title: newTitle }).eq("id", id);
-    if (error) {
-      toast.error("Failed to rename story");
-    } else {
+    try {
+      await apiClient.updateStory(id, { title: newTitle });
       setStories((prev) => prev.map((s) => s.id === id ? { ...s, title: newTitle } : s));
+    } catch {
+      toast.error("Failed to rename story");
     }
   };
 
