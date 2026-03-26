@@ -32,7 +32,7 @@ describe("DigitalOcean Postgres migration foundation", () => {
   it("ships a droplet setup script with SSL and firewall configuration", () => {
     const script = readFileSync(join(process.cwd(), "scripts/setup-droplet.sh"), "utf8");
 
-    expect(script).toContain("apt-get install -y -qq postgresql-16 postgresql-client-16 ufw");
+    expect(script).toContain("apt-get install -y -qq postgresql-${PG_VERSION} postgresql-client-${PG_VERSION} ufw");
     expect(script).toContain("ufw allow 22/tcp");
     expect(script).toContain("ufw allow 5432/tcp");
     expect(script).toContain("openssl req -new -x509 -days 3650 -nodes");

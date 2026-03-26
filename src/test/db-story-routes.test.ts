@@ -48,6 +48,7 @@ describe("story database routes", () => {
     await handler(
       {
         method: "GET",
+        query: {},
         headers: {},
       } as any,
       res as any
@@ -66,6 +67,7 @@ describe("story database routes", () => {
     await handler(
       {
         method: "GET",
+        query: {},
         headers: { authorization: "Bearer token" },
       } as any,
       res as any
@@ -90,6 +92,7 @@ describe("story database routes", () => {
     await handler(
       {
         method: "POST",
+        query: {},
         headers: { authorization: "Bearer token" },
         body: {},
       } as any,
@@ -113,6 +116,7 @@ describe("story database routes", () => {
     await handler(
       {
         method: "GET",
+        query: {},
         headers: { authorization: "Bearer token" },
       } as any,
       res as any
@@ -125,7 +129,7 @@ describe("story database routes", () => {
   it("patches only the provided story fields", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-3" });
     queryOneMock.mockResolvedValue({ id: "story-3", title: "Renamed" });
-    const handler = (await import("../../api/db/stories/[id]")).default;
+    const handler = (await import("../../api/db/stories")).default;
     const res = createResponse();
 
     await handler(
@@ -149,7 +153,7 @@ describe("story database routes", () => {
   it("returns 404 when deleting a story that is not owned by the user", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-4" });
     queryMock.mockResolvedValue([]);
-    const handler = (await import("../../api/db/stories/[id]")).default;
+    const handler = (await import("../../api/db/stories")).default;
     const res = createResponse();
 
     await handler(
@@ -169,12 +173,13 @@ describe("story database routes", () => {
   it("returns the authenticated user's story count", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-5" });
     queryCountMock.mockResolvedValue(7);
-    const handler = (await import("../../api/db/stories/count")).default;
+    const handler = (await import("../../api/db/stories")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "GET",
+        query: { count: "true" },
         headers: { authorization: "Bearer token" },
       } as any,
       res as any

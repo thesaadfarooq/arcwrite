@@ -69,7 +69,7 @@ export const apiClient = {
   },
 
   getStory(id: string) {
-    return request<any>(`/api/db/stories/${id}`);
+    return request<any>(`/api/db/stories?id=${id}`);
   },
 
   createStory(payload: Record<string, unknown>) {
@@ -80,20 +80,20 @@ export const apiClient = {
   },
 
   updateStory(id: string, payload: Record<string, unknown>) {
-    return request<any>(`/api/db/stories/${id}`, {
+    return request<any>(`/api/db/stories?id=${id}`, {
       method: "PATCH",
       body: payload,
     });
   },
 
   deleteStory(id: string) {
-    return request<{ success: boolean }>(`/api/db/stories/${id}`, {
+    return request<{ success: boolean }>(`/api/db/stories?id=${id}`, {
       method: "DELETE",
     });
   },
 
   async getStoryCount() {
-    const result = await request<{ count: number }>("/api/db/stories/count");
+    const result = await request<{ count: number }>("/api/db/stories?count=true");
     return result.count;
   },
 
@@ -114,33 +114,33 @@ export const apiClient = {
   },
 
   updateNode(id: string, payload: Record<string, unknown>) {
-    return request<any>(`/api/db/nodes/${id}`, {
+    return request<any>(`/api/db/nodes?id=${id}`, {
       method: "PATCH",
       body: payload,
     });
   },
 
   jumpToNode(id: string) {
-    return request<{ success: boolean }>(`/api/db/nodes/${id}/jump`, {
+    return request<{ success: boolean }>(`/api/db/nodes?id=${id}&action=jump`, {
       method: "POST",
     });
   },
 
   splitNode(id: string, position: number) {
-    return request<any>(`/api/db/nodes/${id}/split`, {
+    return request<any>(`/api/db/nodes?id=${id}&action=split`, {
       method: "POST",
       body: { position },
     });
   },
 
   mergeNode(id: string) {
-    return request<{ success: boolean; parentId: string | null }>(`/api/db/nodes/${id}/merge`, {
+    return request<{ success: boolean; parentId: string | null }>(`/api/db/nodes?id=${id}&action=merge`, {
       method: "POST",
     });
   },
 
   deleteNodeSubtree(id: string) {
-    return request<{ success: boolean; parentId: string | null }>(`/api/db/nodes/${id}/subtree`, {
+    return request<{ success: boolean; parentId: string | null }>(`/api/db/nodes?id=${id}&action=subtree`, {
       method: "DELETE",
     });
   },
