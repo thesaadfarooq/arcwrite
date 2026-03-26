@@ -17,6 +17,13 @@ dist-ssr
 .env.local
 .vercel
 
+# Test artifacts
+playwright-report/
+test-results/
+
+# Supabase
+supabase/.temp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
