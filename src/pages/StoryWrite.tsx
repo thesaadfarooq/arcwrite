@@ -5,6 +5,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { getTierLimits } from "@/lib/subscription";
+import { apiClient } from "@/lib/api-client";
 import { StoryCanvas, type StoryParagraph } from "@/components/story/StoryCanvas";
 import { ChoiceCards, type StoryChoice } from "@/components/story/ChoiceCards";
 import { ChapterSidebar, type Chapter } from "@/components/story/ChapterSidebar";
@@ -352,8 +353,7 @@ export default function StoryWrite() {
       setChoices(result);
 
       if (lastNodeId) {
-        const { supabase } = await import("@/integrations/supabase/client");
-        await supabase.from("story_nodes").update({ choices: result as any }).eq("id", lastNodeId);
+        await apiClient.updateNode(lastNodeId, { choices: result as any });
       }
     } catch {
       toast.error("Failed to generate choices");
@@ -586,12 +586,7 @@ export default function StoryWrite() {
       } else {
         // Generate new share token
         const token = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
-        const { error } = await supabase
-          .from("stories")
-          .update({ share_token: token } as any)
-          .eq("id", storyId);
-
-        if (error) throw error;
+        await apiClient.updateStory(storyId!, { share_token: token });
         setShareToken(token);
         const url = `${window.location.origin}/s/${token}`;
         await navigator.clipboard.writeText(url);

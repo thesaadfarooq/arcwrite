@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { queryOne } from "./_db";
 
 export const config = {
   runtime: "nodejs",
@@ -103,16 +103,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (token) {
     try {
-      const supabase = createClient(
-        process.env.SUPABASE_URL!,
-        process.env.SUPABASE_PUBLISHABLE_KEY!
+      const story = await queryOne<{
+        title: string | null;
+        genre: string | null;
+        premise: string | null;
+      }>(
+        "SELECT title, genre, premise FROM stories WHERE share_token = $1",
+        [token]
       );
-
-      const { data: story } = await supabase
-        .from("stories")
-        .select("title, genre, premise")
-        .eq("share_token", token)
-        .single();
 
       if (story) {
         title = story.title || "Untitled Story";
@@ -123,7 +121,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : "An interactive story on Arcwrite";
       }
     } catch {
-      // Supabase error — fall through to generic OG tags
+      // DB error — fall through to generic OG tags
     }
   }
 

@@ -11,6 +11,13 @@ let mockDashboardStories: Array<Record<string, unknown>> = [];
 let mockStoryCount = 0;
 let mockSharedStory: Record<string, unknown> | null = null;
 let mockSharedNodes: Array<{ text: string; chosen_option: string | null }> = [];
+const { apiClientMock } = vi.hoisted(() => ({
+  apiClientMock: {
+    getStories: vi.fn(),
+    getStoryCount: vi.fn(),
+    getSharedStory: vi.fn(),
+  },
+}));
 
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ theme: "light", toggleTheme: vi.fn() }),
@@ -37,6 +44,10 @@ vi.mock("@/components/SEO", () => ({
   default: () => null,
 }));
 
+vi.mock("@/lib/api-client", () => ({
+  apiClient: apiClientMock,
+}));
+
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
@@ -51,48 +62,6 @@ vi.mock("@/integrations/supabase/client", () => ({
         },
       })),
     },
-    from: vi.fn((table: string) => {
-      if (table === "stories") {
-        return {
-          select: (_columns: string, options?: { count?: string; head?: boolean }) => {
-            if (options?.count === "exact" && options?.head) {
-              return {
-                eq: () => ({
-                  then: (resolve: (value: { count: number }) => unknown) =>
-                    Promise.resolve(resolve({ count: mockStoryCount })),
-                }),
-              };
-            }
-
-            return {
-              order: async () => ({ data: mockDashboardStories, error: null }),
-              eq: () => ({
-                single: async () => ({
-                  data: mockSharedStory,
-                  error: mockSharedStory ? null : { message: "not found" },
-                }),
-              }),
-            };
-          },
-        };
-      }
-
-      if (table === "story_nodes") {
-        const query = {
-          eq: () => query,
-          order: async () => ({ data: mockSharedNodes, error: null }),
-        };
-        return {
-          select: () => query,
-        };
-      }
-
-      return {
-        select: () => ({
-          order: async () => ({ data: [], error: null }),
-        }),
-      };
-    }),
   },
 }));
 
@@ -103,6 +72,18 @@ describe("phase 3 activation polish", () => {
     mockStoryCount = 0;
     mockSharedStory = null;
     mockSharedNodes = [];
+    apiClientMock.getStories.mockResolvedValue(mockDashboardStories);
+    apiClientMock.getStoryCount.mockResolvedValue(mockStoryCount);
+    apiClientMock.getSharedStory.mockImplementation(async () => {
+      if (!mockSharedStory) {
+        throw new Error("Story not found");
+      }
+
+      return {
+        story: mockSharedStory,
+        nodes: mockSharedNodes,
+      };
+    });
   });
 
   it("shows genre and surprise entry points on the landing page", () => {
