@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Stripe from "stripe";
-import { query, queryOne } from "./_db";
-import { getAuthenticatedUser } from "./_lib/auth";
+import { query, queryOne } from "./_db.js";
+import { getAuthenticatedUser } from "./_lib/auth.js";
 
 // Map tier_override values to their corresponding Stripe product IDs
 const TIER_PRODUCT_MAP: Record<string, string> = {

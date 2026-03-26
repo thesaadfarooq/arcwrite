@@ -1,4 +1,4 @@
-import { getAuthenticatedUser, unauthorizedResponse } from "./_lib/auth";
+import { getAuthenticatedUser, unauthorizedResponse } from "./_lib/auth.js";
 
 export const config = { runtime: "edge" };
 

@@ -1,4 +1,4 @@
-import { queryOne } from "./_db";
+import { queryOne } from "./_db.js";
 
 export async function ensureProfile(userId: string): Promise<string> {
   await queryOne(
