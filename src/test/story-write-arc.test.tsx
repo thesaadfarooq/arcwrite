@@ -124,8 +124,10 @@ vi.mock("@/components/story/StoryCanvas", () => ({
 }));
 
 vi.mock("@/components/story/ChapterSidebar", () => ({
-  ChapterSidebar: ({ embedded }: { embedded?: boolean }) => (
-    <div data-testid={embedded ? "embedded-chapter-sidebar" : "chapter-sidebar"} />
+  ChapterSidebar: ({ embedded, reviewSlot }: { embedded?: boolean; reviewSlot?: React.ReactNode }) => (
+    <div data-testid={embedded ? "embedded-chapter-sidebar" : "chapter-sidebar"}>
+      {reviewSlot}
+    </div>
   ),
 }));
 
@@ -527,7 +529,7 @@ describe("StoryWrite narrative arc integration", () => {
       },
       {
         id: "node-4",
-        text: "Fourth section.",
+        text: "Fourth section.\n\nThe radio crackled again.",
         summary: "Fourth",
         story_state: { stage: "falling" },
         choices: [],
@@ -564,7 +566,7 @@ describe("StoryWrite narrative arc integration", () => {
       },
       {
         id: "node-4",
-        text: "Fourth section.",
+        text: "Fourth section.\n\nThe radio crackled again.",
         parent_id: "node-3",
         chosen_option: null,
         created_at: "2026-03-28T10:15:00.000Z",
@@ -765,7 +767,105 @@ describe("StoryWrite narrative arc integration", () => {
     fireEvent.click(screen.getByRole("button", { name: /review/i }));
 
     await waitFor(() => expect(generateChapterSuggestionsMock).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId("embedded-chapter-sidebar")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /hide/i })).toBeInTheDocument();
     expect(screen.getByText(/the viaduct/i)).toBeInTheDocument();
+  });
+
+  it("shows a loading state while chapter review suggestions are generated", async () => {
+    useIsMobileMock.mockReturnValue(true);
+    let resolveSuggestions: ((value: any[]) => void) | undefined;
+    generateChapterSuggestionsMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSuggestions = resolve;
+      }),
+    );
+    getStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        summary: "Second",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        summary: "Third",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        summary: "Fourth",
+        story_state: { stage: "falling" },
+        choices: [],
+        is_active: true,
+      },
+    ]);
+    getAllStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        parent_id: null,
+        chosen_option: null,
+        created_at: "2026-03-28T10:00:00.000Z",
+        is_active: true,
+        starts_chapter: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        parent_id: "node-1",
+        chosen_option: null,
+        created_at: "2026-03-28T10:05:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        parent_id: "node-2",
+        chosen_option: null,
+        created_at: "2026-03-28T10:10:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        parent_id: "node-3",
+        chosen_option: null,
+        created_at: "2026-03-28T10:15:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+    ]);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+
+    await waitFor(() => {
+      const reviewButtons = screen.getAllByRole("button", { name: /reviewing/i });
+      expect(reviewButtons.length).toBeGreaterThan(0);
+      reviewButtons.forEach((button) => expect(button).toBeDisabled());
+    });
+
+    resolveSuggestions?.([]);
+    await waitFor(() => expect(generateChapterSuggestionsMock).toHaveBeenCalledTimes(1));
   });
 
   it("keeps chapter suggestions visible when applying them fails", async () => {
@@ -863,6 +963,667 @@ describe("StoryWrite narrative arc integration", () => {
 
     await waitFor(() => expect(updateNodeChapterTitleMock).toHaveBeenCalledWith("node-4", "The Bargain"));
     expect(screen.getByText(/the bargain/i)).toBeInTheDocument();
+  });
+
+  it("labels rename and chapter-break suggestions differently", async () => {
+    useIsMobileMock.mockReturnValue(true);
+    generateChapterSuggestionsMock.mockResolvedValue([
+      {
+        type: "rename_recent_chapter",
+        anchorNodeId: "node-3",
+        anchorParagraphIndex: null,
+        proposedTitle: "The Bargain",
+        reason: "The chapter now centers on the pact.",
+      },
+      {
+        type: "start_new_chapter_here",
+        anchorNodeId: "node-4",
+        anchorParagraphIndex: 1,
+        proposedTitle: "The Viaduct",
+        reason: "A clear location change begins here.",
+      },
+    ]);
+    getStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        summary: "Second",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        summary: "Third",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.\n\nThe radio crackled again.",
+        summary: "Fourth",
+        story_state: { stage: "falling" },
+        choices: [],
+        is_active: true,
+      },
+    ]);
+    getAllStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        parent_id: null,
+        chosen_option: null,
+        created_at: "2026-03-28T10:00:00.000Z",
+        is_active: true,
+        starts_chapter: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        parent_id: "node-1",
+        chosen_option: null,
+        created_at: "2026-03-28T10:05:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        parent_id: "node-2",
+        chosen_option: null,
+        created_at: "2026-03-28T10:10:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.\n\nThe radio crackled again.",
+        parent_id: "node-3",
+        chosen_option: null,
+        created_at: "2026-03-28T10:15:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+    ]);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+
+    await waitFor(() => expect(screen.getByText(/rename chapter/i)).toBeInTheDocument());
+    expect(screen.getByText(/start new chapter/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /apply title/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /insert chapter/i })).toBeInTheDocument();
+  });
+
+  it("keeps the mobile chapter suggestion list scrollable", async () => {
+    useIsMobileMock.mockReturnValue(true);
+    generateChapterSuggestionsMock.mockResolvedValue([
+      {
+        type: "rename_recent_chapter",
+        anchorNodeId: "node-3",
+        anchorParagraphIndex: null,
+        proposedTitle: "The Bargain",
+        reason: "The chapter now centers on the pact.",
+      },
+      {
+        type: "rename_recent_chapter",
+        anchorNodeId: "node-4",
+        anchorParagraphIndex: null,
+        proposedTitle: "The Crossing",
+        reason: "The chapter shifts into a travel beat.",
+      },
+    ]);
+    getStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        summary: "Second",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        summary: "Third",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        summary: "Fourth",
+        story_state: { stage: "falling" },
+        choices: [],
+        is_active: true,
+      },
+    ]);
+    getAllStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        parent_id: null,
+        chosen_option: null,
+        created_at: "2026-03-28T10:00:00.000Z",
+        is_active: true,
+        starts_chapter: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        parent_id: "node-1",
+        chosen_option: null,
+        created_at: "2026-03-28T10:05:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        parent_id: "node-2",
+        chosen_option: null,
+        created_at: "2026-03-28T10:10:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        parent_id: "node-3",
+        chosen_option: null,
+        created_at: "2026-03-28T10:15:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+    ]);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+
+    const suggestionList = await screen.findByTestId("chapter-suggestion-list");
+    expect(suggestionList).toHaveClass("max-h-[26vh]");
+    expect(suggestionList).toHaveClass("overflow-y-auto");
+  });
+
+  it("keeps the desktop chapter suggestion list scrollable without hiding the chapter sidebar", async () => {
+    useIsMobileMock.mockReturnValue(false);
+    generateChapterSuggestionsMock.mockResolvedValue([
+      {
+        type: "rename_recent_chapter",
+        anchorNodeId: "node-3",
+        anchorParagraphIndex: null,
+        proposedTitle: "The Bargain",
+        reason: "The chapter now centers on the pact.",
+      },
+      {
+        type: "start_new_chapter_here",
+        anchorNodeId: "node-4",
+        anchorParagraphIndex: 1,
+        proposedTitle: "The Viaduct",
+        reason: "A clear location change begins here.",
+      },
+    ]);
+    getStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        summary: "Second",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        summary: "Third",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        summary: "Fourth",
+        story_state: { stage: "falling" },
+        choices: [],
+        is_active: true,
+      },
+    ]);
+    getAllStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        parent_id: null,
+        chosen_option: null,
+        created_at: "2026-03-28T10:00:00.000Z",
+        is_active: true,
+        starts_chapter: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        parent_id: "node-1",
+        chosen_option: null,
+        created_at: "2026-03-28T10:05:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        parent_id: "node-2",
+        chosen_option: null,
+        created_at: "2026-03-28T10:10:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        parent_id: "node-3",
+        chosen_option: null,
+        created_at: "2026-03-28T10:15:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+    ]);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+
+    const suggestionList = await screen.findByTestId("chapter-suggestion-list");
+    expect(suggestionList).toHaveClass("max-h-[32vh]");
+    expect(suggestionList).toHaveClass("overflow-y-auto");
+    expect(screen.getByTestId("chapter-sidebar")).toBeInTheDocument();
+  });
+
+  it("shows a pending state while applying a chapter split suggestion", async () => {
+    useIsMobileMock.mockReturnValue(true);
+    let resolveSplit: ((value: { id: string }) => void) | undefined;
+    splitNodeAtPositionMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSplit = resolve;
+      }),
+    );
+    generateChapterSuggestionsMock.mockResolvedValue([
+      {
+        type: "start_new_chapter_here",
+        anchorNodeId: "node-4",
+        anchorParagraphIndex: 1,
+        proposedTitle: "The Viaduct",
+        reason: "A clear location change begins here.",
+      },
+    ]);
+    getStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        summary: "Second",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        summary: "Third",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        summary: "Fourth",
+        story_state: { stage: "falling" },
+        choices: [],
+        is_active: true,
+      },
+    ]);
+    getAllStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        parent_id: null,
+        chosen_option: null,
+        created_at: "2026-03-28T10:00:00.000Z",
+        is_active: true,
+        starts_chapter: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        parent_id: "node-1",
+        chosen_option: null,
+        created_at: "2026-03-28T10:05:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        parent_id: "node-2",
+        chosen_option: null,
+        created_at: "2026-03-28T10:10:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        parent_id: "node-3",
+        chosen_option: null,
+        created_at: "2026-03-28T10:15:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+    ]);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+    await waitFor(() => expect(screen.getByText(/the viaduct/i)).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /insert chapter/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /applying/i })).toBeDisabled(),
+    );
+
+    resolveSplit?.({ id: "node-4b" });
+  });
+
+  it("re-runs chapter review after applying a split suggestion", async () => {
+    useIsMobileMock.mockReturnValue(true);
+    splitNodeAtPositionMock.mockResolvedValue({ id: "node-4b" });
+    generateChapterSuggestionsMock
+      .mockResolvedValueOnce([
+        {
+          type: "start_new_chapter_here",
+          anchorNodeId: "node-4",
+          anchorParagraphIndex: 1,
+          proposedTitle: "The Viaduct",
+          reason: "A clear location change begins here.",
+        },
+        {
+          type: "rename_recent_chapter",
+          anchorNodeId: "node-3",
+          anchorParagraphIndex: null,
+          proposedTitle: "The Bargain",
+          reason: "The chapter now centers on the pact.",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          type: "rename_recent_chapter",
+          anchorNodeId: "node-4b",
+          anchorParagraphIndex: null,
+          proposedTitle: "The Crossing",
+          reason: "The new chapter now has a clearer focus.",
+        },
+      ]);
+    getStoryNodesMock
+      .mockResolvedValueOnce([
+        {
+          id: "node-1",
+          text: "Opening paragraph.",
+          summary: "Opening",
+          story_state: { stage: "setup" },
+          choices: [],
+          is_active: true,
+        },
+        {
+          id: "node-2",
+          text: "Second section.",
+          summary: "Second",
+          story_state: { stage: "middle" },
+          choices: [],
+          is_active: true,
+        },
+        {
+          id: "node-3",
+          text: "Third section.",
+          summary: "Third",
+          story_state: { stage: "middle" },
+          choices: [],
+          is_active: true,
+        },
+        {
+          id: "node-4",
+          text: "Fourth section.\n\nThe radio crackled again.",
+          summary: "Fourth",
+          story_state: { stage: "falling" },
+          choices: [],
+          is_active: true,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "node-1",
+          text: "Opening paragraph.",
+          summary: "Opening",
+          story_state: { stage: "setup" },
+          choices: [],
+          is_active: true,
+        },
+        {
+          id: "node-2",
+          text: "Second section.",
+          summary: "Second",
+          story_state: { stage: "middle" },
+          choices: [],
+          is_active: true,
+        },
+        {
+          id: "node-3",
+          text: "Third section.",
+          summary: "Third",
+          story_state: { stage: "middle" },
+          choices: [],
+          is_active: true,
+        },
+        {
+          id: "node-4",
+          text: "Fourth section.",
+          summary: "Fourth",
+          story_state: { stage: "falling" },
+          choices: [],
+          is_active: true,
+        },
+        {
+          id: "node-4b",
+          text: "The radio crackled again.",
+          summary: "Crossing",
+          story_state: { stage: "falling" },
+          choices: [],
+          is_active: true,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "node-1",
+          text: "Opening paragraph.",
+          summary: "Opening",
+          story_state: { stage: "setup" },
+          choices: [],
+          is_active: true,
+        },
+        {
+          id: "node-2",
+          text: "Second section.",
+          summary: "Second",
+          story_state: { stage: "middle" },
+          choices: [],
+          is_active: true,
+        },
+        {
+          id: "node-3",
+          text: "Third section.",
+          summary: "Third",
+          story_state: { stage: "middle" },
+          choices: [],
+          is_active: true,
+        },
+        {
+          id: "node-4",
+          text: "Fourth section.",
+          summary: "Fourth",
+          story_state: { stage: "falling" },
+          choices: [],
+          is_active: true,
+        },
+        {
+          id: "node-4b",
+          text: "The radio crackled again.",
+          summary: "Crossing",
+          story_state: { stage: "falling" },
+          choices: [],
+          is_active: true,
+        },
+      ]);
+    getAllStoryNodesMock
+      .mockResolvedValueOnce([
+        {
+          id: "node-1",
+          text: "Opening paragraph.",
+          parent_id: null,
+          chosen_option: null,
+          created_at: "2026-03-28T10:00:00.000Z",
+          is_active: true,
+          starts_chapter: true,
+        },
+        {
+          id: "node-2",
+          text: "Second section.",
+          parent_id: "node-1",
+          chosen_option: null,
+          created_at: "2026-03-28T10:05:00.000Z",
+          is_active: true,
+          starts_chapter: false,
+        },
+        {
+          id: "node-3",
+          text: "Third section.",
+          parent_id: "node-2",
+          chosen_option: null,
+          created_at: "2026-03-28T10:10:00.000Z",
+          is_active: true,
+          starts_chapter: false,
+        },
+        {
+          id: "node-4",
+          text: "Fourth section.\n\nThe radio crackled again.",
+          parent_id: "node-3",
+          chosen_option: null,
+          created_at: "2026-03-28T10:15:00.000Z",
+          is_active: true,
+          starts_chapter: false,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "node-1",
+          text: "Opening paragraph.",
+          parent_id: null,
+          chosen_option: null,
+          created_at: "2026-03-28T10:00:00.000Z",
+          is_active: true,
+          starts_chapter: true,
+        },
+        {
+          id: "node-2",
+          text: "Second section.",
+          parent_id: "node-1",
+          chosen_option: null,
+          created_at: "2026-03-28T10:05:00.000Z",
+          is_active: true,
+          starts_chapter: false,
+        },
+        {
+          id: "node-3",
+          text: "Third section.",
+          parent_id: "node-2",
+          chosen_option: null,
+          created_at: "2026-03-28T10:10:00.000Z",
+          is_active: true,
+          starts_chapter: false,
+        },
+        {
+          id: "node-4",
+          text: "Fourth section.",
+          parent_id: "node-3",
+          chosen_option: null,
+          created_at: "2026-03-28T10:15:00.000Z",
+          is_active: true,
+          starts_chapter: false,
+        },
+        {
+          id: "node-4b",
+          text: "The radio crackled again.",
+          parent_id: "node-4",
+          chosen_option: null,
+          created_at: "2026-03-28T10:20:00.000Z",
+          is_active: true,
+          starts_chapter: true,
+        },
+      ]);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+    await waitFor(() => expect(screen.getByText(/the viaduct/i)).toBeInTheDocument());
+    expect(screen.getByText(/the bargain/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /insert chapter/i }));
+
+    await waitFor(() => expect(splitNodeAtPositionMock).toHaveBeenCalledWith("story-1", "node-4", 1));
+    await waitFor(() => expect(generateChapterSuggestionsMock).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText(/the viaduct/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/the bargain/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/the crossing/i)).toBeInTheDocument();
   });
 
   it("keeps the desktop sidebar path available when not on mobile", async () => {

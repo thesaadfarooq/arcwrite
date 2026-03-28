@@ -73,7 +73,7 @@ export function ChapterSidebar({
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       {/* Header */}
       {!embedded && (
         <div className="p-4 border-b border-border">
@@ -104,7 +104,7 @@ export function ChapterSidebar({
       ) : null}
 
       {/* Chapter List */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {chapters.length === 0 ? (
           <div className="px-3 py-6 text-center text-xs text-muted-foreground">
             Chapters will appear as your story grows

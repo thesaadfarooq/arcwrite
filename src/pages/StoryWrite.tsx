@@ -196,6 +196,10 @@ export default function StoryWrite() {
   const [isStoryComplete, setIsStoryComplete] = useState(false);
   const [chapterSuggestions, setChapterSuggestions] = useState<ChapterSuggestion[]>([]);
   const [chapterSuggestionsTipId, setChapterSuggestionsTipId] = useState<string | null>(null);
+  const [isChapterReviewLoading, setIsChapterReviewLoading] = useState(false);
+  const [chapterSuggestionsExpanded, setChapterSuggestionsExpanded] = useState(false);
+  const [pendingBreakKey, setPendingBreakKey] = useState<string | null>(null);
+  const [applyingSuggestionKey, setApplyingSuggestionKey] = useState<string | null>(null);
   const [chapterReviewCheckpoint, setChapterReviewCheckpoint] = useState<ChapterReviewCheckpoint>({
     reviewedAtTurns: 0,
     dismissedAtTurns: null,
@@ -652,21 +656,40 @@ export default function StoryWrite() {
     }
   };
 
-  const handleOpenChapterReview = async () => {
+  const handleOpenChapterReview = async (options?: {
+    force?: boolean;
+    activeNodesOverride?: any[];
+    currentTipIdOverride?: string | null;
+  }) => {
+    const reviewActiveNodes = options?.activeNodesOverride ?? activeNodes;
+    const currentTipId = options?.currentTipIdOverride ?? lastNodeId;
+
     if (isMobile) {
       setStructureOpen(true);
     }
 
-    if (!isChapterSuggestionsStale({ suggestionsTipId: chapterSuggestionsTipId, currentTipId: lastNodeId })) {
+    if (
+      !options?.force &&
+      !isChapterSuggestionsStale({ suggestionsTipId: chapterSuggestionsTipId, currentTipId })
+    ) {
+      if (chapterSuggestions.length > 0) {
+        setChapterSuggestionsExpanded(true);
+      }
       return;
     }
 
+    if (isChapterReviewLoading) return;
+
+    setIsChapterReviewLoading(true);
+    setChapterSuggestionsExpanded(true);
+
     try {
-      const recentNodes = activeNodes.slice(-6).map((node) => ({
+      const recentNodes = reviewActiveNodes.slice(-6).map((node) => ({
         id: node.id,
         text: node.text || "",
         startsChapter: Boolean((node as any).starts_chapter),
         chapterTitle: (node as any).chapter_title || null,
+        paragraphCount: Math.max(1, (node.text || "").split("\n\n").filter(Boolean).length),
       }));
 
       const suggestions = await generateChapterSuggestions({
@@ -675,24 +698,28 @@ export default function StoryWrite() {
         tone: storyMeta.tone,
         genre: storyMeta.genre,
         summary,
-        beat: buildBeatPayload(currentBeat, false),
+        beat: buildBeatPayload(getCurrentBeat(reviewActiveNodes.length), false),
       });
 
       setChapterSuggestions(suggestions);
-      setChapterSuggestionsTipId(lastNodeId);
+      setChapterSuggestionsTipId(currentTipId);
+      setChapterSuggestionsExpanded(suggestions.length > 0);
       setChapterReviewCheckpoint({
-        reviewedAtTurns: activeNodes.length,
+        reviewedAtTurns: reviewActiveNodes.length,
         dismissedAtTurns: null,
-        reviewedTipId: lastNodeId,
+        reviewedTipId: currentTipId,
       });
     } catch {
       toast.error("Failed to review chapter structure");
+    } finally {
+      setIsChapterReviewLoading(false);
     }
   };
 
   const handleDismissChapterReview = () => {
     setChapterSuggestions([]);
     setChapterSuggestionsTipId(null);
+    setChapterSuggestionsExpanded(false);
     setChapterReviewCheckpoint((prev) => ({
       ...prev,
       dismissedAtTurns: activeNodes.length,
@@ -700,21 +727,45 @@ export default function StoryWrite() {
   };
 
   const handleApplyChapterSuggestion = async (suggestion: ChapterSuggestion) => {
+    const suggestionKey = `${suggestion.type}-${suggestion.anchorNodeId}-${suggestion.anchorParagraphIndex ?? "rename"}`;
+    if (applyingSuggestionKey) return;
+
+    setApplyingSuggestionKey(suggestionKey);
     let applied = false;
 
-    if (suggestion.type === "rename_recent_chapter" && suggestion.proposedTitle) {
-      applied = await handleChapterRename(suggestion.anchorNodeId, suggestion.proposedTitle);
+    try {
+      if (suggestion.type === "rename_recent_chapter" && suggestion.proposedTitle) {
+        applied = await handleChapterRename(suggestion.anchorNodeId, suggestion.proposedTitle);
+      }
+
+      if (suggestion.type === "start_new_chapter_here" && typeof suggestion.anchorParagraphIndex === "number") {
+        applied = await handleInsertBreak(suggestion.anchorNodeId, suggestion.anchorParagraphIndex);
+      }
+
+      if (!applied) return;
+
+      if (suggestion.type === "rename_recent_chapter") {
+        setChapterSuggestions((prev) =>
+          prev.filter(
+            (candidate) =>
+              `${candidate.type}-${candidate.anchorNodeId}-${candidate.anchorParagraphIndex ?? "rename"}` !== suggestionKey,
+          ),
+        );
+        return;
+      }
+
+      setChapterSuggestions((prev) => prev.filter((candidate) => candidate.type === "rename_recent_chapter"));
+
+      const refreshedActiveNodes = await getStoryNodes(storyId!);
+      const refreshedTipId = refreshedActiveNodes[refreshedActiveNodes.length - 1]?.id ?? null;
+      await handleOpenChapterReview({
+        force: true,
+        activeNodesOverride: refreshedActiveNodes,
+        currentTipIdOverride: refreshedTipId,
+      });
+    } finally {
+      setApplyingSuggestionKey(null);
     }
-
-    if (suggestion.type === "start_new_chapter_here" && typeof suggestion.anchorParagraphIndex === "number") {
-      applied = await handleInsertBreak(suggestion.anchorNodeId, suggestion.anchorParagraphIndex);
-    }
-
-    if (!applied) return;
-
-    setChapterSuggestions([]);
-    setChapterSuggestionsTipId(null);
-    setStructureOpen(false);
   };
 
   const handleBeginConclusion = async () => {
@@ -972,7 +1023,17 @@ export default function StoryWrite() {
   };
 
   const handleInsertBreak = async (nodeId: string, paragraphIndex: number) => {
-    if (isGenerating || isProcessing) return;
+    if (isGenerating || isProcessing || pendingBreakKey) return false;
+
+    const targetNode = activeNodes.find((node) => node.id === nodeId);
+    const paragraphCount = Math.max(1, (targetNode?.text || "").split("\n\n").filter(Boolean).length);
+    if (!targetNode || paragraphIndex <= 0 || paragraphIndex >= paragraphCount) {
+      toast.error("That chapter break is no longer valid. Review the structure and try again.");
+      return false;
+    }
+
+    const breakKey = `${nodeId}:${paragraphIndex}`;
+    setPendingBreakKey(breakKey);
     try {
       await splitNodeAtPosition(storyId!, nodeId, paragraphIndex);
       const activeNodes = await getStoryNodes(storyId!);
@@ -980,12 +1041,18 @@ export default function StoryWrite() {
       setParagraphs(paras);
       const lastNode = activeNodes[activeNodes.length - 1];
       setLastNodeId(lastNode?.id || null);
+      setSummary(lastNode?.summary || "");
+      setStoryState(lastNode?.story_state || {});
+      setChoices([]);
       await refreshAllNodes();
+      if (lastNode) fetchChoices(paras.map((p) => p.text).join("\n\n"));
       toast.success("Chapter break inserted");
       return true;
     } catch (e: any) {
       toast.error(e.message || "Failed to insert break");
       return false;
+    } finally {
+      setPendingBreakKey(null);
     }
   };
 
@@ -993,6 +1060,7 @@ export default function StoryWrite() {
     chapterReviewEligible && !isDesyncced && !isProcessing && !isStoryComplete ? (
       <ChapterReviewPrompt
         suggestionCount={chapterSuggestions.length || undefined}
+        isLoading={isChapterReviewLoading}
         onReview={() => {
           void handleOpenChapterReview();
         }}
@@ -1001,40 +1069,108 @@ export default function StoryWrite() {
 
   const chapterSuggestionCards =
     chapterSuggestions.length > 0 ? (
-      <div className="space-y-2">
-        {chapterSuggestions.map((suggestion) => (
-          <div
-            key={`${suggestion.type}-${suggestion.anchorNodeId}-${suggestion.anchorParagraphIndex ?? "rename"}`}
-            className="rounded-xl border border-border bg-card p-3"
-          >
-            <p className="text-sm font-medium text-foreground">
-              {suggestion.proposedTitle || suggestion.type}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">{suggestion.reason}</p>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  void handleApplyChapterSuggestion(suggestion);
-                }}
-                className="rounded-lg bg-primary px-3 py-2 text-xs text-primary-foreground transition-colors hover:bg-primary/90"
+      <div
+        data-testid="chapter-suggestion-list"
+        className={
+          isMobile
+            ? "space-y-2 max-h-[26vh] overflow-y-auto overscroll-contain pr-1"
+            : "space-y-2 max-h-[32vh] overflow-y-auto overscroll-contain pr-1"
+        }
+      >
+        {chapterSuggestions.map((suggestion) => {
+          const suggestionKey = `${suggestion.type}-${suggestion.anchorNodeId}-${suggestion.anchorParagraphIndex ?? "rename"}`;
+          const isApplyingSuggestion = applyingSuggestionKey === suggestionKey;
+          const isRenameSuggestion = suggestion.type === "rename_recent_chapter";
+          const suggestionLabel = isRenameSuggestion ? "Rename chapter" : "Start new chapter";
+          const primaryActionLabel = isRenameSuggestion ? "Apply title" : "Insert chapter";
+
+          return (
+            <div
+              key={suggestionKey}
+              className="rounded-xl border border-border bg-card p-3"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                {suggestionLabel}
+              </p>
+              <p className="mt-1 text-sm font-medium text-foreground">
+                {suggestion.proposedTitle ||
+                  (isRenameSuggestion ? "Suggested chapter title" : "Suggested chapter break")}
+              </p>
+              {!isRenameSuggestion ? (
+                <p className="mt-1 text-xs text-muted-foreground">Creates a break at this point.</p>
+              ) : null}
+              <p
+                className="mt-2 text-xs text-muted-foreground"
+                style={
+                  isMobile
+                    ? {
+                        display: "-webkit-box",
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }
+                    : undefined
+                }
               >
-                Apply
-              </button>
-              <button
-                type="button"
-                onClick={handleDismissChapterReview}
-                className="rounded-lg bg-secondary px-3 py-2 text-xs transition-colors hover:bg-secondary/80"
-              >
-                Dismiss
-              </button>
+                {suggestion.reason}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleApplyChapterSuggestion(suggestion);
+                  }}
+                  disabled={Boolean(applyingSuggestionKey)}
+                  className="rounded-lg bg-primary px-3 py-2 text-xs text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isApplyingSuggestion ? "Applying…" : primaryActionLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDismissChapterReview}
+                  disabled={Boolean(applyingSuggestionKey)}
+                  className="rounded-lg bg-secondary px-3 py-2 text-xs transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  Dismiss
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     ) : null;
 
-  const chapterReviewPanel = chapterSuggestionCards ?? reviewPromptCard;
+  const mobileChapterReviewPanel =
+    chapterSuggestions.length > 0 ? (
+      <div className="rounded-2xl border border-border bg-card/80 px-4 py-3 shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              {chapterSuggestions.length} chapter suggestion{chapterSuggestions.length === 1 ? "" : "s"} ready
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Keep writing or expand this review without losing sight of your chapters.
+            </p>
+            {isChapterReviewLoading ? (
+              <p className="mt-1 text-xs text-primary">Refreshing suggestions…</p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => setChapterSuggestionsExpanded((prev) => !prev)}
+            className="shrink-0 rounded-lg bg-secondary px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-secondary/80 active:scale-[0.98]"
+          >
+            {chapterSuggestionsExpanded ? "Hide" : "Show"}
+          </button>
+        </div>
+
+        {chapterSuggestionsExpanded ? <div className="mt-3">{chapterSuggestionCards}</div> : null}
+      </div>
+    ) : (
+      reviewPromptCard
+    );
+
+  const chapterReviewPanel = isMobile ? mobileChapterReviewPanel : chapterSuggestionCards ?? reviewPromptCard;
 
   const toolsActions = (
     <div className="grid gap-2">
@@ -1279,6 +1415,7 @@ export default function StoryWrite() {
         onInsertBreak={handleInsertBreak}
         onRenameChapter={!isMobile || chapterEditMode ? handleChapterRename : undefined}
         chapterEditMode={isMobile ? chapterEditMode : undefined}
+        pendingBreakKey={pendingBreakKey}
       />
 
       {isMobile ? reviewPromptCard : null}

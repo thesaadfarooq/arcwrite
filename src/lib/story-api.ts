@@ -19,6 +19,7 @@ type ChapterReviewNode = {
   text: string;
   startsChapter: boolean;
   chapterTitle: string | null;
+  paragraphCount?: number;
 };
 
 async function getAccessToken(): Promise<string> {
