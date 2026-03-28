@@ -3,6 +3,15 @@ import type { StoryChoice } from "@/components/story/ChoiceCards";
 import { apiClient } from "@/lib/api-client";
 
 export type SectionLength = "short" | "medium" | "long" | "epic";
+export type NarrativePhase = "setup" | "rising" | "climax" | "falling" | "resolution";
+export type StoryBeat = {
+  phase: NarrativePhase;
+  progress: number;
+  phaseProgress?: number;
+  turnsRemaining?: number;
+  isNearEnd?: boolean;
+  isFinalSection?: boolean;
+};
 
 async function getAccessToken(): Promise<string> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -11,10 +20,11 @@ async function getAccessToken(): Promise<string> {
 }
 
 export async function streamSection({
-  premise, genre, tone, direction, summary, recentText, storyState, length, onDelta, onDone, onError,
+  premise, genre, tone, direction, summary, recentText, storyState, length, beat, onDelta, onDone, onError,
 }: {
   premise?: string; genre?: string; tone?: string; direction?: string;
   summary?: string; recentText?: string; storyState?: any; length?: SectionLength;
+  beat?: StoryBeat;
   onDelta: (text: string) => void; onDone: (fullText: string) => void; onError: (error: string) => void;
 }) {
   try {
@@ -22,7 +32,17 @@ export async function streamSection({
     const resp = await fetch("/api/generate-section", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ premise, genre, tone, direction, summary, recentText, storyState, length: length || "medium" }),
+      body: JSON.stringify({
+        premise,
+        genre,
+        tone,
+        direction,
+        summary,
+        recentText,
+        storyState,
+        length: length || "medium",
+        beat,
+      }),
     });
 
     if (!resp.ok) {
@@ -75,15 +95,16 @@ export async function streamSection({
 }
 
 export async function generateChoices({
-  recentText, summary, storyState, tone, genre, premise,
+  recentText, summary, storyState, tone, genre, premise, beat,
 }: {
   recentText: string; summary?: string; storyState?: any; tone?: string; genre?: string; premise?: string;
+  beat?: StoryBeat;
 }): Promise<StoryChoice[]> {
   const accessToken = await getAccessToken();
   const resp = await fetch("/api/generate-choices", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify({ recentText, summary, storyState, tone, genre, premise }),
+    body: JSON.stringify({ recentText, summary, storyState, tone, genre, premise, beat }),
   });
 
   if (!resp.ok) {
@@ -120,12 +141,14 @@ export async function createStory({
   genre,
   tone,
   premise,
+  targetTurns,
   userId,
 }: {
   title?: string;
   genre?: string;
   tone?: string;
   premise?: string;
+  targetTurns?: number;
   userId: string;
 }) {
   void userId;
@@ -135,6 +158,7 @@ export async function createStory({
     tone,
     premise,
     status: "in_progress",
+    target_turns: targetTurns ?? 35,
   });
 }
 

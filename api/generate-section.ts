@@ -9,6 +9,39 @@ const LENGTH_PRESETS: Record<string, { paragraphs: string; maxTokens: number }> 
   epic:   { paragraphs: "8-10 paragraphs (~1000 words)", maxTokens: 4000 },
 };
 
+type NarrativePhase = "setup" | "rising" | "climax" | "falling" | "resolution";
+type Beat = {
+  phase?: NarrativePhase;
+  progress?: number;
+  phaseProgress?: number;
+  turnsRemaining?: number;
+  isNearEnd?: boolean;
+  isFinalSection?: boolean;
+};
+
+const DEFAULT_PACING = "End at a natural decision point where the reader could choose what happens next.";
+
+function getPacingInstruction(beat?: Beat) {
+  if (beat?.isFinalSection) {
+    return "This is the final section of the story. Write a conclusive, satisfying ending. Resolve the central thread, give the protagonist a final moment, and close with an image or line that resonates. Do not set up further choices - this is the end.";
+  }
+
+  switch (beat?.phase) {
+    case "setup":
+      return "You are in the opening of this story. Establish the world and characters with vivid detail, ground the reader in the setting, and plant the seeds of the central conflict. End this section at a natural pause - not a cliffhanger. Let the reader settle into the world before things start moving.";
+    case "rising":
+      return "The story is building momentum. Develop complications, deepen character relationships, and raise the stakes. Vary your section endings - sometimes build tension, sometimes end with a quiet character moment or a surprising revelation. Not every section needs a cliffhanger.";
+    case "climax":
+      return "The story is approaching its peak. Escalate the central conflict toward confrontation or revelation. This is where the biggest, most consequential moments happen. End with impact - this is where cliffhangers and dramatic beats feel earned.";
+    case "falling":
+      return "The major conflict has peaked. Show the aftermath and consequences, resolve secondary threads, and let characters process what happened. The pace should feel like exhaling - purposeful but no longer frantic.";
+    case "resolution":
+      return "Bring the story to a satisfying close. Tie up remaining threads, deliver a final emotional beat, and give the reader a sense of completion. This section should feel conclusive. No need to set up what's next - let the story land.";
+    default:
+      return DEFAULT_PACING;
+  }
+}
+
 export default async function handler(req: Request) {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204 });
@@ -19,13 +52,22 @@ export default async function handler(req: Request) {
     if (!user) return unauthorizedResponse();
 
     const body = await req.json();
-    const { tone, storyState, summary, recentText, direction, premise, genre, length } = body;
+    const { tone, storyState, summary, recentText, direction, premise, genre, length, beat } = body;
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
 
     const preset = LENGTH_PRESETS[length] || LENGTH_PRESETS.medium;
-    const systemPrompt = buildSystemPrompt({ tone, storyState, summary, recentText, premise, genre, paragraphInstruction: preset.paragraphs });
+    const systemPrompt = buildSystemPrompt({
+      tone,
+      storyState,
+      summary,
+      recentText,
+      premise,
+      genre,
+      paragraphInstruction: preset.paragraphs,
+      pacingInstruction: getPacingInstruction(beat),
+    });
 
     const userMessage = direction
       ? `Continue the story based on this direction: ${direction}`
@@ -86,6 +128,7 @@ function buildSystemPrompt({
   premise,
   genre,
   paragraphInstruction,
+  pacingInstruction,
 }: {
   tone?: string;
   storyState?: any;
@@ -94,6 +137,7 @@ function buildSystemPrompt({
   premise?: string;
   genre?: string;
   paragraphInstruction: string;
+  pacingInstruction: string;
 }) {
   let prompt = `You are a master storyteller and prose writer. Write rich, immersive narrative prose.
 
@@ -101,7 +145,7 @@ RULES:
 - Write ${paragraphInstruction} of polished, publishable prose
 - Show, don't tell. Use vivid sensory details
 - Maintain consistent characterization and plot continuity
-- End at a natural decision point where the reader could choose what happens next
+- ${pacingInstruction}
 - Do NOT include meta-commentary, options, or questions — just write the story
 - Each paragraph should be separated by a blank line
 - When naming characters, be creative and varied. Never default to common AI-generated names like "Mara", "Kael", "Elara", "Lyra", or "Aric". Choose distinctive names that fit the specific genre, setting, and cultural context of the story.`;

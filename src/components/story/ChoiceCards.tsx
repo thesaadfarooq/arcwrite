@@ -1,12 +1,42 @@
-import { Shield, Flame, Heart, Zap, RefreshCw, Send, AlignLeft, Lock, Crown } from "lucide-react";
+import {
+  Shield,
+  Flame,
+  Heart,
+  Zap,
+  RefreshCw,
+  Send,
+  Lock,
+  Crown,
+  Compass,
+  Users,
+  Eye,
+  Puzzle,
+  Swords,
+  CheckCircle2,
+  Flag,
+  Sparkles,
+} from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { SectionLength } from "@/lib/story-api";
+import { StoryComplete } from "@/components/story/StoryComplete";
 
 export interface StoryChoice {
-  type: "safe" | "risky" | "emotional" | "chaotic";
+  type:
+    | "safe"
+    | "risky"
+    | "emotional"
+    | "chaotic"
+    | "explore"
+    | "connect"
+    | "foreshadow"
+    | "complicate"
+    | "confront"
+    | "resolve"
+    | "conclude"
+    | "epilogue";
   label: string;
   preview: string;
 }
@@ -23,6 +53,9 @@ interface ChoiceCardsProps {
   onSelect: (choice: StoryChoice | { type: "custom"; label: string; preview: string }) => void;
   onRegenerate: () => void;
   isLoading?: boolean;
+  isNearEnd?: boolean;
+  onBeginConclusion?: () => void;
+  isStoryComplete?: boolean;
   sectionLength: SectionLength;
   onSectionLengthChange: (length: SectionLength) => void;
   turnCount?: number;
@@ -34,13 +67,37 @@ const choiceConfig = {
   risky: { icon: Flame, color: "choice-risky", label: "Twist" },
   emotional: { icon: Heart, color: "choice-emotional", label: "Emotional" },
   chaotic: { icon: Zap, color: "choice-chaotic", label: "Wildcard" },
+  explore: { icon: Compass, color: "choice-safe", label: "Discovery" },
+  connect: { icon: Users, color: "choice-emotional", label: "Bond" },
+  foreshadow: { icon: Eye, color: "choice-risky", label: "Omen" },
+  complicate: { icon: Puzzle, color: "choice-chaotic", label: "Complication" },
+  confront: { icon: Swords, color: "choice-risky", label: "Showdown" },
+  resolve: { icon: CheckCircle2, color: "choice-safe", label: "Resolution" },
+  conclude: { icon: Flag, color: "choice-emotional", label: "Conclusion" },
+  epilogue: { icon: Sparkles, color: "choice-chaotic", label: "Epilogue" },
 } as const;
 
-export function ChoiceCards({ choices, onSelect, onRegenerate, isLoading, sectionLength, onSectionLengthChange, turnCount, turnLimit }: ChoiceCardsProps) {
+export function ChoiceCards({
+  choices,
+  onSelect,
+  onRegenerate,
+  isLoading,
+  isNearEnd,
+  onBeginConclusion,
+  isStoryComplete,
+  sectionLength,
+  onSectionLengthChange,
+  turnCount,
+  turnLimit,
+}: ChoiceCardsProps) {
   const [customText, setCustomText] = useState("");
   const [showCustom, setShowCustom] = useState(false);
   const navigate = useNavigate();
   const atTurnLimit = turnLimit !== undefined && turnCount !== undefined && turnCount >= turnLimit;
+
+  if (isStoryComplete) {
+    return <StoryComplete />;
+  }
 
   if (isLoading) {
     return (
@@ -112,7 +169,7 @@ export function ChoiceCards({ choices, onSelect, onRegenerate, isLoading, sectio
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {choices.map((choice, i) => {
-          const config = choiceConfig[choice.type];
+          const config = choiceConfig[choice.type] ?? choiceConfig.safe;
           const Icon = config.icon;
           return (
             <button
@@ -138,6 +195,14 @@ export function ChoiceCards({ choices, onSelect, onRegenerate, isLoading, sectio
           );
         })}
       </div>
+
+      {isNearEnd && onBeginConclusion && (
+        <div className="flex justify-center">
+          <Button type="button" variant="outline" size="sm" onClick={onBeginConclusion}>
+            Begin conclusion
+          </Button>
+        </div>
+      )}
 
       {/* Custom direction */}
       {!showCustom ? (

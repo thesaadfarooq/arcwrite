@@ -10,6 +10,13 @@ function getAuthorizationHeader(req: VercelRequest): string | null {
   return typeof header === "string" ? header : null;
 }
 
+function getBodyField(body: Record<string, unknown>, ...keys: string[]) {
+  for (const key of keys) {
+    if (body[key] !== undefined) return body[key];
+  }
+  return undefined;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const user = await getAuthenticatedUser(getAuthorizationHeader(req));
@@ -48,19 +55,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === "POST") {
-      const { title, genre, tone, premise, status } = req.body ?? {};
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const fields: string[] = ["user_id", "title", "genre", "tone", "premise", "status"];
+      const values: unknown[] = [
+        user.id,
+        body.title || "Untitled Story",
+        body.genre || null,
+        body.tone || null,
+        body.premise || null,
+        body.status || "in_progress",
+      ];
+
+      const targetTurns = getBodyField(body, "targetTurns", "target_turns");
+      if (targetTurns !== undefined) {
+        fields.push("target_turns");
+        values.push(targetTurns);
+      }
+
+      const arcOverride = getBodyField(body, "arcOverride", "arc_override");
+      if (arcOverride !== undefined) {
+        fields.push("arc_override");
+        values.push(arcOverride);
+      }
+
+      const placeholders = fields.map((_, index) => `$${index + 1}`).join(", ");
       const story = await queryOne(
-        `INSERT INTO stories (user_id, title, genre, tone, premise, status)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO stories (${fields.join(", ")})
+         VALUES (${placeholders})
          RETURNING *`,
-        [
-          user.id,
-          title || "Untitled Story",
-          genre || null,
-          tone || null,
-          premise || null,
-          status || "in_progress",
-        ]
+        values
       );
       return res.status(201).json(story);
     }
@@ -68,17 +91,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === "PATCH") {
       if (!id) return res.status(400).json({ error: "id required" });
 
-      const allowedFields = ["title", "genre", "tone", "premise", "status", "share_token"] as const;
+      const allowedFields = [
+        ["title", "title"],
+        ["genre", "genre"],
+        ["tone", "tone"],
+        ["premise", "premise"],
+        ["status", "status"],
+        ["share_token", "share_token"],
+        ["targetTurns", "target_turns"],
+        ["target_turns", "target_turns"],
+        ["arcOverride", "arc_override"],
+        ["arc_override", "arc_override"],
+      ] as const;
+      const columnValues = new Map<string, unknown>();
+      for (const [inputKey, column] of allowedFields) {
+        if (req.body?.[inputKey] !== undefined && !columnValues.has(column)) {
+          columnValues.set(column, req.body[inputKey]);
+        }
+      }
+
       const sets: string[] = [];
       const values: unknown[] = [];
       let index = 1;
 
-      for (const field of allowedFields) {
-        if (req.body?.[field] !== undefined) {
-          sets.push(`${field} = $${index}`);
-          values.push(req.body[field]);
-          index += 1;
-        }
+      for (const [column, value] of columnValues.entries()) {
+        sets.push(`${column} = $${index}`);
+        values.push(value);
+        index += 1;
       }
 
       if (sets.length === 0) {

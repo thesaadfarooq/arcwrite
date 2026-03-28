@@ -107,6 +107,34 @@ describe("story database routes", () => {
     expect(res.body).toEqual({ id: "story-2", title: "Untitled Story" });
   });
 
+  it("creates a story with target turns and arc override", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-2b" });
+    queryOneMock.mockResolvedValue({ id: "story-2b", title: "Finite Story" });
+    const handler = (await import("../../api/db/stories")).default;
+    const res = createResponse();
+
+    await handler(
+      {
+        method: "POST",
+        query: {},
+        headers: { authorization: "Bearer token" },
+        body: {
+          title: "Finite Story",
+          targetTurns: 45,
+          arcOverride: "concluding",
+        },
+      } as any,
+      res as any
+    );
+
+    expect(queryOneMock).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO stories"),
+      ["user-2b", "Finite Story", null, null, null, "in_progress", 45, "concluding"]
+    );
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toEqual({ id: "story-2b", title: "Finite Story" });
+  });
+
   it("returns a generic 500 when story listing fails", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
     queryMock.mockRejectedValue(new Error("db blew up"));
@@ -148,6 +176,53 @@ describe("story database routes", () => {
     );
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ id: "story-3", title: "Renamed" });
+  });
+
+  it("patches target turns and arc override", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-3b" });
+    queryOneMock.mockResolvedValue({ id: "story-3b", target_turns: 18, arc_override: "concluding" });
+    const handler = (await import("../../api/db/stories")).default;
+    const res = createResponse();
+
+    await handler(
+      {
+        method: "PATCH",
+        query: { id: "story-3b" },
+        headers: { authorization: "Bearer token" },
+        body: { targetTurns: 18, arcOverride: "concluding" },
+      } as any,
+      res as any
+    );
+
+    expect(queryOneMock).toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE stories SET target_turns = $1, arc_override = $2"),
+      [18, "concluding", "story-3b", "user-3b"]
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ id: "story-3b", target_turns: 18, arc_override: "concluding" });
+  });
+
+  it("deduplicates mixed-case aliases that map to the same patched column", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-3c" });
+    queryOneMock.mockResolvedValue({ id: "story-3c", target_turns: 18 });
+    const handler = (await import("../../api/db/stories")).default;
+    const res = createResponse();
+
+    await handler(
+      {
+        method: "PATCH",
+        query: { id: "story-3c" },
+        headers: { authorization: "Bearer token" },
+        body: { targetTurns: 18, target_turns: 35 },
+      } as any,
+      res as any
+    );
+
+    expect(queryOneMock).toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE stories SET target_turns = $1"),
+      [18, "story-3c", "user-3c"]
+    );
+    expect(res.statusCode).toBe(200);
   });
 
   it("returns 404 when deleting a story that is not owned by the user", async () => {

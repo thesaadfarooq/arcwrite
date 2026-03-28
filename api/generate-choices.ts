@@ -2,6 +2,48 @@ import { getAuthenticatedUser, unauthorizedResponse } from "./_lib/auth.js";
 
 export const config = { runtime: "edge" };
 
+type NarrativePhase = "setup" | "rising" | "climax" | "falling" | "resolution";
+type Beat = {
+  phase?: NarrativePhase;
+  progress?: number;
+  phaseProgress?: number;
+  turnsRemaining?: number;
+  isNearEnd?: boolean;
+  isFinalSection?: boolean;
+};
+
+const ALL_CHOICE_TYPES = [
+  "safe",
+  "risky",
+  "emotional",
+  "chaotic",
+  "explore",
+  "connect",
+  "foreshadow",
+  "complicate",
+  "confront",
+  "resolve",
+  "conclude",
+  "epilogue",
+] as const;
+
+function getChoiceTypesForPhase(phase?: NarrativePhase) {
+  switch (phase) {
+    case "setup":
+      return ["explore", "connect", "safe", "foreshadow"] as const;
+    case "rising":
+      return ["safe", "risky", "emotional", "complicate"] as const;
+    case "climax":
+      return ["confront", "risky", "emotional", "chaotic"] as const;
+    case "falling":
+      return ["resolve", "emotional", "explore", "conclude"] as const;
+    case "resolution":
+      return ["resolve", "emotional", "conclude", "epilogue"] as const;
+    default:
+      return ["explore", "connect", "safe", "foreshadow"] as const;
+  }
+}
+
 export default async function handler(req: Request) {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204 });
@@ -11,21 +53,41 @@ export default async function handler(req: Request) {
     const user = await getAuthenticatedUser(req.headers.get("authorization"));
     if (!user) return unauthorizedResponse();
 
-    const { recentText, summary, storyState, tone, genre, premise } = await req.json();
+    const { recentText, summary, storyState, tone, genre, premise, beat } = await req.json() as {
+      recentText?: string;
+      summary?: string;
+      storyState?: unknown;
+      tone?: string;
+      genre?: string;
+      premise?: string;
+      beat?: Beat;
+    };
+    const choiceTypes = getChoiceTypesForPhase(beat?.phase);
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
 
     const systemPrompt = `You are a story direction advisor. Given the current state of a story, generate exactly 4 possible directions for what could happen next.
 
-Each direction must be one of these types:
+Current phase: ${beat?.phase || "setup"}
+Use these 4 types for this phase: ${choiceTypes.join(", ")}.
+
+Each direction type must be one of the supported story types:
 - safe: The expected, natural progression of the narrative
 - risky: A surprising plot twist or unexpected turn
 - emotional: A character-driven, emotionally resonant direction
 - chaotic: A wild, unpredictable turn that shakes up everything
+- explore: Investigate the world, a mystery, or a character's backstory
+- connect: Build or test a relationship, alliance, or bond
+- foreshadow: Hint at something deeper beneath the surface
+- complicate: Introduce a new obstacle, betrayal, or unexpected twist
+- confront: Face the central conflict or antagonist directly
+- resolve: Tie up a loose thread or make a decisive choice about an open question
+- conclude: Begin wrapping up the entire story toward a final ending
+- epilogue: A glimpse into the future after the main events
 
 For each direction, provide:
-- type: one of safe, risky, emotional, chaotic
+- type: one of ${choiceTypes.join(", ")}
 - label: a short 4-8 word description
 - preview: a 1-2 sentence preview of what would happen
 
@@ -66,7 +128,7 @@ Generate 4 story direction choices.`;
                     items: {
                       type: "object",
                       properties: {
-                        type: { type: "string", enum: ["safe", "risky", "emotional", "chaotic"] },
+                        type: { type: "string", enum: [...ALL_CHOICE_TYPES] },
                         label: { type: "string" },
                         preview: { type: "string" },
                       },
