@@ -11,11 +11,16 @@ const {
   getAllStoryNodesMock,
   streamSectionMock,
   generateChoicesMock,
+  generateChapterSuggestionsMock,
   summarizeStoryMock,
   createStoryNodeMock,
+  updateNodeChapterTitleMock,
+  splitNodeAtPositionMock,
   apiUpdateStoryMock,
   apiUpdateNodeMock,
   latestChoiceCardsProps,
+  latestStoryCanvasProps,
+  useIsMobileMock,
 } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
   calculateBeatMock: vi.fn(),
@@ -24,11 +29,16 @@ const {
   getAllStoryNodesMock: vi.fn(),
   streamSectionMock: vi.fn(),
   generateChoicesMock: vi.fn(),
+  generateChapterSuggestionsMock: vi.fn(),
   summarizeStoryMock: vi.fn(),
   createStoryNodeMock: vi.fn(),
+  updateNodeChapterTitleMock: vi.fn(),
+  splitNodeAtPositionMock: vi.fn(),
   apiUpdateStoryMock: vi.fn(),
   apiUpdateNodeMock: vi.fn(),
   latestChoiceCardsProps: { current: null as any },
+  latestStoryCanvasProps: { current: null as any },
+  useIsMobileMock: vi.fn(),
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -51,6 +61,10 @@ vi.mock("@/lib/subscription", () => ({
   getTierLimits: () => ({ turns: Infinity, export: true, sharing: true }),
 }));
 
+vi.mock("@/hooks/use-mobile", () => ({
+  useIsMobile: () => useIsMobileMock(),
+}));
+
 vi.mock("@/lib/story-arc", () => ({
   calculateBeat: calculateBeatMock,
 }));
@@ -63,12 +77,13 @@ vi.mock("@/lib/story-api", () => ({
   getStoryNodes: getStoryNodesMock,
   getAllStoryNodes: getAllStoryNodesMock,
   createStoryNode: createStoryNodeMock,
+  generateChapterSuggestions: generateChapterSuggestionsMock,
   updateStoryTitle: vi.fn(),
   updateStoryTone: vi.fn(),
   jumpToNode: vi.fn(),
-  updateNodeChapterTitle: vi.fn(),
+  updateNodeChapterTitle: updateNodeChapterTitleMock,
   deleteNodeAndDescendants: vi.fn(),
-  splitNodeAtPosition: vi.fn(),
+  splitNodeAtPosition: splitNodeAtPositionMock,
   mergeNodeWithParent: vi.fn(),
 }));
 
@@ -96,25 +111,33 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("@/components/story/StoryCanvas", () => ({
-  StoryCanvas: ({ paragraphs }: { paragraphs: Array<{ text: string }> }) => (
-    <div data-testid="story-canvas">
-      {paragraphs.map((paragraph, index) => (
-        <p key={index}>{paragraph.text}</p>
-      ))}
-    </div>
-  ),
+  StoryCanvas: ({ paragraphs, ...props }: { paragraphs: Array<{ text: string }> } & Record<string, unknown>) => {
+    latestStoryCanvasProps.current = props;
+    return (
+      <div data-testid="story-canvas">
+        {paragraphs.map((paragraph, index) => (
+          <p key={index}>{paragraph.text}</p>
+        ))}
+      </div>
+    );
+  },
 }));
 
 vi.mock("@/components/story/ChapterSidebar", () => ({
-  ChapterSidebar: () => <div data-testid="chapter-sidebar" />,
+  ChapterSidebar: ({ embedded }: { embedded?: boolean }) => (
+    <div data-testid={embedded ? "embedded-chapter-sidebar" : "chapter-sidebar"} />
+  ),
 }));
 
 vi.mock("@/components/story/StoryTimeline", () => ({
-  StoryTimeline: () => <div data-testid="story-timeline" />,
+  StoryTimeline: ({ embedded }: { embedded?: boolean }) => (
+    <div data-testid={embedded ? "embedded-story-timeline" : "story-timeline"} />
+  ),
 }));
 
 vi.mock("@/components/story/TonePanel", () => ({
   TonePanel: () => null,
+  TonePanelContent: () => null,
 }));
 
 vi.mock("@/components/ui/tooltip", () => ({
@@ -170,6 +193,9 @@ describe("StoryWrite narrative arc integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     latestChoiceCardsProps.current = null;
+    latestStoryCanvasProps.current = null;
+    useIsMobileMock.mockReturnValue(false);
+    sessionStorage.clear();
 
     calculateBeatMock.mockReturnValue({
       phase: "falling",
@@ -241,6 +267,8 @@ describe("StoryWrite narrative arc integration", () => {
     });
 
     createStoryNodeMock.mockResolvedValue({ id: "node-3" });
+    updateNodeChapterTitleMock.mockResolvedValue(undefined);
+    splitNodeAtPositionMock.mockResolvedValue({ id: "node-2b" });
     apiUpdateStoryMock.mockResolvedValue({});
     apiUpdateNodeMock.mockResolvedValue({});
 
@@ -459,5 +487,392 @@ describe("StoryWrite narrative arc integration", () => {
     });
 
     expect(screen.getByTestId("story-complete")).toBeInTheDocument();
+  });
+
+  it("shows the mobile structure bar instead of the desktop sidebar", async () => {
+    useIsMobileMock.mockReturnValue(true);
+    generateChapterSuggestionsMock.mockResolvedValue([
+      {
+        type: "start_new_chapter_here",
+        anchorNodeId: "node-4",
+        anchorParagraphIndex: 1,
+        proposedTitle: "The Viaduct",
+        reason: "A clear location change begins here.",
+      },
+    ]);
+    getStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        summary: "Second",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        summary: "Third",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        summary: "Fourth",
+        story_state: { stage: "falling" },
+        choices: [],
+        is_active: true,
+      },
+    ]);
+    getAllStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        parent_id: null,
+        chosen_option: null,
+        created_at: "2026-03-28T10:00:00.000Z",
+        is_active: true,
+        starts_chapter: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        parent_id: "node-1",
+        chosen_option: null,
+        created_at: "2026-03-28T10:05:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        parent_id: "node-2",
+        chosen_option: null,
+        created_at: "2026-03-28T10:10:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        parent_id: "node-3",
+        chosen_option: null,
+        created_at: "2026-03-28T10:15:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+    ]);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /structure/i })).toBeInTheDocument());
+    expect(screen.queryByTestId("chapter-sidebar")).not.toBeInTheDocument();
+    expect(latestStoryCanvasProps.current.chapterEditMode).toBe(false);
+    expect(latestStoryCanvasProps.current.onRenameChapter).toBeUndefined();
+  });
+
+  it("resets the review checkpoint when the stored tip is not on the active path", async () => {
+    useIsMobileMock.mockReturnValue(true);
+    sessionStorage.setItem(
+      "chapter-review:story-1",
+      JSON.stringify({
+        reviewedAtTurns: 10,
+        dismissedAtTurns: 9,
+        reviewedTipId: "node-old",
+      }),
+    );
+    getStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        summary: "Second",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        summary: "Third",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        summary: "Fourth",
+        story_state: { stage: "falling" },
+        choices: [],
+        is_active: true,
+      },
+    ]);
+    getAllStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        parent_id: null,
+        chosen_option: null,
+        created_at: "2026-03-28T10:00:00.000Z",
+        is_active: true,
+        starts_chapter: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        parent_id: "node-1",
+        chosen_option: null,
+        created_at: "2026-03-28T10:05:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        parent_id: "node-2",
+        chosen_option: null,
+        created_at: "2026-03-28T10:10:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        parent_id: "node-3",
+        chosen_option: null,
+        created_at: "2026-03-28T10:15:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+    ]);
+
+    renderStoryWrite();
+
+    await waitFor(() =>
+      expect(JSON.parse(sessionStorage.getItem("chapter-review:story-1") ?? "{}")).toEqual({
+        reviewedAtTurns: 4,
+        dismissedAtTurns: null,
+        reviewedTipId: "node-4",
+      }),
+    );
+  });
+
+  it("opens chapter review from the quiet prompt and requests suggestions once per current tip", async () => {
+    useIsMobileMock.mockReturnValue(true);
+    generateChapterSuggestionsMock.mockResolvedValue([
+      {
+        type: "start_new_chapter_here",
+        anchorNodeId: "node-4",
+        anchorParagraphIndex: 1,
+        proposedTitle: "The Viaduct",
+        reason: "A clear location change begins here.",
+      },
+    ]);
+    getStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        summary: "Second",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        summary: "Third",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        summary: "Fourth",
+        story_state: { stage: "falling" },
+        choices: [],
+        is_active: true,
+      },
+    ]);
+    getAllStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        parent_id: null,
+        chosen_option: null,
+        created_at: "2026-03-28T10:00:00.000Z",
+        is_active: true,
+        starts_chapter: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        parent_id: "node-1",
+        chosen_option: null,
+        created_at: "2026-03-28T10:05:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        parent_id: "node-2",
+        chosen_option: null,
+        created_at: "2026-03-28T10:10:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        parent_id: "node-3",
+        chosen_option: null,
+        created_at: "2026-03-28T10:15:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+    ]);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+
+    await waitFor(() => expect(generateChapterSuggestionsMock).toHaveBeenCalledTimes(1));
+    expect(screen.getByText(/the viaduct/i)).toBeInTheDocument();
+  });
+
+  it("keeps chapter suggestions visible when applying them fails", async () => {
+    useIsMobileMock.mockReturnValue(true);
+    updateNodeChapterTitleMock.mockRejectedValueOnce(new Error("rename failed"));
+    generateChapterSuggestionsMock.mockResolvedValue([
+      {
+        type: "rename_recent_chapter",
+        anchorNodeId: "node-4",
+        anchorParagraphIndex: null,
+        proposedTitle: "The Bargain",
+        reason: "The chapter now centers on the pact.",
+      },
+    ]);
+    getStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        summary: "Second",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        summary: "Third",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        summary: "Fourth",
+        story_state: { stage: "falling" },
+        choices: [],
+        is_active: true,
+      },
+    ]);
+    getAllStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        parent_id: null,
+        chosen_option: null,
+        created_at: "2026-03-28T10:00:00.000Z",
+        is_active: true,
+        starts_chapter: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        parent_id: "node-1",
+        chosen_option: null,
+        created_at: "2026-03-28T10:05:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-3",
+        text: "Third section.",
+        parent_id: "node-2",
+        chosen_option: null,
+        created_at: "2026-03-28T10:10:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+      {
+        id: "node-4",
+        text: "Fourth section.",
+        parent_id: "node-3",
+        chosen_option: null,
+        created_at: "2026-03-28T10:15:00.000Z",
+        is_active: true,
+        starts_chapter: false,
+      },
+    ]);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+    await waitFor(() => expect(screen.getByText(/the bargain/i)).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /apply/i }));
+
+    await waitFor(() => expect(updateNodeChapterTitleMock).toHaveBeenCalledWith("node-4", "The Bargain"));
+    expect(screen.getByText(/the bargain/i)).toBeInTheDocument();
+  });
+
+  it("keeps the desktop sidebar path available when not on mobile", async () => {
+    useIsMobileMock.mockReturnValue(false);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByTestId("chapter-sidebar")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: /structure/i })).not.toBeInTheDocument();
+    expect(latestStoryCanvasProps.current.chapterEditMode).toBeUndefined();
+    expect(latestStoryCanvasProps.current.onRenameChapter).toEqual(expect.any(Function));
   });
 });
