@@ -2,9 +2,11 @@ import { supabase } from "@/integrations/supabase/client";
 import type { StoryChoice } from "@/components/story/ChoiceCards";
 import { apiClient } from "@/lib/api-client";
 import type { ChapterSuggestion } from "@/lib/chapter-review";
+import type { NarrativePhase } from "@/lib/story-arc";
+import type { StoryArcMode, StoryMoveFamily } from "@/lib/story-moves";
+import type { StoryEndingType } from "@/lib/story-extension";
 
 export type SectionLength = "short" | "medium" | "long" | "epic";
-export type NarrativePhase = "setup" | "rising" | "climax" | "falling" | "resolution";
 export type StoryBeat = {
   phase: NarrativePhase;
   progress: number;
@@ -29,10 +31,11 @@ async function getAccessToken(): Promise<string> {
 }
 
 export async function streamSection({
-  premise, genre, tone, direction, summary, recentText, storyState, length, beat, onDelta, onDone, onError,
+  premise, genre, tone, direction, summary, recentText, storyState, length, arcMode, beat, onDelta, onDone, onError,
 }: {
   premise?: string; genre?: string; tone?: string; direction?: string;
   summary?: string; recentText?: string; storyState?: any; length?: SectionLength;
+  arcMode?: StoryArcMode;
   beat?: StoryBeat;
   onDelta: (text: string) => void; onDone: (fullText: string) => void; onError: (error: string) => void;
 }) {
@@ -50,6 +53,7 @@ export async function streamSection({
         recentText,
         storyState,
         length: length || "medium",
+        arcMode,
         beat,
       }),
     });
@@ -104,16 +108,30 @@ export async function streamSection({
 }
 
 export async function generateChoices({
-  recentText, summary, storyState, tone, genre, premise, beat,
+  recentText, summary, storyState, tone, genre, premise, arcMode, moveFamilies, previousEnding, beat,
 }: {
   recentText: string; summary?: string; storyState?: any; tone?: string; genre?: string; premise?: string;
+  arcMode?: StoryArcMode;
+  moveFamilies?: StoryMoveFamily[];
+  previousEnding?: StoryEndingType | null;
   beat?: StoryBeat;
 }): Promise<StoryChoice[]> {
   const accessToken = await getAccessToken();
   const resp = await fetch("/api/generate-choices", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify({ recentText, summary, storyState, tone, genre, premise, beat }),
+    body: JSON.stringify({
+      recentText,
+      summary,
+      storyState,
+      tone,
+      genre,
+      premise,
+      arcMode,
+      moveFamilies,
+      previousEnding,
+      beat,
+    }),
   });
 
   if (!resp.ok) {
@@ -150,6 +168,36 @@ export async function generateChapterSuggestions({
   });
 
   return result.suggestions ?? [];
+}
+
+export async function generateChapterTitle({
+  recentNodes,
+  premise,
+  tone,
+  genre,
+  summary,
+  beat,
+  currentTitle,
+}: {
+  recentNodes: ChapterReviewNode[];
+  premise?: string;
+  tone?: string;
+  genre?: string;
+  summary?: string;
+  beat?: StoryBeat;
+  currentTitle?: string;
+}): Promise<string> {
+  const result = await apiClient.generateChapterTitle({
+    recentNodes,
+    premise,
+    tone,
+    genre,
+    summary,
+    beat,
+    currentTitle,
+  });
+
+  return result.title;
 }
 
 export async function summarizeStory({

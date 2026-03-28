@@ -8,19 +8,8 @@ export interface BeatInfo {
   isNearEnd: boolean;
 }
 
-export type ChoiceType =
-  | "safe"
-  | "risky"
-  | "emotional"
-  | "chaotic"
-  | "explore"
-  | "connect"
-  | "foreshadow"
-  | "complicate"
-  | "confront"
-  | "resolve"
-  | "conclude"
-  | "epilogue";
+export type { ChoiceType } from "@/lib/story-moves";
+export { ALL_CHOICE_TYPES, getChoiceTypesForPhase } from "@/lib/story-moves";
 
 const DEFAULT_TARGET_TURNS = 35;
 
@@ -51,29 +40,6 @@ const PACING_INSTRUCTIONS: Record<NarrativePhase, string> = {
 
 const FINAL_TURN_INSTRUCTION =
   "This is the final section of the story. Write a conclusive, satisfying ending. Resolve the central thread, give the protagonist a final moment, and close with an image or line that resonates. Do not set up further choices — this is the end.";
-
-const PHASE_CHOICE_TYPES: Record<NarrativePhase, ChoiceType[]> = {
-  setup: ["explore", "connect", "safe", "foreshadow"],
-  rising: ["safe", "risky", "emotional", "complicate"],
-  climax: ["confront", "risky", "emotional", "chaotic"],
-  falling: ["resolve", "emotional", "explore", "conclude"],
-  resolution: ["resolve", "emotional", "conclude", "epilogue"],
-};
-
-export const ALL_CHOICE_TYPES: ChoiceType[] = [
-  "safe",
-  "risky",
-  "emotional",
-  "chaotic",
-  "explore",
-  "connect",
-  "foreshadow",
-  "complicate",
-  "confront",
-  "resolve",
-  "conclude",
-  "epilogue",
-];
 
 export function calculateBeat(currentTurn: number, targetTurns: number): BeatInfo {
   const effectiveTargetTurns = targetTurns > 0 ? targetTurns : DEFAULT_TARGET_TURNS;
@@ -112,8 +78,4 @@ export function getPacingInstruction(
   }
 
   return PACING_INSTRUCTIONS[phase];
-}
-
-export function getChoiceTypesForPhase(phase: NarrativePhase): ChoiceType[] {
-  return PHASE_CHOICE_TYPES[phase];
 }

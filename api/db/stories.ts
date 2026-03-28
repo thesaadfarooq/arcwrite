@@ -78,6 +78,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         values.push(arcOverride);
       }
 
+      const arcState = getBodyField(body, "arcState", "arc_state");
+      if (arcState !== undefined) {
+        fields.push("arc_state");
+        values.push(arcState);
+      }
+
       const placeholders = fields.map((_, index) => `$${index + 1}`).join(", ");
       const story = await queryOne(
         `INSERT INTO stories (${fields.join(", ")})
@@ -102,6 +108,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ["target_turns", "target_turns"],
         ["arcOverride", "arc_override"],
         ["arc_override", "arc_override"],
+        ["arcState", "arc_state"],
+        ["arc_state", "arc_state"],
       ] as const;
       const columnValues = new Map<string, unknown>();
       for (const [inputKey, column] of allowedFields) {

@@ -157,4 +157,11 @@ export const apiClient = {
       body: payload,
     });
   },
+
+  generateChapterTitle(payload: Record<string, unknown>) {
+    return request<{ title: string }>("/api/generate-chapter-title", {
+      method: "POST",
+      body: payload,
+    });
+  },
 };

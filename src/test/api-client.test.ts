@@ -128,6 +128,34 @@ describe("api-client", () => {
     });
   });
 
+  it("posts authenticated chapter title requests", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ title: "Ashes Under Glass" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const { apiClient } = await import("@/lib/api-client");
+    await apiClient.generateChapterTitle({
+      recentNodes: [{ id: "node-1", text: "Text", startsChapter: true, chapterTitle: "Arrival" }],
+      beat: { phase: "falling", progress: 0.74 },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/generate-chapter-title", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer session-token",
+      },
+      body: JSON.stringify({
+        recentNodes: [{ id: "node-1", text: "Text", startsChapter: true, chapterTitle: "Arrival" }],
+        beat: { phase: "falling", progress: 0.74 },
+      }),
+    });
+  });
+
   it("throws the API error message when a request fails", async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValue(

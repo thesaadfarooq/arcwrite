@@ -69,6 +69,33 @@ describe("ChoiceCards", () => {
     expect(screen.queryByText("Hold position")).not.toBeInTheDocument();
   });
 
+  it("shows a subtle mode label during post-ending continuation", () => {
+    render(
+      <ChoiceCards
+        {...baseProps}
+        choices={[
+          { type: "aftermath", label: "Count the cost", preview: "The ending's cost lands." } as any,
+        ]}
+        modeLabel="After the ending"
+      />,
+    );
+
+    expect(screen.getByText(/after the ending/i)).toBeInTheDocument();
+  });
+
+  it("does not render a mode label when modeLabel is not set", () => {
+    render(
+      <ChoiceCards
+        {...baseProps}
+        choices={[
+          { type: "safe", label: "Hold position", preview: "Keep things steady." },
+        ]}
+      />,
+    );
+
+    expect(screen.queryByText(/after the ending/i)).not.toBeInTheDocument();
+  });
+
   it("keeps the existing custom direction flow intact", () => {
     render(
       <ChoiceCards
