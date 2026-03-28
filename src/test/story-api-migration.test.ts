@@ -11,6 +11,7 @@ const apiClientMock = {
   deleteNodeSubtree: vi.fn(),
   splitNode: vi.fn(),
   mergeNode: vi.fn(),
+  generateChapterSuggestions: vi.fn(),
 };
 
 vi.mock("@/lib/api-client", () => ({
@@ -63,7 +64,7 @@ describe("story-api Postgres migration wrappers", () => {
       text: "Opening",
       summary: "Summary",
       storyState: { mood: "tense" },
-      choices: [{ label: "Go left" }],
+      choices: [{ type: "safe", label: "Go left", preview: "Take the safer road." }],
     });
 
     expect(apiClientMock.createNode).toHaveBeenCalledWith({
@@ -72,7 +73,7 @@ describe("story-api Postgres migration wrappers", () => {
       text: "Opening",
       summary: "Summary",
       story_state: { mood: "tense" },
-      choices: [{ label: "Go left" }],
+      choices: [{ type: "safe", label: "Go left", preview: "Take the safer road." }],
       chosen_option: null,
       starts_chapter: true,
     });
@@ -185,6 +186,30 @@ describe("story-api Postgres migration wrappers", () => {
       premise: "A ruined city",
       beat: expect.objectContaining({ phase: "falling" }),
     });
+  });
+
+  it("routes chapter suggestion generation through the API client", async () => {
+    apiClientMock.generateChapterSuggestions.mockResolvedValue({
+      suggestions: [
+        {
+          type: "rename_recent_chapter",
+          anchorNodeId: "node-3",
+          anchorParagraphIndex: null,
+          proposedTitle: "The Bargain",
+          reason: "The conflict has crystallized.",
+        },
+      ],
+    });
+    const storyApi = await import("@/lib/story-api");
+
+    await expect(
+      storyApi.generateChapterSuggestions({
+        recentNodes: [{ id: "node-3", text: "A bargain is struck.", startsChapter: true, chapterTitle: "Chapter 2" }],
+        beat: { phase: "falling", progress: 0.76 },
+      })
+    ).resolves.toEqual([
+      expect.objectContaining({ type: "rename_recent_chapter", anchorNodeId: "node-3" }),
+    ]);
   });
 
   it("routes node operations through the matching API endpoints", async () => {

@@ -5,11 +5,18 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { getTierLimits } from "@/lib/subscription";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { apiClient } from "@/lib/api-client";
 import { StoryCanvas, type StoryParagraph } from "@/components/story/StoryCanvas";
 import { ChoiceCards, type StoryChoice } from "@/components/story/ChoiceCards";
 import { ChapterSidebar, type Chapter } from "@/components/story/ChapterSidebar";
 import { StoryTimeline, type TimelineNode } from "@/components/story/StoryTimeline";
+import { ChapterReviewPrompt } from "@/components/story/ChapterReviewPrompt";
+import { ChapterEditModeBar } from "@/components/story/ChapterEditModeBar";
+import { StoryWriteMobileShell } from "@/components/story/StoryWriteMobileShell";
+import { StoryWriteDesktopShell } from "@/components/story/StoryWriteDesktopShell";
+import { StoryStructureSheet } from "@/components/story/StoryStructureSheet";
+import { StoryToolsSheet } from "@/components/story/StoryToolsSheet";
 import { TonePanel } from "@/components/story/TonePanel";
 import { StoryComplete } from "@/components/story/StoryComplete";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,11 +24,19 @@ import {
   streamSection, generateChoices, summarizeStory,
   getStory, getStoryNodes, getAllStoryNodes, createStoryNode,
   updateStoryTitle, updateStoryTone, jumpToNode,
-  updateNodeChapterTitle, deleteNodeAndDescendants, splitNodeAtPosition, mergeNodeWithParent,
+  updateNodeChapterTitle, deleteNodeAndDescendants, splitNodeAtPosition, mergeNodeWithParent, generateChapterSuggestions,
 } from "@/lib/story-api";
 import type { SectionLength } from "@/lib/story-api";
 import type { ChapterHeading } from "@/components/story/StoryCanvas";
 import { calculateBeat, type BeatInfo } from "@/lib/story-arc";
+import {
+  countWordsSinceChapterStart,
+  isChapterSuggestionsStale,
+  shouldResetChapterReviewCheckpoint,
+  shouldOfferChapterReview,
+  type ChapterReviewCheckpoint,
+  type ChapterSuggestion,
+} from "@/lib/chapter-review";
 import { toast } from "sonner";
 
 async function retry<T>(fn: () => Promise<T>, attempts = 3, delayMs = 1000): Promise<T> {
@@ -152,9 +167,13 @@ export default function StoryWrite() {
   const { theme, toggleTheme } = useTheme();
   const { tier } = useAuth();
   const limits = getTierLimits(tier);
+  const isMobile = useIsMobile();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<"chapters" | "timeline">("chapters");
+  const [structureOpen, setStructureOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [chapterEditMode, setChapterEditMode] = useState(false);
   const [paragraphs, setParagraphs] = useState<StoryParagraph[]>([]);
   const [choices, setChoices] = useState<StoryChoice[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -175,6 +194,13 @@ export default function StoryWrite() {
   const [targetTurns, setTargetTurns] = useState(35);
   const [arcOverride, setArcOverride] = useState<string | null>(null);
   const [isStoryComplete, setIsStoryComplete] = useState(false);
+  const [chapterSuggestions, setChapterSuggestions] = useState<ChapterSuggestion[]>([]);
+  const [chapterSuggestionsTipId, setChapterSuggestionsTipId] = useState<string | null>(null);
+  const [chapterReviewCheckpoint, setChapterReviewCheckpoint] = useState<ChapterReviewCheckpoint>({
+    reviewedAtTurns: 0,
+    dismissedAtTurns: null,
+    reviewedTipId: null,
+  });
   const loadedRef = useRef(false);
 
   useEffect(() => {
@@ -182,6 +208,24 @@ export default function StoryWrite() {
     loadedRef.current = true;
     loadStory();
   }, [storyId]);
+
+  useEffect(() => {
+    if (!storyId) return;
+    const raw = sessionStorage.getItem(`chapter-review:${storyId}`);
+    if (!raw) return;
+
+    try {
+      const parsed = JSON.parse(raw) as ChapterReviewCheckpoint;
+      setChapterReviewCheckpoint(parsed);
+    } catch {
+      sessionStorage.removeItem(`chapter-review:${storyId}`);
+    }
+  }, [storyId]);
+
+  useEffect(() => {
+    if (!storyId) return;
+    sessionStorage.setItem(`chapter-review:${storyId}`, JSON.stringify(chapterReviewCheckpoint));
+  }, [storyId, chapterReviewCheckpoint]);
 
   const loadStory = async () => {
     try {
@@ -201,13 +245,7 @@ export default function StoryWrite() {
       setAllNodes(allStoryNodes);
 
       if (activeNodes.length > 0) {
-        const paras: StoryParagraph[] = [];
-        activeNodes.forEach((node) => {
-          const texts = (node.text || "").split("\n\n").filter(Boolean);
-          texts.forEach((t, i) => {
-            paras.push({ id: `${node.id}-${i}`, text: t });
-          });
-        });
+        const paras = buildParagraphsFromNodes(activeNodes);
         setParagraphs(paras);
         const lastNode = activeNodes[activeNodes.length - 1];
         setLastNodeId(lastNode.id);
@@ -266,6 +304,19 @@ export default function StoryWrite() {
     isFinalSection,
   });
 
+  const buildParagraphsFromNodes = (nodes: any[]): StoryParagraph[] => {
+    const nextParagraphs: StoryParagraph[] = [];
+
+    nodes.forEach((node) => {
+      const texts = (node.text || "").split("\n\n").filter(Boolean);
+      texts.forEach((text: string, index: number) => {
+        nextParagraphs.push({ id: `${node.id}-${index}`, text });
+      });
+    });
+
+    return nextParagraphs;
+  };
+
   const refreshAllNodes = async () => {
     try {
       const nodes = await getAllStoryNodes(storyId!);
@@ -282,13 +333,7 @@ export default function StoryWrite() {
       ]);
       setAllNodes(allStoryNodes);
 
-      const paras: StoryParagraph[] = [];
-      activeNodes.forEach((node) => {
-        const texts = (node.text || "").split("\n\n").filter(Boolean);
-        texts.forEach((t, i) => {
-          paras.push({ id: `${node.id}-${i}`, text: t });
-        });
-      });
+      const paras = buildParagraphsFromNodes(activeNodes);
       setParagraphs(paras);
 
       const lastNode = activeNodes[activeNodes.length - 1];
@@ -549,13 +594,7 @@ export default function StoryWrite() {
       await jumpToNode(storyId!, nodeId);
 
       const activeNodes = await getStoryNodes(storyId!);
-      const paras: StoryParagraph[] = [];
-      activeNodes.forEach((node) => {
-        const texts = (node.text || "").split("\n\n").filter(Boolean);
-        texts.forEach((t, i) => {
-          paras.push({ id: `${node.id}-${i}`, text: t });
-        });
-      });
+      const paras = buildParagraphsFromNodes(activeNodes);
       setParagraphs(paras);
 
       const lastNode = activeNodes[activeNodes.length - 1];
@@ -611,6 +650,71 @@ export default function StoryWrite() {
     } catch {
       toast.error("Failed to re-align");
     }
+  };
+
+  const handleOpenChapterReview = async () => {
+    if (isMobile) {
+      setStructureOpen(true);
+    }
+
+    if (!isChapterSuggestionsStale({ suggestionsTipId: chapterSuggestionsTipId, currentTipId: lastNodeId })) {
+      return;
+    }
+
+    try {
+      const recentNodes = activeNodes.slice(-6).map((node) => ({
+        id: node.id,
+        text: node.text || "",
+        startsChapter: Boolean((node as any).starts_chapter),
+        chapterTitle: (node as any).chapter_title || null,
+      }));
+
+      const suggestions = await generateChapterSuggestions({
+        recentNodes,
+        premise: storyMeta.premise,
+        tone: storyMeta.tone,
+        genre: storyMeta.genre,
+        summary,
+        beat: buildBeatPayload(currentBeat, false),
+      });
+
+      setChapterSuggestions(suggestions);
+      setChapterSuggestionsTipId(lastNodeId);
+      setChapterReviewCheckpoint({
+        reviewedAtTurns: activeNodes.length,
+        dismissedAtTurns: null,
+        reviewedTipId: lastNodeId,
+      });
+    } catch {
+      toast.error("Failed to review chapter structure");
+    }
+  };
+
+  const handleDismissChapterReview = () => {
+    setChapterSuggestions([]);
+    setChapterSuggestionsTipId(null);
+    setChapterReviewCheckpoint((prev) => ({
+      ...prev,
+      dismissedAtTurns: activeNodes.length,
+    }));
+  };
+
+  const handleApplyChapterSuggestion = async (suggestion: ChapterSuggestion) => {
+    let applied = false;
+
+    if (suggestion.type === "rename_recent_chapter" && suggestion.proposedTitle) {
+      applied = await handleChapterRename(suggestion.anchorNodeId, suggestion.proposedTitle);
+    }
+
+    if (suggestion.type === "start_new_chapter_here" && typeof suggestion.anchorParagraphIndex === "number") {
+      applied = await handleInsertBreak(suggestion.anchorNodeId, suggestion.anchorParagraphIndex);
+    }
+
+    if (!applied) return;
+
+    setChapterSuggestions([]);
+    setChapterSuggestionsTipId(null);
+    setStructureOpen(false);
   };
 
   const handleBeginConclusion = async () => {
@@ -718,6 +822,60 @@ export default function StoryWrite() {
     [allNodes]
   );
   const currentBeat = useMemo(() => getCurrentBeat(activeNodes.length), [activeNodes.length, arcOverride, targetTurns]);
+  const previousBeat = useMemo(
+    () => (activeNodes.length > 0 ? getCurrentBeat(Math.max(activeNodes.length - 1, 0)) : null),
+    [activeNodes.length, arcOverride, targetTurns],
+  );
+  const wordsSinceChapterStart = useMemo(
+    () =>
+      countWordsSinceChapterStart(
+        activeNodes.map((node) => ({
+          text: node.text || "",
+          startsChapter: Boolean((node as any).starts_chapter),
+        })),
+      ),
+    [activeNodes],
+  );
+  const chapterReviewEligible = useMemo(
+    () =>
+      shouldOfferChapterReview({
+        activeTurns: activeNodes.length,
+        currentTipId: lastNodeId,
+        checkpoint: chapterReviewCheckpoint,
+        beatPhaseChanged: Boolean(previousBeat && previousBeat.phase !== currentBeat.phase),
+        wordsSinceChapterStart,
+      }),
+    [activeNodes.length, chapterReviewCheckpoint, currentBeat.phase, lastNodeId, previousBeat, wordsSinceChapterStart],
+  );
+
+  useEffect(() => {
+    if (!lastNodeId) return;
+    if (
+      !shouldResetChapterReviewCheckpoint({
+        activeNodeIds: activeNodes.map((node) => node.id),
+        checkpoint: chapterReviewCheckpoint,
+      })
+    ) {
+      return;
+    }
+
+    setChapterReviewCheckpoint({
+      reviewedAtTurns: activeNodes.length,
+      dismissedAtTurns: null,
+      reviewedTipId: lastNodeId,
+    });
+    setChapterSuggestions([]);
+    setChapterSuggestionsTipId(null);
+  }, [activeNodes, chapterReviewCheckpoint, lastNodeId]);
+
+  useEffect(() => {
+    if (!isChapterSuggestionsStale({ suggestionsTipId: chapterSuggestionsTipId, currentTipId: lastNodeId })) {
+      return;
+    }
+
+    setChapterSuggestions([]);
+    setChapterSuggestionsTipId(null);
+  }, [chapterSuggestionsTipId, lastNodeId]);
 
   const chapterNodes = useMemo(
     () => activeNodes.filter((n) => (n as any).starts_chapter === true),
@@ -766,23 +924,19 @@ export default function StoryWrite() {
       await updateNodeChapterTitle(id, newTitle);
       await refreshAllNodes();
       toast.success("Chapter renamed");
+      return true;
     } catch {
       toast.error("Failed to rename chapter");
+      return false;
     }
   };
 
   const handleChapterDelete = async (id: string) => {
     if (isGenerating || isProcessing) return;
     try {
-      const newTipId = await deleteNodeAndDescendants(storyId!, id);
+      await deleteNodeAndDescendants(storyId!, id);
       const activeNodes = await getStoryNodes(storyId!);
-      const paras: StoryParagraph[] = [];
-      activeNodes.forEach((node) => {
-        const texts = (node.text || "").split("\n\n").filter(Boolean);
-        texts.forEach((t, idx) => {
-          paras.push({ id: `${node.id}-${idx}`, text: t });
-        });
-      });
+      const paras = buildParagraphsFromNodes(activeNodes);
       setParagraphs(paras);
       const lastNode = activeNodes[activeNodes.length - 1];
       setLastNodeId(lastNode?.id || null);
@@ -802,13 +956,7 @@ export default function StoryWrite() {
     try {
       await mergeNodeWithParent(storyId!, id);
       const activeNodes = await getStoryNodes(storyId!);
-      const paras: StoryParagraph[] = [];
-      activeNodes.forEach((node) => {
-        const texts = (node.text || "").split("\n\n").filter(Boolean);
-        texts.forEach((t, idx) => {
-          paras.push({ id: `${node.id}-${idx}`, text: t });
-        });
-      });
+      const paras = buildParagraphsFromNodes(activeNodes);
       setParagraphs(paras);
       const lastNode = activeNodes[activeNodes.length - 1];
       setLastNodeId(lastNode?.id || null);
@@ -828,22 +976,412 @@ export default function StoryWrite() {
     try {
       await splitNodeAtPosition(storyId!, nodeId, paragraphIndex);
       const activeNodes = await getStoryNodes(storyId!);
-      const paras: StoryParagraph[] = [];
-      activeNodes.forEach((node) => {
-        const texts = (node.text || "").split("\n\n").filter(Boolean);
-        texts.forEach((t, idx) => {
-          paras.push({ id: `${node.id}-${idx}`, text: t });
-        });
-      });
+      const paras = buildParagraphsFromNodes(activeNodes);
       setParagraphs(paras);
       const lastNode = activeNodes[activeNodes.length - 1];
       setLastNodeId(lastNode?.id || null);
       await refreshAllNodes();
       toast.success("Chapter break inserted");
+      return true;
     } catch (e: any) {
       toast.error(e.message || "Failed to insert break");
+      return false;
     }
   };
+
+  const reviewPromptCard =
+    chapterReviewEligible && !isDesyncced && !isProcessing && !isStoryComplete ? (
+      <ChapterReviewPrompt
+        suggestionCount={chapterSuggestions.length || undefined}
+        onReview={() => {
+          void handleOpenChapterReview();
+        }}
+      />
+    ) : null;
+
+  const chapterSuggestionCards =
+    chapterSuggestions.length > 0 ? (
+      <div className="space-y-2">
+        {chapterSuggestions.map((suggestion) => (
+          <div
+            key={`${suggestion.type}-${suggestion.anchorNodeId}-${suggestion.anchorParagraphIndex ?? "rename"}`}
+            className="rounded-xl border border-border bg-card p-3"
+          >
+            <p className="text-sm font-medium text-foreground">
+              {suggestion.proposedTitle || suggestion.type}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{suggestion.reason}</p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void handleApplyChapterSuggestion(suggestion);
+                }}
+                className="rounded-lg bg-primary px-3 py-2 text-xs text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Apply
+              </button>
+              <button
+                type="button"
+                onClick={handleDismissChapterReview}
+                className="rounded-lg bg-secondary px-3 py-2 text-xs transition-colors hover:bg-secondary/80"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : null;
+
+  const chapterReviewPanel = chapterSuggestionCards ?? reviewPromptCard;
+
+  const toolsActions = (
+    <div className="grid gap-2">
+      <button
+        type="button"
+        onClick={() => {
+          if (limits.export) {
+            void handleExport();
+          }
+        }}
+        disabled={!limits.export || isExporting}
+        className="rounded-xl bg-secondary px-3 py-2 text-left text-xs transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {limits.export ? "Export PDF" : "Export requires Plus or Pro"}
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          if (limits.sharing) {
+            void handleShare();
+          }
+        }}
+        disabled={!limits.sharing}
+        className="rounded-xl bg-secondary px-3 py-2 text-left text-xs transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {limits.sharing ? (shareToken ? "Copy share link" : "Share story") : "Sharing requires Pro"}
+      </button>
+      <button
+        type="button"
+        onClick={toggleTheme}
+        className="rounded-xl bg-secondary px-3 py-2 text-left text-xs transition-colors hover:bg-secondary/80"
+      >
+        Toggle {theme === "light" ? "dark" : "light"} mode
+      </button>
+    </div>
+  );
+
+  const header = (
+    <>
+      <header className="h-12 flex items-center justify-between px-4 border-b border-border/50 bg-background/80 backdrop-blur-sm shrink-0 z-10">
+        <div className="flex items-center gap-2">
+          {!isMobile ? (
+            <button
+              type="button"
+              onClick={() => setSidebarOpen((prev) => !prev)}
+              className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors active:scale-95"
+            >
+              <PanelLeft className="w-4 h-4" />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard")}
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+          </button>
+          <div className="flex items-center gap-1.5">
+            <BookOpen className="w-4 h-4 text-primary" />
+            <EditableStoryTitle
+              title={storyTitle}
+              onRename={async (title) => {
+                setStoryTitle(title);
+                await updateStoryTitle(storyId!, title);
+              }}
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {!isMobile ? (
+            <button
+              type="button"
+              onClick={() => setToneOpen((prev) => !prev)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
+            >
+              <Palette className="w-3 h-3" />
+              <span className="hidden sm:inline">{storyMeta.tone || "Set tone"}</span>
+            </button>
+          ) : null}
+          {!isMobile ? (
+            !limits.export ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/pricing")}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
+                  >
+                    <Lock className="w-3 h-3" />
+                    <span className="hidden sm:inline">Export</span>
+                    <Crown className="w-2.5 h-2.5 text-primary" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>PDF export requires a Plus or Pro plan</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleExport();
+                }}
+                disabled={isExporting}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95 disabled:opacity-50"
+                title="Export as PDF"
+              >
+                {isExporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                <span className="hidden sm:inline">Export</span>
+              </button>
+            )
+          ) : null}
+          {!isMobile ? (
+            !limits.sharing ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/pricing")}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
+                  >
+                    <Lock className="w-3 h-3" />
+                    <span className="hidden sm:inline">Share</span>
+                    <Crown className="w-2.5 h-2.5 text-primary" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>Public sharing requires a Pro plan</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleShare();
+                }}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
+                title={shareToken ? "Copy share link" : "Create share link"}
+              >
+                {shareToken ? <Link className="w-3 h-3" /> : <Share2 className="w-3 h-3" />}
+                <span className="hidden sm:inline">{shareToken ? "Shared" : "Share"}</span>
+              </button>
+            )
+          ) : null}
+          <span className="text-xs text-muted-foreground tabular-nums">{wordCount.toLocaleString()} words</span>
+          {!isMobile ? (
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-1.5 rounded-md hover:bg-secondary transition-colors active:scale-95"
+            >
+              {theme === "light" ? (
+                <Moon className="w-3.5 h-3.5 text-muted-foreground" />
+              ) : (
+                <Sun className="w-3.5 h-3.5 text-muted-foreground" />
+              )}
+            </button>
+          ) : null}
+        </div>
+      </header>
+
+      {!isMobile ? (
+        <TonePanel
+          currentTone={storyMeta.tone}
+          onToneChange={handleToneChange}
+          isOpen={toneOpen}
+          onClose={() => setToneOpen(false)}
+        />
+      ) : null}
+    </>
+  );
+
+  const desktopSidebar = sidebarOpen ? (
+    <aside className="w-56 shrink-0 border-r border-border/50 bg-card/50 overflow-hidden flex flex-col animate-fade-in">
+      <div className="flex border-b border-border">
+        <button
+          type="button"
+          onClick={() => setSidebarTab("chapters")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
+            sidebarTab === "chapters"
+              ? "text-primary border-b-2 border-primary"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Hash className="w-3 h-3" />
+          Chapters
+        </button>
+        <button
+          type="button"
+          onClick={() => setSidebarTab("timeline")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
+            sidebarTab === "timeline"
+              ? "text-primary border-b-2 border-primary"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <GitBranch className="w-3 h-3" />
+          Timeline
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-hidden">
+        {sidebarTab === "chapters" ? (
+          <ChapterSidebar
+            chapters={chapters}
+            totalWords={wordCount}
+            onChapterClick={handleChapterClick}
+            onRename={handleChapterRename}
+            onDelete={handleChapterDelete}
+            onMerge={handleChapterMerge}
+            reviewSlot={chapterReviewPanel}
+          />
+        ) : (
+          <StoryTimeline
+            nodes={timelineNodes}
+            currentNodeId={lastNodeId}
+            onJumpToNode={handleJumpToNode}
+            onForkFromNode={handleForkFromNode}
+            totalWords={wordCount}
+            storyTitle={storyTitle}
+          />
+        )}
+      </div>
+    </aside>
+  ) : null;
+
+  const content = (
+    <div className={isMobile ? "px-4 py-6" : "max-w-[680px] mx-auto px-6 md:px-12 py-12 md:py-16"}>
+      {!isMobile ? (
+        <EditableTitle
+          title={chapters.length > 0 ? chapters[0].title : "Chapter 1"}
+          onRename={chapters.length > 0 ? (newTitle: string) => handleChapterRename(chapters[0].id, newTitle) : undefined}
+        />
+      ) : null}
+
+      <ChapterEditModeBar active={chapterEditMode} onDone={() => setChapterEditMode(false)} />
+
+      <StoryCanvas
+        paragraphs={paragraphs}
+        onEdit={handleEdit}
+        chapterHeadings={chapterHeadings}
+        onInsertBreak={handleInsertBreak}
+        onRenameChapter={!isMobile || chapterEditMode ? handleChapterRename : undefined}
+        chapterEditMode={isMobile ? chapterEditMode : undefined}
+      />
+
+      {isMobile ? reviewPromptCard : null}
+
+      {isProcessing && !isGenerating ? (
+        <div className="mt-6 flex items-center gap-3 text-muted-foreground animate-fade-in">
+          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm">Saving and preparing choices…</span>
+        </div>
+      ) : null}
+
+      {isDesyncced && !isGenerating && !isProcessing ? (
+        <div className="mt-6 p-4 rounded-xl border border-choice-risky/30 bg-choice-risky/5 flex items-center gap-3 animate-fade-in">
+          <AlertTriangle className="w-4 h-4 text-choice-risky shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm text-foreground font-medium">Text was edited</p>
+            <p className="text-xs text-muted-foreground">Future options may not match your changes.</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleRealign}
+            className="text-xs font-medium text-primary hover:underline shrink-0"
+          >
+            Re-align story
+          </button>
+        </div>
+      ) : null}
+
+      {!isDesyncced && !isProcessing ? (
+        isStoryComplete ? (
+          <StoryComplete
+            onShare={limits.sharing ? handleShare : undefined}
+            onExport={limits.export ? handleExport : undefined}
+            onDashboard={() => navigate("/dashboard")}
+            onContinue={handleContinueAnyway}
+          />
+        ) : (
+          <ChoiceCards
+            choices={choices}
+            onSelect={handleChoiceSelect}
+            onRegenerate={() =>
+              fetchChoices(paragraphs.slice(-3).map((p) => p.text).join("\n\n"), {
+                activeNodeCount: activeNodes.length,
+              })
+            }
+            isLoading={isGenerating || isLoadingChoices}
+            isNearEnd={currentBeat.isNearEnd}
+            onBeginConclusion={handleBeginConclusion}
+            isStoryComplete={isStoryComplete}
+            sectionLength={sectionLength}
+            onSectionLengthChange={setSectionLength}
+            turnCount={limits.turns !== Infinity ? activeNodes.length : undefined}
+            turnLimit={limits.turns !== Infinity ? limits.turns : undefined}
+          />
+        )
+      ) : null}
+
+      <div className={isMobile ? "h-28" : "h-24"} />
+    </div>
+  );
+
+  const structureSheet = (
+    <StoryStructureSheet
+      open={structureOpen}
+      onOpenChange={setStructureOpen}
+      reviewSlot={chapterReviewPanel}
+      chaptersSlot={
+        <ChapterSidebar
+          chapters={chapters}
+          totalWords={wordCount}
+          onChapterClick={(id) => {
+            handleChapterClick(id);
+            setStructureOpen(false);
+          }}
+          onRename={handleChapterRename}
+          onDelete={handleChapterDelete}
+          onMerge={handleChapterMerge}
+          embedded
+          onEnterEditMode={() => {
+            setStructureOpen(false);
+            setChapterEditMode(true);
+          }}
+        />
+      }
+      timelineSlot={
+        <StoryTimeline
+          nodes={timelineNodes}
+          currentNodeId={lastNodeId}
+          onJumpToNode={(nodeId) => {
+            void handleJumpToNode(nodeId);
+            setStructureOpen(false);
+          }}
+          onForkFromNode={(nodeId) => {
+            void handleForkFromNode(nodeId);
+            setStructureOpen(false);
+          }}
+          totalWords={wordCount}
+          storyTitle={storyTitle}
+          embedded
+        />
+      }
+    />
+  );
 
   if (loading) {
     return (
@@ -853,216 +1391,37 @@ export default function StoryWrite() {
     );
   }
 
-  return (
-    <div className="h-screen flex flex-col bg-background transition-colors duration-500 relative">
-      <header className="h-12 flex items-center justify-between px-4 border-b border-border/50 bg-background/80 backdrop-blur-sm shrink-0 z-10">
-        <div className="flex items-center gap-2">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors active:scale-95">
-            <PanelLeft className="w-4 h-4" />
-          </button>
-          <button onClick={() => navigate("/dashboard")} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="w-3.5 h-3.5" />
-          </button>
-          <div className="flex items-center gap-1.5">
-            <BookOpen className="w-4 h-4 text-primary" />
-            <EditableStoryTitle title={storyTitle} onRename={async (t) => { setStoryTitle(t); await updateStoryTitle(storyId!, t); }} />
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setToneOpen(!toneOpen)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
-          >
-            <Palette className="w-3 h-3" />
-            <span className="hidden sm:inline">{storyMeta.tone || "Set tone"}</span>
-          </button>
-          {!limits.export ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => navigate("/pricing")}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
-                >
-                  <Lock className="w-3 h-3" />
-                  <span className="hidden sm:inline">Export</span>
-                  <Crown className="w-2.5 h-2.5 text-primary" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p>PDF export requires a Plus or Pro plan</p>
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <button
-              onClick={handleExport}
-              disabled={isExporting}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95 disabled:opacity-50"
-              title="Export as PDF"
-            >
-              {isExporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-              <span className="hidden sm:inline">Export</span>
-            </button>
-          )}
-          {!limits.sharing ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => navigate("/pricing")}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
-                >
-                  <Lock className="w-3 h-3" />
-                  <span className="hidden sm:inline">Share</span>
-                  <Crown className="w-2.5 h-2.5 text-primary" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p>Public sharing requires a Pro plan</p>
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <button
-              onClick={handleShare}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-secondary transition-colors active:scale-95"
-              title={shareToken ? "Copy share link" : "Create share link"}
-            >
-              {shareToken ? <Link className="w-3 h-3" /> : <Share2 className="w-3 h-3" />}
-              <span className="hidden sm:inline">{shareToken ? "Shared" : "Share"}</span>
-            </button>
-          )}
-          <span className="text-xs text-muted-foreground tabular-nums">{wordCount.toLocaleString()} words</span>
-          <button onClick={toggleTheme} className="p-1.5 rounded-md hover:bg-secondary transition-colors active:scale-95">
-            {theme === "light" ? <Moon className="w-3.5 h-3.5 text-muted-foreground" /> : <Sun className="w-3.5 h-3.5 text-muted-foreground" />}
-          </button>
-        </div>
-      </header>
-
-      <TonePanel
-        currentTone={storyMeta.tone}
-        onToneChange={handleToneChange}
-        isOpen={toneOpen}
-        onClose={() => setToneOpen(false)}
+  if (isMobile) {
+    return (
+      <StoryWriteMobileShell
+        header={header}
+        content={content}
+        onWrite={() => {
+          setStructureOpen(false);
+          setToolsOpen(false);
+          setChapterEditMode(false);
+        }}
+        onShowStructure={() => {
+          setToolsOpen(false);
+          setStructureOpen(true);
+        }}
+        onShowTools={() => {
+          setStructureOpen(false);
+          setToolsOpen(true);
+        }}
+        structureSheet={structureSheet}
+        toolsSheet={
+          <StoryToolsSheet
+            open={toolsOpen}
+            onOpenChange={setToolsOpen}
+            currentTone={storyMeta.tone}
+            onToneChange={handleToneChange}
+            toolsSlot={toolsActions}
+          />
+        }
       />
+    );
+  }
 
-      <div className="flex-1 flex overflow-hidden">
-        {sidebarOpen && (
-          <aside className="w-56 shrink-0 border-r border-border/50 bg-card/50 overflow-hidden flex flex-col animate-fade-in">
-            {/* Tab switcher */}
-            <div className="flex border-b border-border">
-              <button
-                onClick={() => setSidebarTab("chapters")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
-                  sidebarTab === "chapters"
-                    ? "text-primary border-b-2 border-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Hash className="w-3 h-3" />
-                Chapters
-              </button>
-              <button
-                onClick={() => setSidebarTab("timeline")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
-                  sidebarTab === "timeline"
-                    ? "text-primary border-b-2 border-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <GitBranch className="w-3 h-3" />
-                Timeline
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-hidden">
-              {sidebarTab === "chapters" ? (
-                <ChapterSidebar
-                  chapters={chapters}
-                  totalWords={wordCount}
-                  onChapterClick={handleChapterClick}
-                  onRename={handleChapterRename}
-                  onDelete={handleChapterDelete}
-                  onMerge={handleChapterMerge}
-                />
-              ) : (
-                <StoryTimeline
-                  nodes={timelineNodes}
-                  currentNodeId={lastNodeId}
-                  onJumpToNode={handleJumpToNode}
-                  onForkFromNode={handleForkFromNode}
-                  totalWords={wordCount}
-                  storyTitle={storyTitle}
-                />
-              )}
-            </div>
-          </aside>
-        )}
-
-        <main className="flex-1 overflow-y-auto">
-          <div className="max-w-[680px] mx-auto px-6 md:px-12 py-12 md:py-16">
-            <EditableTitle
-              title={chapters.length > 0 ? chapters[0].title : "Chapter 1"}
-              onRename={chapters.length > 0 ? (newTitle: string) => handleChapterRename(chapters[0].id, newTitle) : undefined}
-            />
-
-            <StoryCanvas
-              paragraphs={paragraphs}
-              onEdit={handleEdit}
-              chapterHeadings={chapterHeadings}
-              onInsertBreak={handleInsertBreak}
-              onRenameChapter={handleChapterRename}
-            />
-
-            {/* Processing indicator — shows after streaming ends while saving/summarizing */}
-            {isProcessing && !isGenerating && (
-              <div className="mt-6 flex items-center gap-3 text-muted-foreground animate-fade-in">
-                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm">Saving and preparing choices…</span>
-              </div>
-            )}
-
-            {isDesyncced && !isGenerating && !isProcessing && (
-              <div className="mt-6 p-4 rounded-xl border border-choice-risky/30 bg-choice-risky/5 flex items-center gap-3 animate-fade-in">
-                <AlertTriangle className="w-4 h-4 text-choice-risky shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm text-foreground font-medium">Text was edited</p>
-                  <p className="text-xs text-muted-foreground">Future options may not match your changes.</p>
-                </div>
-                <button onClick={handleRealign} className="text-xs font-medium text-primary hover:underline shrink-0">
-                  Re-align story
-                </button>
-              </div>
-            )}
-
-            {!isDesyncced && !isProcessing && (
-              isStoryComplete ? (
-                <StoryComplete
-                  onShare={limits.sharing ? handleShare : undefined}
-                  onExport={limits.export ? handleExport : undefined}
-                  onDashboard={() => navigate("/dashboard")}
-                  onContinue={handleContinueAnyway}
-                />
-              ) : (
-                <ChoiceCards
-                  choices={choices}
-                  onSelect={handleChoiceSelect}
-                  onRegenerate={() => fetchChoices(paragraphs.slice(-3).map((p) => p.text).join("\n\n"), {
-                    activeNodeCount: activeNodes.length,
-                  })}
-                  isLoading={isGenerating || isLoadingChoices}
-                  isNearEnd={currentBeat.isNearEnd}
-                  onBeginConclusion={handleBeginConclusion}
-                  isStoryComplete={isStoryComplete}
-                  sectionLength={sectionLength}
-                  onSectionLengthChange={setSectionLength}
-                  turnCount={limits.turns !== Infinity ? activeNodes.length : undefined}
-                  turnLimit={limits.turns !== Infinity ? limits.turns : undefined}
-                />
-              )
-            )}
-
-            <div className="h-24" />
-          </div>
-        </main>
-      </div>
-    </div>
-  );
+  return <StoryWriteDesktopShell header={header} sidebar={desktopSidebar} content={content} />;
 }

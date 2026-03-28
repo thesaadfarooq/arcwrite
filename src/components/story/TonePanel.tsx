@@ -17,19 +17,23 @@ interface TonePanelProps {
   onClose: () => void;
 }
 
-export function TonePanel({ currentTone, onToneChange, isOpen, onClose }: TonePanelProps) {
+interface TonePanelContentProps {
+  currentTone: string | undefined;
+  onToneChange: (tone: string) => void;
+  onDone: () => void;
+}
+
+export function TonePanelContent({ currentTone, onToneChange, onDone }: TonePanelContentProps) {
   const [customTone, setCustomTone] = useState("");
 
-  if (!isOpen) return null;
-
   return (
-    <div className="absolute right-4 top-14 z-30 w-64 p-4 rounded-xl border border-border bg-card shadow-lg animate-fade-in">
+    <div>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Palette className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium text-foreground">Story Tone</span>
         </div>
-        <button onClick={onClose} className="p-1 rounded-md hover:bg-secondary transition-colors active:scale-95">
+        <button onClick={onDone} className="p-1 rounded-md hover:bg-secondary transition-colors active:scale-95">
           <X className="w-3.5 h-3.5 text-muted-foreground" />
         </button>
       </div>
@@ -40,7 +44,7 @@ export function TonePanel({ currentTone, onToneChange, isOpen, onClose }: TonePa
             key={t}
             onClick={() => {
               onToneChange(t);
-              onClose();
+              onDone();
             }}
             className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all duration-150 flex items-center justify-between active:scale-[0.97] ${
               currentTone === t
@@ -68,7 +72,7 @@ export function TonePanel({ currentTone, onToneChange, isOpen, onClose }: TonePa
             onClick={() => {
               onToneChange(customTone.trim());
               setCustomTone("");
-              onClose();
+              onDone();
             }}
             className="text-xs px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95"
           >
@@ -76,6 +80,16 @@ export function TonePanel({ currentTone, onToneChange, isOpen, onClose }: TonePa
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function TonePanel({ currentTone, onToneChange, isOpen, onClose }: TonePanelProps) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="absolute right-4 top-14 z-30 w-64 p-4 rounded-xl border border-border bg-card shadow-lg animate-fade-in">
+      <TonePanelContent currentTone={currentTone} onToneChange={onToneChange} onDone={onClose} />
     </div>
   );
 }

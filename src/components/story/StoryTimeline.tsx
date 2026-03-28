@@ -90,15 +90,17 @@ export function StoryTimeline({
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-2 mb-3">
-          <GitBranch className="w-4 h-4 text-primary" />
-          <span className="font-story font-semibold text-foreground text-sm">Timeline</span>
+      {!embedded ? (
+        <div className="p-4 border-b border-border">
+          <div className="flex items-center gap-2 mb-3">
+            <GitBranch className="w-4 h-4 text-primary" />
+            <span className="font-story font-semibold text-foreground text-sm">Timeline</span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {nodes.length} node{nodes.length !== 1 ? "s" : ""} · {totalWords.toLocaleString()} words
+          </div>
         </div>
-        <div className="text-xs text-muted-foreground">
-          {nodes.length} node{nodes.length !== 1 ? "s" : ""} · {totalWords.toLocaleString()} words
-        </div>
-      </div>
+      ) : null}
 
       {/* Node list */}
       <div className="flex-1 overflow-y-auto p-2">

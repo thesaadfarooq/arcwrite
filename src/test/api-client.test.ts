@@ -100,6 +100,34 @@ describe("api-client", () => {
     });
   });
 
+  it("posts authenticated chapter review requests", async () => {
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ suggestions: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const { apiClient } = await import("@/lib/api-client");
+    await apiClient.generateChapterSuggestions({
+      recentNodes: [{ id: "node-1", text: "Text", startsChapter: true, chapterTitle: "Arrival" }],
+      beat: { phase: "rising", progress: 0.4 },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/generate-chapter-suggestions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer session-token",
+      },
+      body: JSON.stringify({
+        recentNodes: [{ id: "node-1", text: "Text", startsChapter: true, chapterTitle: "Arrival" }],
+        beat: { phase: "rising", progress: 0.4 },
+      }),
+    });
+  });
+
   it("throws the API error message when a request fails", async () => {
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValue(

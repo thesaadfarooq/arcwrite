@@ -150,4 +150,11 @@ export const apiClient = {
       requireAuth: false,
     });
   },
+
+  generateChapterSuggestions(payload: Record<string, unknown>) {
+    return request<{ suggestions: any[] }>("/api/generate-chapter-suggestions", {
+      method: "POST",
+      body: payload,
+    });
+  },
 };

@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { StoryChoice } from "@/components/story/ChoiceCards";
 import { apiClient } from "@/lib/api-client";
+import type { ChapterSuggestion } from "@/lib/chapter-review";
 
 export type SectionLength = "short" | "medium" | "long" | "epic";
 export type NarrativePhase = "setup" | "rising" | "climax" | "falling" | "resolution";
@@ -11,6 +12,13 @@ export type StoryBeat = {
   turnsRemaining?: number;
   isNearEnd?: boolean;
   isFinalSection?: boolean;
+};
+
+type ChapterReviewNode = {
+  id: string;
+  text: string;
+  startsChapter: boolean;
+  chapterTitle: string | null;
 };
 
 async function getAccessToken(): Promise<string> {
@@ -114,6 +122,33 @@ export async function generateChoices({
 
   const data = await resp.json();
   return data.choices || data;
+}
+
+export async function generateChapterSuggestions({
+  recentNodes,
+  premise,
+  tone,
+  genre,
+  summary,
+  beat,
+}: {
+  recentNodes: ChapterReviewNode[];
+  premise?: string;
+  tone?: string;
+  genre?: string;
+  summary?: string;
+  beat?: StoryBeat;
+}): Promise<ChapterSuggestion[]> {
+  const result = await apiClient.generateChapterSuggestions({
+    recentNodes,
+    premise,
+    tone,
+    genre,
+    summary,
+    beat,
+  });
+
+  return result.suggestions ?? [];
 }
 
 export async function summarizeStory({
