@@ -12,6 +12,7 @@ const apiClientMock = {
   splitNode: vi.fn(),
   mergeNode: vi.fn(),
   generateChapterSuggestions: vi.fn(),
+  generateChapterTitle: vi.fn(),
 };
 
 vi.mock("@/lib/api-client", () => ({
@@ -100,7 +101,7 @@ describe("story-api Postgres migration wrappers", () => {
     expect(apiClientMock.updateStory).toHaveBeenNthCalledWith(2, "story-3", { tone: "Whimsical" });
   });
 
-  it("passes beat through section generation requests", async () => {
+  it("passes beat and arc mode through section generation requests", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n', {
         status: 200,
@@ -122,6 +123,7 @@ describe("story-api Postgres migration wrappers", () => {
       recentText: "Recent text",
       storyState: { mood: "tense" },
       length: "medium",
+      arcMode: "resumed_extension",
       beat: { phase: "rising", progress: 0.32, phaseProgress: 0.4, turnsRemaining: 28, isNearEnd: false },
       onDelta,
       onDone,
@@ -137,6 +139,7 @@ describe("story-api Postgres migration wrappers", () => {
       recentText: "Recent text",
       storyState: { mood: "tense" },
       length: "medium",
+      arcMode: "resumed_extension",
       beat: {
         phase: "rising",
         progress: 0.32,
@@ -150,7 +153,7 @@ describe("story-api Postgres migration wrappers", () => {
     expect(onError).not.toHaveBeenCalled();
   });
 
-  it("passes beat through choice generation requests", async () => {
+  it("passes beat, arc mode, and move metadata through choice generation requests", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({
         choices: [{ type: "resolve", label: "Tie it up", preview: "The story settles into closure." }],
@@ -170,6 +173,9 @@ describe("story-api Postgres migration wrappers", () => {
         tone: "grim",
         genre: "fantasy",
         premise: "A ruined city",
+        arcMode: "post_ending",
+        moveFamilies: ["aftermath", "loose_thread", "time_skip", "new_problem"],
+        previousEnding: "epilogue",
         beat: { phase: "falling", progress: 0.78, phaseProgress: 0.2, turnsRemaining: 9, isNearEnd: true },
       })
     ).resolves.toEqual([
@@ -184,6 +190,9 @@ describe("story-api Postgres migration wrappers", () => {
       tone: "grim",
       genre: "fantasy",
       premise: "A ruined city",
+      arcMode: "post_ending",
+      moveFamilies: ["aftermath", "loose_thread", "time_skip", "new_problem"],
+      previousEnding: "epilogue",
       beat: expect.objectContaining({ phase: "falling" }),
     });
   });
@@ -210,6 +219,33 @@ describe("story-api Postgres migration wrappers", () => {
     ).resolves.toEqual([
       expect.objectContaining({ type: "rename_recent_chapter", anchorNodeId: "node-3" }),
     ]);
+  });
+
+  it("routes chapter title generation through the API client", async () => {
+    apiClientMock.generateChapterTitle.mockResolvedValue({
+      title: "Ashes Under Glass",
+    });
+    const storyApi = await import("@/lib/story-api");
+
+    await expect(
+      storyApi.generateChapterTitle({
+        recentNodes: [{ id: "node-3", text: "A bargain is struck.", startsChapter: true, chapterTitle: "Chapter 2" }],
+        premise: "A crew follows a signal into a dead city.",
+        tone: "Atmospheric",
+        genre: "Mystery",
+        summary: "They crossed the viaduct and found the observatory sealed from within.",
+        beat: { phase: "falling", progress: 0.76 },
+      })
+    ).resolves.toBe("Ashes Under Glass");
+
+    expect(apiClientMock.generateChapterTitle).toHaveBeenCalledWith({
+      recentNodes: [{ id: "node-3", text: "A bargain is struck.", startsChapter: true, chapterTitle: "Chapter 2" }],
+      premise: "A crew follows a signal into a dead city.",
+      tone: "Atmospheric",
+      genre: "Mystery",
+      summary: "They crossed the viaduct and found the observatory sealed from within.",
+      beat: { phase: "falling", progress: 0.76 },
+    });
   });
 
   it("routes node operations through the matching API endpoints", async () => {

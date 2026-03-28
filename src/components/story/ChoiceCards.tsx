@@ -36,7 +36,19 @@ export interface StoryChoice {
     | "confront"
     | "resolve"
     | "conclude"
-    | "epilogue";
+    | "epilogue"
+    | "investigate"
+    | "commit"
+    | "reveal"
+    | "risk"
+    | "bargain"
+    | "sacrifice"
+    | "regroup"
+    | "reflect"
+    | "aftermath"
+    | "loose_thread"
+    | "new_problem"
+    | "time_skip";
   label: string;
   preview: string;
 }
@@ -60,6 +72,7 @@ interface ChoiceCardsProps {
   onSectionLengthChange: (length: SectionLength) => void;
   turnCount?: number;
   turnLimit?: number;
+  modeLabel?: string;
 }
 
 const choiceConfig = {
@@ -75,6 +88,18 @@ const choiceConfig = {
   resolve: { icon: CheckCircle2, color: "choice-safe", label: "Resolution" },
   conclude: { icon: Flag, color: "choice-emotional", label: "Conclusion" },
   epilogue: { icon: Sparkles, color: "choice-chaotic", label: "Epilogue" },
+  investigate: { icon: Compass, color: "choice-safe", label: "Discovery" },
+  commit: { icon: Flag, color: "choice-risky", label: "Crossroads" },
+  reveal: { icon: Eye, color: "choice-chaotic", label: "Reveal" },
+  risk: { icon: Flame, color: "choice-risky", label: "Risk" },
+  bargain: { icon: Puzzle, color: "choice-emotional", label: "Crossroads" },
+  sacrifice: { icon: Heart, color: "choice-risky", label: "Sacrifice" },
+  regroup: { icon: Shield, color: "choice-safe", label: "Recovery" },
+  reflect: { icon: Eye, color: "choice-emotional", label: "Recovery" },
+  aftermath: { icon: Sparkles, color: "choice-emotional", label: "Aftermath" },
+  loose_thread: { icon: Compass, color: "choice-safe", label: "Discovery" },
+  new_problem: { icon: Puzzle, color: "choice-chaotic", label: "Complication" },
+  time_skip: { icon: Flag, color: "choice-risky", label: "Crossroads" },
 } as const;
 
 export function ChoiceCards({
@@ -89,6 +114,7 @@ export function ChoiceCards({
   onSectionLengthChange,
   turnCount,
   turnLimit,
+  modeLabel,
 }: ChoiceCardsProps) {
   const [customText, setCustomText] = useState("");
   const [showCustom, setShowCustom] = useState(false);
@@ -142,6 +168,11 @@ export function ChoiceCards({
           </p>
         </div>
       )}
+      {modeLabel ? (
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+          {modeLabel}
+        </p>
+      ) : null}
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-muted-foreground">What happens next?</p>
         <div className="flex items-center gap-2">

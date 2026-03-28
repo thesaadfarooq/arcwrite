@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { BookOpen, Hash, ChevronRight, MoreHorizontal, Pencil, Trash2, Merge } from "lucide-react";
+import { ChapterRenameDialog } from "@/components/story/ChapterRenameDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +33,7 @@ interface ChapterSidebarProps {
   onRename?: (id: string, newTitle: string) => void;
   onDelete?: (id: string) => void;
   onMerge?: (id: string) => void;
+  onGenerateTitle?: (id: string) => Promise<string>;
   reviewSlot?: React.ReactNode;
   embedded?: boolean;
   onEnterEditMode?: () => void;
@@ -44,33 +46,13 @@ export function ChapterSidebar({
   onRename,
   onDelete,
   onMerge,
+  onGenerateTitle,
   reviewSlot,
   embedded = false,
   onEnterEditMode,
 }: ChapterSidebarProps) {
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
+  const [renameTarget, setRenameTarget] = useState<Chapter | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Chapter | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (renamingId && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [renamingId]);
-
-  const startRename = (ch: Chapter) => {
-    setRenamingId(ch.id);
-    setRenameValue(ch.title);
-  };
-
-  const commitRename = () => {
-    if (renamingId && renameValue.trim() && onRename) {
-      onRename(renamingId, renameValue.trim());
-    }
-    setRenamingId(null);
-  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -113,39 +95,25 @@ export function ChapterSidebar({
           <div className="space-y-0.5">
             {chapters.map((ch, i) => (
               <div key={ch.id} className="group relative flex items-center">
-                {renamingId === ch.id ? (
-                  <input
-                    ref={inputRef}
-                    value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    onBlur={commitRename}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") commitRename();
-                      if (e.key === "Escape") setRenamingId(null);
-                    }}
-                    className="w-full text-left px-3 py-2.5 rounded-lg text-sm bg-primary/10 border border-primary/30 text-foreground font-medium focus:outline-none focus:border-primary/50"
-                  />
-                ) : (
-                    <button
-                      type="button"
-                      onClick={() => onChapterClick(ch.id)}
-                      className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 flex items-center gap-2 active:scale-[0.98] ${
-                        ch.isActive
-                        ? "bg-primary/10 text-primary font-medium"
-                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    }`}
-                  >
-                    <Hash className="w-3.5 h-3.5 shrink-0 opacity-50" />
-                    <span className="truncate flex-1">{ch.title || `Chapter ${i + 1}`}</span>
-                    <span className="text-xs opacity-0 group-hover:opacity-60 transition-opacity">
-                      {ch.wordCount}w
-                    </span>
-                    {ch.isActive && <ChevronRight className="w-3 h-3 shrink-0" />}
-                  </button>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => onChapterClick(ch.id)}
+                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 flex items-center gap-2 active:scale-[0.98] ${
+                      ch.isActive
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  }`}
+                >
+                  <Hash className="w-3.5 h-3.5 shrink-0 opacity-50" />
+                  <span className="truncate flex-1">{ch.title || `Chapter ${i + 1}`}</span>
+                  <span className="text-xs opacity-0 group-hover:opacity-60 transition-opacity">
+                    {ch.wordCount}w
+                  </span>
+                  {ch.isActive && <ChevronRight className="w-3 h-3 shrink-0" />}
+                </button>
 
                 {/* Context menu */}
-                {renamingId !== ch.id && (onRename || onDelete || onMerge) && (
+                {(onRename || onDelete || onMerge) && (
                   <div className={`absolute right-1 ${embedded ? "opacity-100" : "opacity-0 group-hover:opacity-100"} transition-opacity`}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -159,7 +127,7 @@ export function ChapterSidebar({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-40">
                         {onRename && (
-                          <DropdownMenuItem onClick={() => startRename(ch)}>
+                          <DropdownMenuItem onClick={() => setRenameTarget(ch)}>
                             <Pencil className="w-3.5 h-3.5 mr-2" />
                             Rename
                           </DropdownMenuItem>
@@ -217,6 +185,25 @@ export function ChapterSidebar({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Rename dialog */}
+      <ChapterRenameDialog
+        open={Boolean(renameTarget)}
+        chapterId={renameTarget?.id ?? null}
+        currentTitle={renameTarget?.title ?? ""}
+        onOpenChange={(open) => {
+          if (!open) setRenameTarget(null);
+        }}
+        onSave={async (title) => {
+          if (renameTarget && onRename) {
+            await onRename(renameTarget.id, title);
+          }
+        }}
+        onGenerateTitle={async () => {
+          if (!renameTarget || !onGenerateTitle) return renameTarget?.title ?? "";
+          return onGenerateTitle(renameTarget.id);
+        }}
+      />
     </div>
   );
 }

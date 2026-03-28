@@ -25,10 +25,21 @@ import {
   getStory, getStoryNodes, getAllStoryNodes, createStoryNode,
   updateStoryTitle, updateStoryTone, jumpToNode,
   updateNodeChapterTitle, deleteNodeAndDescendants, splitNodeAtPosition, mergeNodeWithParent, generateChapterSuggestions,
+  generateChapterTitle,
 } from "@/lib/story-api";
 import type { SectionLength } from "@/lib/story-api";
 import type { ChapterHeading } from "@/components/story/StoryCanvas";
 import { calculateBeat, type BeatInfo } from "@/lib/story-arc";
+import { selectMoveFamilies, type StoryMoveFamily, type StoryArcMode } from "@/lib/story-moves";
+import {
+  calculateArcBeat,
+  seedPostEndingArcState,
+  classifyResumeStrength,
+  shouldExitPostEndingBuffer,
+  getExtensionTargetTurns,
+  type ArcState,
+  type StoryArcOverride,
+} from "@/lib/story-extension";
 import {
   countWordsSinceChapterStart,
   isChapterSuggestionsStale,
@@ -192,11 +203,13 @@ export default function StoryWrite() {
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [sectionLength, setSectionLength] = useState<SectionLength>("medium");
   const [targetTurns, setTargetTurns] = useState(35);
-  const [arcOverride, setArcOverride] = useState<string | null>(null);
+  const [arcOverride, setArcOverride] = useState<StoryArcMode | null>(null);
   const [isStoryComplete, setIsStoryComplete] = useState(false);
   const [chapterSuggestions, setChapterSuggestions] = useState<ChapterSuggestion[]>([]);
   const [chapterSuggestionsTipId, setChapterSuggestionsTipId] = useState<string | null>(null);
   const [isChapterReviewLoading, setIsChapterReviewLoading] = useState(false);
+  const [arcState, setArcState] = useState<ArcState | null>(null);
+  const [choiceVariantOffset, setChoiceVariantOffset] = useState(0);
   const [chapterSuggestionsExpanded, setChapterSuggestionsExpanded] = useState(false);
   const [pendingBreakKey, setPendingBreakKey] = useState<string | null>(null);
   const [applyingSuggestionKey, setApplyingSuggestionKey] = useState<string | null>(null);
@@ -237,7 +250,8 @@ export default function StoryWrite() {
       setStoryTitle(story.title);
       setStoryMeta({ genre: story.genre || undefined, tone: story.tone || undefined, premise: story.premise || undefined });
       setTargetTurns(story.target_turns ?? 35);
-      setArcOverride(story.arc_override ?? null);
+      setArcOverride((story.arc_override as StoryArcMode) ?? null);
+      setArcState(story.arc_state ?? null);
       setIsStoryComplete(story.status === "completed");
       setShareToken((story as any).share_token || null);
 
@@ -267,6 +281,7 @@ export default function StoryWrite() {
             },
             targetTurns: story.target_turns ?? 35,
             arcOverride: story.arc_override ?? null,
+            arcStateOverride: story.arc_state ?? null,
           });
         }
       } else {
@@ -286,17 +301,17 @@ export default function StoryWrite() {
 
   const getCurrentBeat = (
     nodeCount: number,
-    options?: { arcOverride?: string | null; targetTurns?: number },
+    options?: { arcOverride?: StoryArcMode | null; targetTurns?: number },
   ): BeatInfo => {
     const effectiveTargetTurns = options?.targetTurns ?? targetTurns;
     const effectiveArcOverride = options?.arcOverride ?? arcOverride;
 
-    if (effectiveArcOverride === "concluding") {
-      const forcedProgress = Math.max(0.75, nodeCount / Math.max(1, effectiveTargetTurns));
-      return calculateBeat(Math.ceil(forcedProgress * effectiveTargetTurns), effectiveTargetTurns);
-    }
-
-    return calculateBeat(nodeCount, effectiveTargetTurns);
+    return calculateArcBeat({
+      activeTurns: nodeCount,
+      targetTurns: effectiveTargetTurns,
+      arcOverride: effectiveArcOverride === "normal" ? null : effectiveArcOverride,
+      arcState,
+    });
   };
 
   const buildBeatPayload = (beat: BeatInfo, isFinalSection = false) => ({
@@ -360,6 +375,7 @@ export default function StoryWrite() {
       genre: useMeta.genre,
       tone: useMeta.tone,
       length: sectionLength,
+      arcMode: arcOverride ?? undefined,
       beat: buildBeatPayload(beat, false),
       onDelta: (delta) => {
         fullText += delta;
@@ -378,6 +394,13 @@ export default function StoryWrite() {
 
         // Run summarize + choices in parallel
         const summarizePromise = summarizeStory({ fullText: text, storyState: {} });
+        const initialMoveFamilies = selectMoveFamilies({
+          phase: beat.phase,
+          arcMode: arcOverride ?? "normal",
+          previousEnding: arcState?.endedWith ?? null,
+          recentFamilies: [],
+          variantOffset: choiceVariantOffset,
+        });
         const choicesPromise = generateChoices({
           recentText: text.split("\n\n").slice(-3).join("\n\n"),
           summary: "",
@@ -386,6 +409,9 @@ export default function StoryWrite() {
           genre: useMeta.genre,
           premise: useMeta.premise,
           beat: buildBeatPayload(beat, false),
+          arcMode: arcOverride ?? "normal",
+          moveFamilies: initialMoveFamilies,
+          previousEnding: arcState?.endedWith ?? null,
         });
 
         try {
@@ -442,7 +468,8 @@ export default function StoryWrite() {
       activeNodeCount?: number;
       meta?: { premise?: string; genre?: string; tone?: string };
       targetTurns?: number;
-      arcOverride?: string | null;
+      arcOverride?: StoryArcMode | null;
+      arcStateOverride?: ArcState | null;
     },
   ) => {
     setIsLoadingChoices(true);
@@ -452,6 +479,15 @@ export default function StoryWrite() {
         targetTurns: options?.targetTurns,
       });
       const meta = options?.meta || storyMeta;
+      const effectiveArcOverride = options?.arcOverride ?? arcOverride;
+      const effectiveArcState = options?.arcStateOverride !== undefined ? options.arcStateOverride : arcState;
+      const moveFamilies = selectMoveFamilies({
+        phase: beat.phase,
+        arcMode: (effectiveArcOverride as any) ?? "normal",
+        previousEnding: effectiveArcState?.endedWith ?? null,
+        recentFamilies: recentMoveFamilies as StoryMoveFamily[],
+        variantOffset: choiceVariantOffset,
+      });
       const result = await generateChoices({
         recentText,
         summary,
@@ -460,6 +496,9 @@ export default function StoryWrite() {
         genre: meta.genre,
         premise: meta.premise,
         beat: buildBeatPayload(beat, false),
+        arcMode: (effectiveArcOverride as any) ?? undefined,
+        moveFamilies,
+        previousEnding: effectiveArcState?.endedWith ?? null,
       });
       setChoices(result);
 
@@ -500,6 +539,7 @@ export default function StoryWrite() {
       recentText,
       storyState,
       length: sectionLength,
+      arcMode: arcOverride ?? undefined,
       beat: buildBeatPayload(beat, isFinalSection),
       onDelta: (delta) => {
         fullText += delta;
@@ -531,15 +571,27 @@ export default function StoryWrite() {
         });
         const choicesPromise2 = isFinalSection
           ? Promise.resolve<StoryChoice[] | null>(null)
-          : generateChoices({
-              recentText: text.split("\n\n").slice(-3).join("\n\n"),
-              summary,
-              storyState,
-              tone: storyMeta.tone,
-              genre: storyMeta.genre,
-              premise: storyMeta.premise,
-              beat: buildBeatPayload(beat, false),
-            });
+          : (() => {
+              const postSectionMoveFamilies = selectMoveFamilies({
+                phase: beat.phase,
+                arcMode: arcOverride ?? "normal",
+                previousEnding: arcState?.endedWith ?? null,
+                recentFamilies: recentMoveFamilies as StoryMoveFamily[],
+                variantOffset: choiceVariantOffset,
+              });
+              return generateChoices({
+                recentText: text.split("\n\n").slice(-3).join("\n\n"),
+                summary,
+                storyState,
+                tone: storyMeta.tone,
+                genre: storyMeta.genre,
+                premise: storyMeta.premise,
+                beat: buildBeatPayload(beat, false),
+                arcMode: arcOverride ?? "normal",
+                moveFamilies: postSectionMoveFamilies,
+                previousEnding: arcState?.endedWith ?? null,
+              });
+            })();
 
         try {
           const results = await Promise.allSettled([summarizePromise2, choicesPromise2]);
@@ -574,6 +626,38 @@ export default function StoryWrite() {
             await apiClient.updateStory(storyId!, { status: "completed" });
             setIsStoryComplete(true);
           }
+
+          // Post-ending buffer tracking
+          if (arcOverride === "post_ending" && !isFinalSection) {
+            const resumeStrength = classifyResumeStrength(choice.type as StoryMoveFamily);
+            const bufferTurnsUsed = (arcState?.bufferTurnsUsed ?? 0) + 1;
+            if (shouldExitPostEndingBuffer({ bufferTurnsUsed, resumeStrength })) {
+              const nextArcState: ArcState = {
+                ...(arcState ?? seedPostEndingArcState(activeNodes.length, "conclude")),
+                bufferTurnsUsed,
+                resumeStrength,
+                segmentStartTurn: activeNodes.length + 1,
+                extensionTargetTurns: getExtensionTargetTurns(resumeStrength),
+              };
+              await apiClient.updateStory(storyId!, {
+                arc_override: "resumed_extension",
+                arc_state: nextArcState,
+              });
+              setArcOverride("resumed_extension");
+              setArcState(nextArcState);
+            } else {
+              const nextArcState: ArcState = {
+                ...(arcState ?? seedPostEndingArcState(activeNodes.length, "conclude")),
+                bufferTurnsUsed,
+              };
+              await apiClient.updateStory(storyId!, {
+                arc_override: "post_ending",
+                arc_state: nextArcState,
+              });
+              setArcState(nextArcState);
+            }
+          }
+
           await reloadActiveState();
         } catch (e) {
           console.error("Failed to save:", e);
@@ -789,13 +873,24 @@ export default function StoryWrite() {
   const handleContinueAnyway = async () => {
     if (!storyId) return;
 
+    const lastChoiceType = activeNodes[activeNodes.length - 1]?.chosen_option?.type;
+    const endingType = lastChoiceType === "epilogue" ? "epilogue" : "conclude";
+    const nextArcState = seedPostEndingArcState(activeNodes.length, endingType);
+
     try {
-      await apiClient.updateStory(storyId, { status: "in_progress", arc_override: null });
+      await apiClient.updateStory(storyId, {
+        status: "in_progress",
+        arc_override: "post_ending",
+        arc_state: nextArcState,
+      });
       setIsStoryComplete(false);
-      setArcOverride(null);
+      setArcOverride("post_ending");
+      setArcState(nextArcState);
+      setChoiceVariantOffset(0);
       await fetchChoices(paragraphs.slice(-3).map((p) => p.text).join("\n\n"), {
         activeNodeCount: activeNodes.length,
-        arcOverride: null,
+        arcOverride: "post_ending",
+        arcStateOverride: nextArcState,
       });
     } catch {
       toast.error("Failed to continue the story");
@@ -873,6 +968,13 @@ export default function StoryWrite() {
     [allNodes]
   );
   const currentBeat = useMemo(() => getCurrentBeat(activeNodes.length), [activeNodes.length, arcOverride, targetTurns]);
+  const recentMoveFamilies = useMemo(
+    () => activeNodes
+      .map((node) => node.chosen_option?.type)
+      .filter(Boolean)
+      .slice(-2),
+    [activeNodes]
+  );
   const previousBeat = useMemo(
     () => (activeNodes.length > 0 ? getCurrentBeat(Math.max(activeNodes.length - 1, 0)) : null),
     [activeNodes.length, arcOverride, targetTurns],
@@ -1020,6 +1122,33 @@ export default function StoryWrite() {
     } catch (e: any) {
       toast.error(e.message || "Failed to merge chapters");
     }
+  };
+
+  const handleGenerateChapterTitle = async (chapterId: string): Promise<string> => {
+    const chapterIndex = chapterNodes.findIndex((node) => node.id === chapterId);
+    const chapterStart = chapterNodes[chapterIndex];
+    const nextChapterStart = chapterNodes[chapterIndex + 1];
+    const startIndex = activeNodes.findIndex((node) => node.id === chapterStart.id);
+    const endIndex = nextChapterStart
+      ? activeNodes.findIndex((node) => node.id === nextChapterStart.id)
+      : activeNodes.length;
+
+    const chapterSlice = activeNodes.slice(startIndex, endIndex);
+    const recentNodes = chapterSlice.map((node) => ({
+      id: node.id,
+      text: node.text || "",
+      startsChapter: (node as any).starts_chapter === true,
+      chapterTitle: (node as any).chapter_title || null,
+    }));
+
+    return generateChapterTitle({
+      recentNodes,
+      premise: storyMeta.premise,
+      tone: storyMeta.tone,
+      genre: storyMeta.genre,
+      summary,
+      currentTitle: chapterStart.chapter_title || undefined,
+    });
   };
 
   const handleInsertBreak = async (nodeId: string, paragraphIndex: number) => {
@@ -1381,6 +1510,7 @@ export default function StoryWrite() {
             onRename={handleChapterRename}
             onDelete={handleChapterDelete}
             onMerge={handleChapterMerge}
+            onGenerateTitle={handleGenerateChapterTitle}
             reviewSlot={chapterReviewPanel}
           />
         ) : (
@@ -1469,6 +1599,7 @@ export default function StoryWrite() {
             onSectionLengthChange={setSectionLength}
             turnCount={limits.turns !== Infinity ? activeNodes.length : undefined}
             turnLimit={limits.turns !== Infinity ? limits.turns : undefined}
+            modeLabel={arcOverride === "post_ending" ? "After the ending" : undefined}
           />
         )
       ) : null}
@@ -1493,6 +1624,7 @@ export default function StoryWrite() {
           onRename={handleChapterRename}
           onDelete={handleChapterDelete}
           onMerge={handleChapterMerge}
+          onGenerateTitle={handleGenerateChapterTitle}
           embedded
           onEnterEditMode={() => {
             setStructureOpen(false);

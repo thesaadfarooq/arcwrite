@@ -135,6 +135,40 @@ describe("story database routes", () => {
     expect(res.body).toEqual({ id: "story-2b", title: "Finite Story" });
   });
 
+  it("creates a story with arc state metadata", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-2c" });
+    const arcState = {
+      segmentStartTurn: 7,
+      bufferTurnsUsed: 1,
+      endedWith: "conclude",
+      resumeStrength: null,
+      extensionTargetTurns: null,
+    };
+    queryOneMock.mockResolvedValue({ id: "story-2c", title: "Arc Story", arc_state: arcState });
+    const handler = (await import("../../api/db/stories")).default;
+    const res = createResponse();
+
+    await handler(
+      {
+        method: "POST",
+        query: {},
+        headers: { authorization: "Bearer token" },
+        body: {
+          title: "Arc Story",
+          arc_state: arcState,
+        },
+      } as any,
+      res as any
+    );
+
+    expect(queryOneMock).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO stories"),
+      ["user-2c", "Arc Story", null, null, null, "in_progress", arcState]
+    );
+    expect(res.statusCode).toBe(201);
+    expect(res.body).toEqual({ id: "story-2c", title: "Arc Story", arc_state: arcState });
+  });
+
   it("returns a generic 500 when story listing fails", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
     queryMock.mockRejectedValue(new Error("db blew up"));
@@ -200,6 +234,45 @@ describe("story database routes", () => {
     );
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ id: "story-3b", target_turns: 18, arc_override: "concluding" });
+  });
+
+  it("patches arc override and arc state metadata together", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-3bb" });
+    const arcState = {
+      segmentStartTurn: 12,
+      bufferTurnsUsed: 0,
+      endedWith: "epilogue",
+      resumeStrength: null,
+      extensionTargetTurns: null,
+    };
+    queryOneMock.mockResolvedValue({
+      id: "story-3bb",
+      arc_override: "concluding",
+      arc_state: arcState,
+    });
+    const handler = (await import("../../api/db/stories")).default;
+    const res = createResponse();
+
+    await handler(
+      {
+        method: "PATCH",
+        query: { id: "story-3bb" },
+        headers: { authorization: "Bearer token" },
+        body: { arcOverride: "concluding", arcState: arcState },
+      } as any,
+      res as any
+    );
+
+    expect(queryOneMock).toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE stories SET arc_override = $1, arc_state = $2"),
+      ["concluding", arcState, "story-3bb", "user-3bb"]
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({
+      id: "story-3bb",
+      arc_override: "concluding",
+      arc_state: arcState,
+    });
   });
 
   it("deduplicates mixed-case aliases that map to the same patched column", async () => {

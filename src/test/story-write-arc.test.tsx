@@ -12,6 +12,7 @@ const {
   streamSectionMock,
   generateChoicesMock,
   generateChapterSuggestionsMock,
+  generateChapterTitleMock,
   summarizeStoryMock,
   createStoryNodeMock,
   updateNodeChapterTitleMock,
@@ -30,6 +31,7 @@ const {
   streamSectionMock: vi.fn(),
   generateChoicesMock: vi.fn(),
   generateChapterSuggestionsMock: vi.fn(),
+  generateChapterTitleMock: vi.fn(),
   summarizeStoryMock: vi.fn(),
   createStoryNodeMock: vi.fn(),
   updateNodeChapterTitleMock: vi.fn(),
@@ -78,6 +80,7 @@ vi.mock("@/lib/story-api", () => ({
   getAllStoryNodes: getAllStoryNodesMock,
   createStoryNode: createStoryNodeMock,
   generateChapterSuggestions: generateChapterSuggestionsMock,
+  generateChapterTitle: generateChapterTitleMock,
   updateStoryTitle: vi.fn(),
   updateStoryTone: vi.fn(),
   jumpToNode: vi.fn(),
@@ -123,13 +126,104 @@ vi.mock("@/components/story/StoryCanvas", () => ({
   },
 }));
 
-vi.mock("@/components/story/ChapterSidebar", () => ({
-  ChapterSidebar: ({ embedded, reviewSlot }: { embedded?: boolean; reviewSlot?: React.ReactNode }) => (
-    <div data-testid={embedded ? "embedded-chapter-sidebar" : "chapter-sidebar"}>
-      {reviewSlot}
-    </div>
-  ),
-}));
+vi.mock("@/components/story/ChapterSidebar", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { useState } = require("react") as typeof import("react");
+  return {
+    ChapterSidebar: ({
+      embedded,
+      reviewSlot,
+      chapters,
+      onRename,
+      onGenerateTitle,
+    }: {
+      embedded?: boolean;
+      reviewSlot?: React.ReactNode;
+      chapters?: Array<{ id: string; title: string }>;
+      onRename?: (id: string, title: string) => void;
+      onGenerateTitle?: (id: string) => Promise<string>;
+    }) => {
+      const [menuOpen, setMenuOpen] = useState<{ id: string; title: string } | null>(null);
+      const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);
+      const [renameValue, setRenameValue] = useState("");
+      const [suggestion, setSuggestion] = useState<string | null>(null);
+      const [isGenerating, setIsGenerating] = useState(false);
+      return (
+        <div data-testid={embedded ? "embedded-chapter-sidebar" : "chapter-sidebar"}>
+          {reviewSlot}
+          {chapters?.map((ch: { id: string; title: string }) => (
+            <div key={ch.id}>
+              <button
+                type="button"
+                aria-label="Chapter options"
+                onClick={() => setMenuOpen(ch)}
+              >
+                {ch.title}
+              </button>
+            </div>
+          ))}
+          {menuOpen && (
+            <div role="menu">
+              <div
+                role="menuitem"
+                onClick={() => {
+                  setRenameTarget(menuOpen);
+                  setRenameValue(menuOpen.title);
+                  setSuggestion(null);
+                  setMenuOpen(null);
+                }}
+              >
+                Rename
+              </div>
+            </div>
+          )}
+          {renameTarget && (
+            <div>
+              <input
+                aria-label="Chapter title"
+                value={renameValue}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRenameValue(e.target.value)}
+              />
+              {suggestion && (
+                <div>
+                  <p>{suggestion}</p>
+                  <button type="button" onClick={() => setRenameValue(suggestion)}>
+                    Use suggestion
+                  </button>
+                </div>
+              )}
+              <button
+                type="button"
+                disabled={isGenerating}
+                onClick={async () => {
+                  if (!onGenerateTitle) return;
+                  setIsGenerating(true);
+                  try {
+                    const title = await onGenerateTitle(renameTarget.id);
+                    setSuggestion(title);
+                  } finally {
+                    setIsGenerating(false);
+                  }
+                }}
+              >
+                {suggestion ? "Reroll" : "Generate title"}
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (renameTarget && onRename) onRename(renameTarget.id, renameValue.trim());
+                  setRenameTarget(null);
+                }}
+              >
+                Save title
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    },
+  };
+});
 
 vi.mock("@/components/story/StoryTimeline", () => ({
   StoryTimeline: ({ embedded }: { embedded?: boolean }) => (
@@ -270,6 +364,7 @@ describe("StoryWrite narrative arc integration", () => {
 
     createStoryNodeMock.mockResolvedValue({ id: "node-3" });
     updateNodeChapterTitleMock.mockResolvedValue(undefined);
+    generateChapterTitleMock.mockResolvedValue("Untitled");
     splitNodeAtPositionMock.mockResolvedValue({ id: "node-2b" });
     apiUpdateStoryMock.mockResolvedValue({});
     apiUpdateNodeMock.mockResolvedValue({});
@@ -426,16 +521,17 @@ describe("StoryWrite narrative arc integration", () => {
     await waitFor(() => {
       expect(apiUpdateStoryMock).toHaveBeenCalledWith("story-1", {
         status: "in_progress",
-        arc_override: null,
+        arc_override: "post_ending",
+        arc_state: expect.objectContaining({
+          bufferTurnsUsed: 0,
+          endedWith: "conclude",
+        }),
       });
     });
 
     expect(generateChoicesMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        beat: expect.objectContaining({
-          phase: "falling",
-          progress: 0.8,
-        }),
+        arcMode: "post_ending",
       }),
     );
   });
@@ -484,7 +580,11 @@ describe("StoryWrite narrative arc integration", () => {
     await waitFor(() => {
       expect(apiUpdateStoryMock).toHaveBeenCalledWith("story-1", {
         status: "in_progress",
-        arc_override: null,
+        arc_override: "post_ending",
+        arc_state: expect.objectContaining({
+          bufferTurnsUsed: 0,
+          endedWith: "conclude",
+        }),
       });
     });
 
@@ -1635,5 +1735,136 @@ describe("StoryWrite narrative arc integration", () => {
     expect(screen.queryByRole("button", { name: /structure/i })).not.toBeInTheDocument();
     expect(latestStoryCanvasProps.current.chapterEditMode).toBeUndefined();
     expect(latestStoryCanvasProps.current.onRenameChapter).toEqual(expect.any(Function));
+  });
+
+  it("enters post-ending mode when continue anyway succeeds", async () => {
+    getStoryMock.mockResolvedValueOnce({
+      id: "story-1",
+      title: "Arc Story",
+      premise: "A strange light appears offshore.",
+      tone: "Atmospheric",
+      genre: "Mystery",
+      target_turns: 4,
+      arc_override: null,
+      status: "completed",
+    });
+
+    getStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-2",
+        text: "Final paragraph.",
+        summary: "Ending",
+        story_state: { stage: "ending" },
+        choices: [],
+        is_active: true,
+        chosen_option: { type: "conclude", label: "End it", preview: "Conclude." },
+      },
+    ]);
+
+    renderStoryWrite();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("story-complete")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /continue anyway/i }));
+
+    await waitFor(() => {
+      expect(apiUpdateStoryMock).toHaveBeenCalledWith("story-1", {
+        status: "in_progress",
+        arc_override: "post_ending",
+        arc_state: expect.objectContaining({
+          bufferTurnsUsed: 0,
+          endedWith: "conclude",
+        }),
+      });
+    });
+
+    expect(generateChoicesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        arcMode: "post_ending",
+        moveFamilies: expect.any(Array),
+        previousEnding: "conclude",
+      }),
+    );
+  });
+
+  it("generates and applies a suggested chapter title without overwriting manual input", async () => {
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByTestId("chapter-sidebar")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /chapter options/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /rename/i }));
+
+    const input = await screen.findByRole("textbox", { name: /chapter title/i });
+    fireEvent.change(input, { target: { value: "My own draft" } });
+    generateChapterTitleMock.mockResolvedValue("The Ash Bell");
+
+    fireEvent.click(screen.getByRole("button", { name: /generate title/i }));
+
+    await waitFor(() => expect(screen.getByText("The Ash Bell")).toBeInTheDocument());
+    expect(screen.getByRole("textbox", { name: /chapter title/i })).toHaveValue("My own draft");
+
+    fireEvent.click(screen.getByRole("button", { name: /use suggestion/i }));
+    expect(screen.getByRole("textbox", { name: /chapter title/i })).toHaveValue("The Ash Bell");
+  });
+
+  it("passes post-ending move families into choice generation", async () => {
+    getStoryMock.mockResolvedValueOnce({
+      id: "story-1",
+      title: "Arc Story",
+      premise: "A strange light appears offshore.",
+      tone: "Atmospheric",
+      genre: "Mystery",
+      target_turns: 10,
+      arc_override: "post_ending",
+      arc_state: {
+        segmentStartTurn: 5,
+        bufferTurnsUsed: 0,
+        endedWith: "conclude",
+        resumeStrength: null,
+        extensionTargetTurns: null,
+      },
+      status: "in_progress",
+    });
+
+    getStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [],
+        is_active: true,
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        summary: "Second",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+      },
+    ]);
+
+    renderStoryWrite();
+
+    await waitFor(() => {
+      expect(generateChoicesMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          arcMode: "post_ending",
+          moveFamilies: expect.any(Array),
+          previousEnding: "conclude",
+        }),
+      );
+    });
   });
 });

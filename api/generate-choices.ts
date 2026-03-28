@@ -2,6 +2,28 @@ import { getAuthenticatedUser, unauthorizedResponse } from "./_lib/auth.js";
 
 export const config = { runtime: "edge" };
 
+type StoryArcMode = "normal" | "concluding" | "post_ending" | "resumed_extension";
+type StoryMoveFamily =
+  | "investigate"
+  | "connect"
+  | "commit"
+  | "foreshadow"
+  | "reveal"
+  | "complicate"
+  | "risk"
+  | "bargain"
+  | "confront"
+  | "sacrifice"
+  | "regroup"
+  | "reflect"
+  | "resolve"
+  | "conclude"
+  | "epilogue"
+  | "aftermath"
+  | "loose_thread"
+  | "new_problem"
+  | "time_skip";
+type StoryEndingType = "conclude" | "epilogue";
 type NarrativePhase = "setup" | "rising" | "climax" | "falling" | "resolution";
 type Beat = {
   phase?: NarrativePhase;
@@ -44,6 +66,32 @@ function getChoiceTypesForPhase(phase?: NarrativePhase) {
   }
 }
 
+const MOVE_FAMILY_GUIDANCE: Record<StoryMoveFamily, string> = {
+  investigate: "pursue a clue, mystery, or hidden detail",
+  connect: "deepen or test a relationship",
+  commit: "force a consequential choice or commitment",
+  foreshadow: "hint at a threat, promise, or deeper truth",
+  reveal: "uncover information that changes the reader's understanding",
+  complicate: "introduce an obstacle, betrayal, or setback",
+  risk: "take a bold action with uncertain cost",
+  bargain: "negotiate, trade, or compromise under pressure",
+  confront: "face the central conflict directly",
+  sacrifice: "give something up to gain something vital",
+  regroup: "recover, reassess, or gather strength",
+  reflect: "linger on emotional or thematic consequences",
+  resolve: "tie off an open thread or answer a question",
+  conclude: "move toward a final wrap-up",
+  epilogue: "show what life looks like after the main events",
+  aftermath: "focus on consequences after the apparent ending",
+  loose_thread: "surface something unresolved from before",
+  new_problem: "introduce a new threat, cost, or instability",
+  time_skip: "jump forward and show how things changed",
+};
+
+function isStoryMoveFamily(value: unknown): value is StoryMoveFamily {
+  return typeof value === "string" && value in MOVE_FAMILY_GUIDANCE;
+}
+
 export default async function handler(req: Request) {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204 });
@@ -53,7 +101,7 @@ export default async function handler(req: Request) {
     const user = await getAuthenticatedUser(req.headers.get("authorization"));
     if (!user) return unauthorizedResponse();
 
-    const { recentText, summary, storyState, tone, genre, premise, beat } = await req.json() as {
+    const { recentText, summary, storyState, tone, genre, premise, beat, arcMode, moveFamilies, previousEnding } = await req.json() as {
       recentText?: string;
       summary?: string;
       storyState?: unknown;
@@ -61,8 +109,20 @@ export default async function handler(req: Request) {
       genre?: string;
       premise?: string;
       beat?: Beat;
+      arcMode?: StoryArcMode;
+      moveFamilies?: unknown[];
+      previousEnding?: StoryEndingType | null;
     };
+    const currentArcMode = arcMode ?? "normal";
     const choiceTypes = getChoiceTypesForPhase(beat?.phase);
+    const selectedMoveFamilies = (moveFamilies ?? []).filter(isStoryMoveFamily).slice(0, 4);
+    const allowedChoiceTypes = selectedMoveFamilies.length > 0 ? ALL_CHOICE_TYPES : choiceTypes;
+    const moveFamilyInstruction = selectedMoveFamilies.length > 0
+      ? `Generate exactly one choice for each required move family.
+Required move families:
+${selectedMoveFamilies.map((family) => `- ${family}: ${MOVE_FAMILY_GUIDANCE[family]}`).join("\n")}
+Choose the story type that best fits each move family while staying within the supported story types.`
+      : "";
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
@@ -70,6 +130,8 @@ export default async function handler(req: Request) {
     const systemPrompt = `You are a story direction advisor. Given the current state of a story, generate exactly 4 possible directions for what could happen next.
 
 Current phase: ${beat?.phase || "setup"}
+Current arc mode: ${currentArcMode}
+${previousEnding ? `Previous ending beat: ${previousEnding}` : ""}
 Use these 4 types for this phase: ${choiceTypes.join(", ")}.
 
 Each direction type must be one of the supported story types:
@@ -87,10 +149,11 @@ Each direction type must be one of the supported story types:
 - epilogue: A glimpse into the future after the main events
 
 For each direction, provide:
-- type: one of ${choiceTypes.join(", ")}
+- type: one of ${allowedChoiceTypes.join(", ")}
 - label: a short 4-8 word description
 - preview: a 1-2 sentence preview of what would happen
 
+${moveFamilyInstruction}
 ${premise ? `ORIGINAL PREMISE: ${premise}\nChoices should be consistent with the premise's core concept and any established characters/settings. However, choices may introduce new characters, locations, or plot developments — the premise is a foundation, not a boundary. Never contradict what has already been established.` : ""}
 ${tone ? `TONE: ${tone}` : ""}
 ${genre ? `GENRE: ${genre}` : ""}`;
