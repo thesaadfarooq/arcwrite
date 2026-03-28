@@ -32,9 +32,22 @@ interface ChapterSidebarProps {
   onRename?: (id: string, newTitle: string) => void;
   onDelete?: (id: string) => void;
   onMerge?: (id: string) => void;
+  reviewSlot?: React.ReactNode;
+  embedded?: boolean;
+  onEnterEditMode?: () => void;
 }
 
-export function ChapterSidebar({ chapters, totalWords, onChapterClick, onRename, onDelete, onMerge }: ChapterSidebarProps) {
+export function ChapterSidebar({
+  chapters,
+  totalWords,
+  onChapterClick,
+  onRename,
+  onDelete,
+  onMerge,
+  reviewSlot,
+  embedded = false,
+  onEnterEditMode,
+}: ChapterSidebarProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Chapter | null>(null);
@@ -62,15 +75,33 @@ export function ChapterSidebar({ chapters, totalWords, onChapterClick, onRename,
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-2 mb-3">
-          <BookOpen className="w-4 h-4 text-primary" />
-          <span className="font-story font-semibold text-foreground text-sm">Chapters</span>
+      {!embedded && (
+        <div className="p-4 border-b border-border">
+          <div className="flex items-center gap-2 mb-3">
+            <BookOpen className="w-4 h-4 text-primary" />
+            <span className="font-story font-semibold text-foreground text-sm">Chapters</span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {totalWords.toLocaleString()} words
+          </div>
         </div>
-        <div className="text-xs text-muted-foreground">
-          {totalWords.toLocaleString()} words
+      )}
+
+      {reviewSlot ? <div className="p-2">{reviewSlot}</div> : null}
+
+      {onEnterEditMode ? (
+        <div className="px-2 pb-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="w-full"
+            onClick={onEnterEditMode}
+          >
+            Edit chapters
+          </Button>
         </div>
-      </div>
+      ) : null}
 
       {/* Chapter List */}
       <div className="flex-1 overflow-y-auto p-2">
@@ -95,10 +126,11 @@ export function ChapterSidebar({ chapters, totalWords, onChapterClick, onRename,
                     className="w-full text-left px-3 py-2.5 rounded-lg text-sm bg-primary/10 border border-primary/30 text-foreground font-medium focus:outline-none focus:border-primary/50"
                   />
                 ) : (
-                  <button
-                    onClick={() => onChapterClick(ch.id)}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 flex items-center gap-2 active:scale-[0.98] ${
-                      ch.isActive
+                    <button
+                      type="button"
+                      onClick={() => onChapterClick(ch.id)}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors duration-150 flex items-center gap-2 active:scale-[0.98] ${
+                        ch.isActive
                         ? "bg-primary/10 text-primary font-medium"
                         : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                     }`}
@@ -114,10 +146,14 @@ export function ChapterSidebar({ chapters, totalWords, onChapterClick, onRename,
 
                 {/* Context menu */}
                 {renamingId !== ch.id && (onRename || onDelete || onMerge) && (
-                  <div className="absolute right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className={`absolute right-1 ${embedded ? "opacity-100" : "opacity-0 group-hover:opacity-100"} transition-opacity`}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+                        <button
+                          type="button"
+                          className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label="Chapter options"
+                        >
                           <MoreHorizontal className="w-3.5 h-3.5" />
                         </button>
                       </DropdownMenuTrigger>

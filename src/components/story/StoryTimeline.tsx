@@ -19,6 +19,7 @@ interface StoryTimelineProps {
   onForkFromNode: (nodeId: string) => void;
   totalWords: number;
   storyTitle: string;
+  embedded?: boolean;
 }
 
 interface TreeNode extends TimelineNode {
@@ -80,6 +81,7 @@ export function StoryTimeline({
   onForkFromNode,
   totalWords,
   storyTitle,
+  embedded = false,
 }: StoryTimelineProps) {
   const tree = buildTree(nodes);
   assignBranchDepth(tree);
@@ -127,6 +129,7 @@ export function StoryTimeline({
               return (
                 <div key={node.id} style={{ paddingLeft: `${node.depth * 16}px` }}>
                   <button
+                    type="button"
                     onClick={() => onJumpToNode(node.id)}
                     className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all duration-200 flex items-center gap-2 group active:scale-[0.97] ${
                       isCurrent
@@ -165,8 +168,9 @@ export function StoryTimeline({
 
                   {/* Fork action on hover for non-current nodes */}
                   {!isCurrent && (
-                    <div className="hidden group-hover:flex items-center gap-1 ml-7 mt-0.5">
+                    <div className={`${embedded ? "flex" : "hidden group-hover:flex"} items-center gap-1 ml-7 mt-0.5`}>
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           onForkFromNode(node.id);

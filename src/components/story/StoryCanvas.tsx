@@ -19,9 +19,18 @@ interface StoryCanvasProps {
   chapterHeadings?: ChapterHeading[];
   onInsertBreak?: (nodeId: string, paragraphIndex: number) => void;
   onRenameChapter?: (nodeId: string, newTitle: string) => void;
+  chapterEditMode?: boolean;
 }
 
-export function StoryCanvas({ paragraphs, onEdit, isEditable = true, chapterHeadings, onInsertBreak, onRenameChapter }: StoryCanvasProps) {
+export function StoryCanvas({
+  paragraphs,
+  onEdit,
+  isEditable = true,
+  chapterHeadings,
+  onInsertBreak,
+  onRenameChapter,
+  chapterEditMode,
+}: StoryCanvasProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,16 +77,32 @@ export function StoryCanvas({ paragraphs, onEdit, isEditable = true, chapterHead
 
             {/* Insert chapter break button — between paragraphs of the same node */}
             {onInsertBreak && !isFirstOfNode && paraIndex > 0 && (
-              <div className="relative h-0 group/break">
-                <button
-                  onClick={() => onInsertBreak(nodeId, paraIndex)}
-                  className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/80 border border-border text-muted-foreground text-xs opacity-0 group-hover/break:opacity-100 hover:!opacity-100 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all duration-200 active:scale-95"
-                  title="Insert chapter break here"
-                >
-                  <SplitSquareVertical className="w-3 h-3" />
-                  <span>Chapter break</span>
-                </button>
-              </div>
+              chapterEditMode === true ? (
+                <div className="relative py-3 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => onInsertBreak(nodeId, paraIndex)}
+                    className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs text-primary transition-all duration-200 active:scale-95 hover:bg-primary/10"
+                    aria-label="Chapter break"
+                  >
+                    <SplitSquareVertical className="h-3 w-3" />
+                    <span>Chapter break</span>
+                  </button>
+                </div>
+              ) : chapterEditMode === undefined ? (
+                <div className="relative h-0 group/break">
+                  <button
+                    type="button"
+                    onClick={() => onInsertBreak(nodeId, paraIndex)}
+                    className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center gap-1.5 rounded-full bg-secondary/80 border border-border px-3 py-1 text-xs text-muted-foreground opacity-0 transition-all duration-200 hover:!opacity-100 hover:bg-primary/10 hover:text-primary hover:border-primary/30 group-hover/break:opacity-100 active:scale-95"
+                    title="Insert chapter break here"
+                    aria-label="Chapter break"
+                  >
+                    <SplitSquareVertical className="h-3 w-3" />
+                    <span>Chapter break</span>
+                  </button>
+                </div>
+              ) : null
             )}
 
             <ParagraphBlock
