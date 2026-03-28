@@ -11,6 +11,7 @@ import { ChoiceCards, type StoryChoice } from "@/components/story/ChoiceCards";
 import { ChapterSidebar, type Chapter } from "@/components/story/ChapterSidebar";
 import { StoryTimeline, type TimelineNode } from "@/components/story/StoryTimeline";
 import { TonePanel } from "@/components/story/TonePanel";
+import { StoryComplete } from "@/components/story/StoryComplete";
 import { supabase } from "@/integrations/supabase/client";
 import {
   streamSection, generateChoices, summarizeStory,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/story-api";
 import type { SectionLength } from "@/lib/story-api";
 import type { ChapterHeading } from "@/components/story/StoryCanvas";
+import { calculateBeat, type BeatInfo } from "@/lib/story-arc";
 import { toast } from "sonner";
 
 async function retry<T>(fn: () => Promise<T>, attempts = 3, delayMs = 1000): Promise<T> {
@@ -170,6 +172,9 @@ export default function StoryWrite() {
   const [isExporting, setIsExporting] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [sectionLength, setSectionLength] = useState<SectionLength>("medium");
+  const [targetTurns, setTargetTurns] = useState(35);
+  const [arcOverride, setArcOverride] = useState<string | null>(null);
+  const [isStoryComplete, setIsStoryComplete] = useState(false);
   const loadedRef = useRef(false);
 
   useEffect(() => {
@@ -183,6 +188,9 @@ export default function StoryWrite() {
       const story = await getStory(storyId!);
       setStoryTitle(story.title);
       setStoryMeta({ genre: story.genre || undefined, tone: story.tone || undefined, premise: story.premise || undefined });
+      setTargetTurns(story.target_turns ?? 35);
+      setArcOverride(story.arc_override ?? null);
+      setIsStoryComplete(story.status === "completed");
       setShareToken((story as any).share_token || null);
 
       const [activeNodes, allStoryNodes] = await Promise.all([
@@ -207,11 +215,24 @@ export default function StoryWrite() {
         setStoryState(lastNode.story_state || {});
         if (lastNode.choices && Array.isArray(lastNode.choices) && (lastNode.choices as any[]).length > 0) {
           setChoices(lastNode.choices as any as StoryChoice[]);
-        } else {
-          fetchChoices(paras.map((p) => p.text).join("\n\n"));
+        } else if (story.status !== "completed") {
+          fetchChoices(paras.map((p) => p.text).join("\n\n"), {
+            activeNodeCount: activeNodes.length,
+            meta: {
+              genre: story.genre || undefined,
+              tone: story.tone || undefined,
+              premise: story.premise || undefined,
+            },
+            targetTurns: story.target_turns ?? 35,
+            arcOverride: story.arc_override ?? null,
+          });
         }
       } else {
-        generateOpening({ premise: story.premise || undefined, genre: story.genre || undefined, tone: story.tone || undefined });
+        generateOpening({
+          premise: story.premise || undefined,
+          genre: story.genre || undefined,
+          tone: story.tone || undefined,
+        });
       }
     } catch (err: any) {
       toast.error("Failed to load story");
@@ -220,6 +241,30 @@ export default function StoryWrite() {
       setLoading(false);
     }
   };
+
+  const getCurrentBeat = (
+    nodeCount: number,
+    options?: { arcOverride?: string | null; targetTurns?: number },
+  ): BeatInfo => {
+    const effectiveTargetTurns = options?.targetTurns ?? targetTurns;
+    const effectiveArcOverride = options?.arcOverride ?? arcOverride;
+
+    if (effectiveArcOverride === "concluding") {
+      const forcedProgress = Math.max(0.75, nodeCount / Math.max(1, effectiveTargetTurns));
+      return calculateBeat(Math.ceil(forcedProgress * effectiveTargetTurns), effectiveTargetTurns);
+    }
+
+    return calculateBeat(nodeCount, effectiveTargetTurns);
+  };
+
+  const buildBeatPayload = (beat: BeatInfo, isFinalSection = false) => ({
+    phase: beat.phase,
+    progress: beat.progress,
+    phaseProgress: beat.phaseProgress,
+    turnsRemaining: beat.turnsRemaining,
+    isNearEnd: beat.isNearEnd,
+    isFinalSection,
+  });
 
   const refreshAllNodes = async () => {
     try {
@@ -255,6 +300,7 @@ export default function StoryWrite() {
 
   const generateOpening = async (meta?: { premise?: string; genre?: string; tone?: string }) => {
     const useMeta = meta || storyMeta;
+    const beat = getCurrentBeat(0);
     setIsGenerating(true);
     let fullText = "";
 
@@ -265,6 +311,7 @@ export default function StoryWrite() {
       genre: useMeta.genre,
       tone: useMeta.tone,
       length: sectionLength,
+      beat: buildBeatPayload(beat, false),
       onDelta: (delta) => {
         fullText += delta;
         const paras = fullText.split("\n\n").filter(Boolean);
@@ -283,12 +330,13 @@ export default function StoryWrite() {
         // Run summarize + choices in parallel
         const summarizePromise = summarizeStory({ fullText: text, storyState: {} });
         const choicesPromise = generateChoices({
-          recentText: text,
+          recentText: text.split("\n\n").slice(-3).join("\n\n"),
           summary: "",
           storyState: {},
           tone: useMeta.tone,
           genre: useMeta.genre,
           premise: useMeta.premise,
+          beat: buildBeatPayload(beat, false),
         });
 
         try {
@@ -336,19 +384,33 @@ export default function StoryWrite() {
         setIsProcessing(false);
         toast.error(err);
       },
-    });
+    } as any);
   };
 
-  const fetchChoices = async (recentText: string) => {
+  const fetchChoices = async (
+    recentText: string,
+    options?: {
+      activeNodeCount?: number;
+      meta?: { premise?: string; genre?: string; tone?: string };
+      targetTurns?: number;
+      arcOverride?: string | null;
+    },
+  ) => {
     setIsLoadingChoices(true);
     try {
+      const beat = getCurrentBeat(options?.activeNodeCount ?? activeNodes.length, {
+        arcOverride: options?.arcOverride,
+        targetTurns: options?.targetTurns,
+      });
+      const meta = options?.meta || storyMeta;
       const result = await generateChoices({
         recentText,
         summary,
         storyState,
-        tone: storyMeta.tone,
-        genre: storyMeta.genre,
-        premise: storyMeta.premise,
+        tone: meta.tone,
+        genre: meta.genre,
+        premise: meta.premise,
+        beat: buildBeatPayload(beat, false),
       });
       setChoices(result);
 
@@ -376,6 +438,8 @@ export default function StoryWrite() {
 
     const existingParas = paragraphs.filter((p) => !p.isStreaming);
     const recentText = existingParas.slice(-3).map((p) => p.text).join("\n\n");
+    const beat = getCurrentBeat(activeNodes.length);
+    const isFinalSection = choice.type === "conclude" || choice.type === "epilogue";
     let fullText = "";
 
     await streamSection({
@@ -387,6 +451,7 @@ export default function StoryWrite() {
       recentText,
       storyState,
       length: sectionLength,
+      beat: buildBeatPayload(beat, isFinalSection),
       onDelta: (delta) => {
         fullText += delta;
         const newParas = fullText.split("\n\n").filter(Boolean);
@@ -415,14 +480,17 @@ export default function StoryWrite() {
           previousSummary: summary,
           storyState,
         });
-        const choicesPromise2 = generateChoices({
-          recentText: text,
-          summary,
-          storyState,
-          tone: storyMeta.tone,
-          genre: storyMeta.genre,
-          premise: storyMeta.premise,
-        });
+        const choicesPromise2 = isFinalSection
+          ? Promise.resolve<StoryChoice[] | null>(null)
+          : generateChoices({
+              recentText: text.split("\n\n").slice(-3).join("\n\n"),
+              summary,
+              storyState,
+              tone: storyMeta.tone,
+              genre: storyMeta.genre,
+              premise: storyMeta.premise,
+              beat: buildBeatPayload(beat, false),
+            });
 
         try {
           const results = await Promise.allSettled([summarizePromise2, choicesPromise2]);
@@ -437,6 +505,8 @@ export default function StoryWrite() {
           }
           if (choicesResult) {
             setChoices(choicesResult);
+          } else if (isFinalSection) {
+            setChoices([]);
           } else {
             toast.error("Failed to generate choices — you can regenerate them manually");
           }
@@ -451,6 +521,10 @@ export default function StoryWrite() {
             choices: choicesResult || [],
           }));
           setLastNodeId(node.id);
+          if (isFinalSection) {
+            await apiClient.updateStory(storyId!, { status: "completed" });
+            setIsStoryComplete(true);
+          }
           await reloadActiveState();
         } catch (e) {
           console.error("Failed to save:", e);
@@ -495,8 +569,8 @@ export default function StoryWrite() {
 
       if (lastNode?.choices && (lastNode.choices as any[]).length > 0) {
         setChoices(lastNode.choices as any as StoryChoice[]);
-      } else {
-        fetchChoices(paras.map((p) => p.text).join("\n\n"));
+      } else if (!isStoryComplete) {
+        fetchChoices(paras.map((p) => p.text).join("\n\n"), { activeNodeCount: activeNodes.length });
       }
 
       toast.success("Jumped to this point");
@@ -533,9 +607,43 @@ export default function StoryWrite() {
       setSummary(result.summary);
       setStoryState(result.story_state);
       toast.success("Story re-aligned with your edits");
-      fetchChoices(allText);
+      fetchChoices(allText, { activeNodeCount: activeNodes.length });
     } catch {
       toast.error("Failed to re-align");
+    }
+  };
+
+  const handleBeginConclusion = async () => {
+    if (!storyId || isGenerating || isProcessing) return;
+
+    const nextArcOverride = "concluding";
+    setArcOverride(nextArcOverride);
+
+    try {
+      await apiClient.updateStory(storyId, { arc_override: nextArcOverride });
+      await fetchChoices(paragraphs.slice(-3).map((p) => p.text).join("\n\n"), {
+        activeNodeCount: activeNodes.length,
+        arcOverride: nextArcOverride,
+      });
+    } catch {
+      setArcOverride((prev) => (prev === nextArcOverride ? null : prev));
+      toast.error("Failed to begin the conclusion");
+    }
+  };
+
+  const handleContinueAnyway = async () => {
+    if (!storyId) return;
+
+    try {
+      await apiClient.updateStory(storyId, { status: "in_progress", arc_override: null });
+      setIsStoryComplete(false);
+      setArcOverride(null);
+      await fetchChoices(paragraphs.slice(-3).map((p) => p.text).join("\n\n"), {
+        activeNodeCount: activeNodes.length,
+        arcOverride: null,
+      });
+    } catch {
+      toast.error("Failed to continue the story");
     }
   };
 
@@ -609,6 +717,7 @@ export default function StoryWrite() {
     () => allNodes.filter((n) => n.is_active),
     [allNodes]
   );
+  const currentBeat = useMemo(() => getCurrentBeat(activeNodes.length), [activeNodes.length, arcOverride, targetTurns]);
 
   const chapterNodes = useMemo(
     () => activeNodes.filter((n) => (n as any).starts_chapter === true),
@@ -924,16 +1033,30 @@ export default function StoryWrite() {
             )}
 
             {!isDesyncced && !isProcessing && (
-              <ChoiceCards
-                choices={choices}
-                onSelect={handleChoiceSelect}
-                onRegenerate={() => fetchChoices(paragraphs.slice(-3).map((p) => p.text).join("\n\n"))}
-                isLoading={isGenerating || isLoadingChoices}
-                sectionLength={sectionLength}
-                onSectionLengthChange={setSectionLength}
-                turnCount={limits.turns !== Infinity ? activeNodes.length : undefined}
-                turnLimit={limits.turns !== Infinity ? limits.turns : undefined}
-              />
+              isStoryComplete ? (
+                <StoryComplete
+                  onShare={limits.sharing ? handleShare : undefined}
+                  onExport={limits.export ? handleExport : undefined}
+                  onDashboard={() => navigate("/dashboard")}
+                  onContinue={handleContinueAnyway}
+                />
+              ) : (
+                <ChoiceCards
+                  choices={choices}
+                  onSelect={handleChoiceSelect}
+                  onRegenerate={() => fetchChoices(paragraphs.slice(-3).map((p) => p.text).join("\n\n"), {
+                    activeNodeCount: activeNodes.length,
+                  })}
+                  isLoading={isGenerating || isLoadingChoices}
+                  isNearEnd={currentBeat.isNearEnd}
+                  onBeginConclusion={handleBeginConclusion}
+                  isStoryComplete={isStoryComplete}
+                  sectionLength={sectionLength}
+                  onSectionLengthChange={setSectionLength}
+                  turnCount={limits.turns !== Infinity ? activeNodes.length : undefined}
+                  turnLimit={limits.turns !== Infinity ? limits.turns : undefined}
+                />
+              )
             )}
 
             <div className="h-24" />

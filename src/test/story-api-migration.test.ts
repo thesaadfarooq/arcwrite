@@ -41,6 +41,7 @@ describe("story-api Postgres migration wrappers", () => {
       genre: "fantasy",
       tone: "dark",
       premise: "A lost map",
+      targetTurns: 42,
     });
 
     expect(apiClientMock.createStory).toHaveBeenCalledWith({
@@ -49,6 +50,7 @@ describe("story-api Postgres migration wrappers", () => {
       tone: "dark",
       premise: "A lost map",
       status: "in_progress",
+      target_turns: 42,
     });
   });
 
@@ -95,6 +97,94 @@ describe("story-api Postgres migration wrappers", () => {
 
     expect(apiClientMock.updateStory).toHaveBeenNthCalledWith(1, "story-3", { title: "Renamed" });
     expect(apiClientMock.updateStory).toHaveBeenNthCalledWith(2, "story-3", { tone: "Whimsical" });
+  });
+
+  it("passes beat through section generation requests", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response('data: {"choices":[{"delta":{"content":"Hello"}}]}\n\n', {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const storyApi = await import("@/lib/story-api");
+
+    const onDelta = vi.fn();
+    const onDone = vi.fn();
+    const onError = vi.fn();
+
+    await storyApi.streamSection({
+      premise: "A ruined city",
+      genre: "fantasy",
+      tone: "grim",
+      summary: "Summary",
+      recentText: "Recent text",
+      storyState: { mood: "tense" },
+      length: "medium",
+      beat: { phase: "rising", progress: 0.32, phaseProgress: 0.4, turnsRemaining: 28, isNearEnd: false },
+      onDelta,
+      onDone,
+      onError,
+    });
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
+    expect(body).toMatchObject({
+      premise: "A ruined city",
+      genre: "fantasy",
+      tone: "grim",
+      summary: "Summary",
+      recentText: "Recent text",
+      storyState: { mood: "tense" },
+      length: "medium",
+      beat: {
+        phase: "rising",
+        progress: 0.32,
+        phaseProgress: 0.4,
+        turnsRemaining: 28,
+        isNearEnd: false,
+      },
+    });
+    expect(onDelta).toHaveBeenCalledWith("Hello");
+    expect(onDone).toHaveBeenCalledWith("Hello");
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("passes beat through choice generation requests", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        choices: [{ type: "resolve", label: "Tie it up", preview: "The story settles into closure." }],
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const storyApi = await import("@/lib/story-api");
+
+    await expect(
+      storyApi.generateChoices({
+        recentText: "Recent text",
+        summary: "Summary",
+        storyState: { mood: "tense" },
+        tone: "grim",
+        genre: "fantasy",
+        premise: "A ruined city",
+        beat: { phase: "falling", progress: 0.78, phaseProgress: 0.2, turnsRemaining: 9, isNearEnd: true },
+      })
+    ).resolves.toEqual([
+      { type: "resolve", label: "Tie it up", preview: "The story settles into closure." },
+    ]);
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
+    expect(body).toMatchObject({
+      recentText: "Recent text",
+      summary: "Summary",
+      storyState: { mood: "tense" },
+      tone: "grim",
+      genre: "fantasy",
+      premise: "A ruined city",
+      beat: expect.objectContaining({ phase: "falling" }),
+    });
   });
 
   it("routes node operations through the matching API endpoints", async () => {

@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Sparkles, BookOpen, Skull, Heart, Wand2, Search, Rocket, Ghost, Sun, Moon, Crown, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { createStory } from "@/lib/story-api";
@@ -29,6 +31,12 @@ const tones = [
   "Humorous & witty",
 ];
 
+const storyLengthOptions = [
+  { turns: 15, label: "Short", description: "About 15 turns" },
+  { turns: 35, label: "Medium", description: "About 35 turns" },
+  { turns: 45, label: "Long", description: "About 45+ turns" },
+];
+
 export default function StoryNew() {
   const [searchParams] = useSearchParams();
   const mode = searchParams.get("mode") || "scratch";
@@ -42,11 +50,15 @@ export default function StoryNew() {
     searchParams.get("genre") || null
   );
   const [selectedTone, setSelectedTone] = useState<string | null>(null);
+  const [customTone, setCustomTone] = useState("");
+  const [targetTurns, setTargetTurns] = useState(35);
   const [creating, setCreating] = useState(false);
   const [atLimit, setAtLimit] = useState(false);
   const [storyCount, setStoryCount] = useState(0);
   const limits = getTierLimits(tier);
   const selectedGenreStarters = selectedGenre ? GENRE_STARTERS[selectedGenre] ?? [] : [];
+  const trimmedCustomTone = customTone.trim();
+  const effectiveTone = trimmedCustomTone.length >= 3 ? trimmedCustomTone : selectedTone || undefined;
 
   useEffect(() => {
     if (!user || limits.stories === Infinity) return;
@@ -91,8 +103,9 @@ export default function StoryNew() {
         userId: user.id,
         title: premise ? premise.slice(0, 60) : selectedGenre ? `${selectedGenre} story` : "Untitled Story",
         genre: selectedGenre || undefined,
-        tone: selectedTone || undefined,
+        tone: effectiveTone,
         premise: premise || (mode === "surprise" ? "Surprise me with something unexpected" : undefined),
+        targetTurns,
       });
       navigate(`/story/${story.id}`);
     } catch (err: any) {
@@ -105,7 +118,7 @@ export default function StoryNew() {
     step === "premise" ? premise.trim().length > 10 :
     step === "genre" ? !!selectedGenre :
     step === "surprise" ? true :
-    step === "tone" ? !!selectedTone : false;
+    step === "tone" ? !!effectiveTone && effectiveTone.length >= 3 : false;
 
   return (
     <div className="min-h-screen bg-background transition-colors duration-500">
@@ -253,7 +266,10 @@ export default function StoryNew() {
               {tones.map((t) => (
                 <button
                   key={t}
-                  onClick={() => setSelectedTone(t)}
+                  onClick={() => {
+                    setSelectedTone(t);
+                    setCustomTone("");
+                  }}
                   className={`text-left p-4 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
                     selectedTone === t ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card hover:border-primary/30"
                   }`}
@@ -262,11 +278,52 @@ export default function StoryNew() {
                 </button>
               ))}
             </div>
+            <div className="mt-6 rounded-2xl border border-border bg-card p-5">
+              <h2 className="text-sm font-medium text-foreground mb-1">Custom tone</h2>
+              <p className="text-xs text-muted-foreground mb-3">Write your own tone instead of using a preset.</p>
+              <Input
+                value={customTone}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  setCustomTone(nextValue);
+                  if (nextValue.trim().length >= 3) {
+                    setSelectedTone(null);
+                  }
+                }}
+                placeholder="Custom tone..."
+                className="bg-background"
+              />
+            </div>
+            <div className="mt-6 rounded-2xl border border-border bg-card p-5">
+              <h2 className="text-sm font-medium text-foreground mb-1">Story length</h2>
+              <p className="text-xs text-muted-foreground mb-4">Choose the approximate length this story should aim for.</p>
+              <RadioGroup
+                value={String(targetTurns)}
+                onValueChange={(value) => setTargetTurns(Number(value))}
+                className="grid gap-3 md:grid-cols-3"
+              >
+                {storyLengthOptions.map((option) => (
+                  <label
+                    key={option.turns}
+                    htmlFor={`story-length-${option.turns}`}
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition-all duration-200 active:scale-[0.99] ${
+                      targetTurns === option.turns ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-background hover:border-primary/30"
+                    }`}
+                  >
+                    <RadioGroupItem id={`story-length-${option.turns}`} value={String(option.turns)} />
+                    <span className="min-w-0">
+                      <span className="block font-medium text-sm text-foreground">{option.label}</span>
+                      <span className="block text-xs text-muted-foreground">{option.description}</span>
+                    </span>
+                  </label>
+                ))}
+              </RadioGroup>
+            </div>
             <div className="flex justify-end gap-3 mt-6">
               <Button variant="outline" onClick={() => setStep(mode === "genre" ? "genre" : "premise")}>
                 <ArrowLeft className="w-4 h-4 mr-1" /> Back
               </Button>
-              <Button onClick={handleStart} disabled={!selectedTone || creating}>
+              <Button onClick={handleStart} disabled={!effectiveTone || effectiveTone.length < 3 || creating}>
                 {creating ? "Creating…" : "Begin writing"} <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
