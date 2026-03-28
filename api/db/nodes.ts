@@ -120,61 +120,69 @@ async function handleSplit(
   const owned = await verifyNodeOwnership(id, userId);
   if (!owned) return res.status(404).json({ error: "Not found" });
 
-  const newNode = await withTransaction(async (client) => {
-    const { rows } = await client.query(
-      "SELECT * FROM story_nodes WHERE id = $1",
-      [id]
-    );
-    const node = rows[0];
-    if (!node) throw new Error("Node not found");
-
-    const paragraphs = (node.text || "").split("\n\n").filter(Boolean);
-    if (position <= 0 || position >= paragraphs.length) {
-      throw new Error("Invalid split position");
-    }
-
-    const textBefore = paragraphs.slice(0, position).join("\n\n");
-    const textAfter = paragraphs.slice(position).join("\n\n");
-
-    await client.query("UPDATE story_nodes SET text = $1 WHERE id = $2", [textBefore, id]);
-
-    const inserted = await client.query(
-      `INSERT INTO story_nodes (
-         story_id, parent_id, text, summary, story_state, choices,
-         chosen_option, starts_chapter, is_active
-       )
-       VALUES ($1, $2, $3, $4, $5, $6, NULL, true, $7)
-       RETURNING *`,
-      [
-        node.story_id,
-        id,
-        textAfter,
-        node.summary,
-        JSON.stringify(node.story_state ?? null),
-        JSON.stringify(node.choices ?? null),
-        node.is_active,
-      ]
-    );
-    const createdNode = inserted.rows[0];
-
-    const existingChildren = await client.query(
-      "SELECT id FROM story_nodes WHERE parent_id = $1 AND id != $2",
-      [id, createdNode.id]
-    );
-    if (existingChildren.rows.length > 0) {
-      await client.query(
-        "UPDATE story_nodes SET parent_id = $1 WHERE parent_id = $2 AND id != $1",
-        [createdNode.id, id]
+  let newNode;
+  try {
+    newNode = await withTransaction(async (client) => {
+      const { rows } = await client.query(
+        "SELECT * FROM story_nodes WHERE id = $1",
+        [id]
       );
+      const node = rows[0];
+      if (!node) throw new Error("Node not found");
+
+      const paragraphs = (node.text || "").split("\n\n").filter(Boolean);
+      if (position <= 0 || position >= paragraphs.length) {
+        throw new Error("Invalid split position");
+      }
+
+      const textBefore = paragraphs.slice(0, position).join("\n\n");
+      const textAfter = paragraphs.slice(position).join("\n\n");
+
+      await client.query("UPDATE story_nodes SET text = $1 WHERE id = $2", [textBefore, id]);
+
+      const inserted = await client.query(
+        `INSERT INTO story_nodes (
+           story_id, parent_id, text, summary, story_state, choices,
+           chosen_option, starts_chapter, is_active
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, NULL, true, $7)
+         RETURNING *`,
+        [
+          node.story_id,
+          id,
+          textAfter,
+          node.summary,
+          JSON.stringify(node.story_state ?? null),
+          JSON.stringify(node.choices ?? null),
+          node.is_active,
+        ]
+      );
+      const createdNode = inserted.rows[0];
+
+      const existingChildren = await client.query(
+        "SELECT id FROM story_nodes WHERE parent_id = $1 AND id != $2",
+        [id, createdNode.id]
+      );
+      if (existingChildren.rows.length > 0) {
+        await client.query(
+          "UPDATE story_nodes SET parent_id = $1 WHERE parent_id = $2 AND id != $1",
+          [createdNode.id, id]
+        );
+      }
+
+      await client.query(
+        "UPDATE story_nodes SET choices = '[]'::jsonb, summary = NULL WHERE id = $1",
+        [id]
+      );
+
+      return createdNode;
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Invalid split position") {
+      return res.status(400).json({ error: "Invalid split position" });
     }
-
-    await client.query(
-      "UPDATE story_nodes SET choices = '[]'::jsonb, summary = NULL WHERE id = $1",
-      [id]
-    );
-
-    return createdNode;
-  });
+    throw error;
+  }
 
   return res.json(newNode);
 }

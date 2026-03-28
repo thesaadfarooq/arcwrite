@@ -16,7 +16,62 @@ type ReviewNode = {
   text: string;
   startsChapter: boolean;
   chapterTitle: string | null;
+  paragraphCount?: number;
 };
+
+type RawSuggestion = {
+  type: string;
+  anchorNodeId: string;
+  anchorParagraphIndex: number | null;
+  proposedTitle: string | null;
+  reason: string;
+};
+
+function countParagraphs(text: string): number {
+  return Math.max(1, text.split("\n\n").filter(Boolean).length);
+}
+
+function normalizeSuggestions(rawSuggestions: unknown, recentNodes: ReviewNode[]): RawSuggestion[] {
+  const paragraphCounts = new Map(
+    recentNodes.map((node) => [
+      node.id,
+      typeof node.paragraphCount === "number" && Number.isInteger(node.paragraphCount) && node.paragraphCount > 0
+        ? node.paragraphCount
+        : countParagraphs(node.text),
+    ]),
+  );
+
+  if (!Array.isArray(rawSuggestions)) return [];
+
+  return rawSuggestions.filter((candidate): candidate is RawSuggestion => {
+    if (!candidate || typeof candidate !== "object") return false;
+
+    const suggestion = candidate as Partial<RawSuggestion>;
+    if (
+      typeof suggestion.anchorNodeId !== "string" ||
+      typeof suggestion.reason !== "string" ||
+      !paragraphCounts.has(suggestion.anchorNodeId)
+    ) {
+      return false;
+    }
+
+    if (suggestion.type === "rename_recent_chapter") {
+      return typeof suggestion.proposedTitle === "string" && suggestion.proposedTitle.trim().length > 0;
+    }
+
+    if (suggestion.type === "start_new_chapter_here") {
+      const paragraphCount = paragraphCounts.get(suggestion.anchorNodeId) ?? 0;
+      return (
+        Number.isInteger(suggestion.anchorParagraphIndex) &&
+        typeof suggestion.anchorParagraphIndex === "number" &&
+        suggestion.anchorParagraphIndex > 0 &&
+        suggestion.anchorParagraphIndex < paragraphCount
+      );
+    }
+
+    return false;
+  }).slice(0, 2);
+}
 
 export default async function handler(req: Request) {
   if (req.method === "OPTIONS") {
@@ -48,6 +103,7 @@ Return at most 2 suggestions. Allowed suggestion types:
 Only suggest a new chapter when there is a genuine scene, location, time, or objective shift.
 Do not suggest changes to inactive branches or old, settled chapters.
 Each suggestion must include anchorNodeId, anchorParagraphIndex (or null for rename), proposedTitle (or null), and a short reason.
+For start_new_chapter_here, anchorParagraphIndex must be a valid split point between 1 and paragraphCount - 1 for that node.
 
 ${premise ? `Premise: ${premise}` : ""}
 ${tone ? `Tone: ${tone}` : ""}
@@ -149,7 +205,10 @@ Return only high-confidence chapter guidance.`;
       }
     }
 
-    return new Response(JSON.stringify(JSON.parse(argsBuffer || "{\"suggestions\":[]}")), {
+    const parsed = JSON.parse(argsBuffer || "{\"suggestions\":[]}") as { suggestions?: unknown };
+    const suggestions = normalizeSuggestions(parsed.suggestions, recentNodes ?? []);
+
+    return new Response(JSON.stringify({ suggestions }), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {

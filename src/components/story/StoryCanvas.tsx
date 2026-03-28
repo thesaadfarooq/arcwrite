@@ -20,6 +20,7 @@ interface StoryCanvasProps {
   onInsertBreak?: (nodeId: string, paragraphIndex: number) => void;
   onRenameChapter?: (nodeId: string, newTitle: string) => void;
   chapterEditMode?: boolean;
+  pendingBreakKey?: string | null;
 }
 
 export function StoryCanvas({
@@ -30,6 +31,7 @@ export function StoryCanvas({
   onInsertBreak,
   onRenameChapter,
   chapterEditMode,
+  pendingBreakKey,
 }: StoryCanvasProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +63,9 @@ export function StoryCanvas({
         const paraIndex = parseInt(paraIndexStr, 10);
         const isFirstOfNode = i === 0 || paragraphs[i - 1]?.id.substring(0, paragraphs[i - 1].id.lastIndexOf("-")) !== nodeId;
         const isChapterNode = headingMap.has(nodeId);
+        const breakKey = `${nodeId}:${paraIndex}`;
+        const isPendingBreak = pendingBreakKey === breakKey;
+        const isBreakDisabled = Boolean(pendingBreakKey);
 
         // Show chapter heading only for chapter-start nodes, not for every timeline node.
         const showHeading = isFirstOfNode && i > 0 && isChapterNode;
@@ -82,11 +87,12 @@ export function StoryCanvas({
                   <button
                     type="button"
                     onClick={() => onInsertBreak(nodeId, paraIndex)}
+                    disabled={isBreakDisabled}
                     className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs text-primary transition-all duration-200 active:scale-95 hover:bg-primary/10"
                     aria-label="Chapter break"
                   >
                     <SplitSquareVertical className="h-3 w-3" />
-                    <span>Chapter break</span>
+                    <span>{isPendingBreak ? "Adding chapter…" : "Chapter break"}</span>
                   </button>
                 </div>
               ) : chapterEditMode === undefined ? (
@@ -94,12 +100,13 @@ export function StoryCanvas({
                   <button
                     type="button"
                     onClick={() => onInsertBreak(nodeId, paraIndex)}
-                    className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center gap-1.5 rounded-full bg-secondary/80 border border-border px-3 py-1 text-xs text-muted-foreground opacity-0 transition-all duration-200 hover:!opacity-100 hover:bg-primary/10 hover:text-primary hover:border-primary/30 group-hover/break:opacity-100 active:scale-95"
+                    disabled={isBreakDisabled}
+                    className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center gap-1.5 rounded-full bg-secondary/80 border border-border px-3 py-1 text-xs text-muted-foreground opacity-0 transition-all duration-200 hover:!opacity-100 hover:bg-primary/10 hover:text-primary hover:border-primary/30 group-hover/break:opacity-100 active:scale-95 disabled:pointer-events-none disabled:opacity-100"
                     title="Insert chapter break here"
                     aria-label="Chapter break"
                   >
                     <SplitSquareVertical className="h-3 w-3" />
-                    <span>Chapter break</span>
+                    <span>{isPendingBreak ? "Adding chapter…" : "Chapter break"}</span>
                   </button>
                 </div>
               ) : null

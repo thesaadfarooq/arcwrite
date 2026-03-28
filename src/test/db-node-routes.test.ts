@@ -403,6 +403,39 @@ describe("node database routes", () => {
     });
   });
 
+  it("returns 400 when a split position is outside the valid paragraph range", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-9b" });
+    queryOneMock.mockResolvedValue({ id: "node-9b" });
+    transactionQueryMock.mockResolvedValueOnce({
+      rows: [
+        {
+          id: "node-9b",
+          story_id: "story-9b",
+          text: "Only one paragraph",
+          summary: "Summary",
+          story_state: { beat: 1 },
+          choices: [{ label: "Go" }],
+          is_active: true,
+        },
+      ],
+    });
+    const handler = (await import("../../api/db/nodes")).default;
+    const res = createResponse();
+
+    await handler(
+      {
+        method: "POST",
+        query: { id: "node-9b", action: "split" },
+        headers: { authorization: "Bearer token" },
+        body: { position: 1 },
+      } as any,
+      res as any
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ error: "Invalid split position" });
+  });
+
   it("merges a node into its parent in a transaction and returns the parent id", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-10" });
     queryOneMock.mockResolvedValue({ id: "node-10" });

@@ -28,6 +28,7 @@ describe("mobile story surfaces", () => {
 
     expect(screen.getByText("Review chapter structure")).toBeInTheDocument();
     expect(screen.getByText("Chapter list")).toBeInTheDocument();
+    expect(screen.getByRole("tabpanel", { name: /chapters/i })).toHaveClass("flex", "min-h-0", "flex-1");
 
     const chaptersTab = screen.getByRole("tab", { name: /chapters/i });
     await act(async () => {
@@ -45,6 +46,13 @@ describe("mobile story surfaces", () => {
     expect(screen.getByText(/2 chapter suggestions ready/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /review/i }));
     expect(onReview).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a loading state while reviewing chapter structure", () => {
+    render(<ChapterReviewPrompt isLoading onReview={vi.fn()} />);
+
+    expect(screen.getByText(/reviewing chapter structure/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /reviewing/i })).toBeDisabled();
   });
 
   it("reuses tone content inside the tools sheet", () => {

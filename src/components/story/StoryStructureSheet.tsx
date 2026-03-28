@@ -20,25 +20,25 @@ export function StoryStructureSheet({
 }: StoryStructureSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="max-h-[85vh] rounded-t-3xl px-0">
+      <SheetContent side="bottom" className="flex max-h-[85vh] flex-col overflow-hidden rounded-t-3xl px-0">
         <SheetHeader className="px-4 pb-3 text-left">
           <SheetTitle>Structure</SheetTitle>
           <SheetDescription className="sr-only">Review chapters and timeline details for this story.</SheetDescription>
         </SheetHeader>
 
-        <Tabs defaultValue="chapters" className="flex h-full flex-col px-4 pb-6">
+        <Tabs defaultValue="chapters" className="flex min-h-0 flex-1 flex-col px-4 pb-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="chapters">Chapters</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="chapters" className="mt-4 space-y-4 overflow-y-auto">
-            {reviewSlot}
-            {chaptersSlot}
+          <TabsContent value="chapters" className="mt-4 flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+            {reviewSlot ? <div className="shrink-0">{reviewSlot}</div> : null}
+            <div className="min-h-0 flex-1">{chaptersSlot}</div>
           </TabsContent>
 
-          <TabsContent value="timeline" className="mt-4 overflow-y-auto">
-            {timelineSlot}
+          <TabsContent value="timeline" className="mt-4 min-h-0 flex-1 overflow-hidden">
+            <div className="h-full min-h-0">{timelineSlot}</div>
           </TabsContent>
         </Tabs>
       </SheetContent>

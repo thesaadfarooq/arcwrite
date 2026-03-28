@@ -97,7 +97,13 @@ describe("generate-chapter-suggestions", () => {
           beat: { phase: "rising", progress: 0.46 },
           recentNodes: [
             { id: "node-4", text: "They argued over the map.", startsChapter: true, chapterTitle: "Old title" },
-            { id: "node-5", text: "She crossed the viaduct at dusk. The radio crackled again.", startsChapter: false, chapterTitle: null },
+            {
+              id: "node-5",
+              text: "She crossed the viaduct at dusk.\n\nThe radio crackled again.\n\nA flare burned on the river.",
+              startsChapter: false,
+              chapterTitle: null,
+              paragraphCount: 3,
+            },
           ],
         }),
       })
@@ -115,5 +121,64 @@ describe("generate-chapter-suggestions", () => {
     const payload = JSON.parse(init?.body as string);
     expect(payload.messages[0].content).toContain("active branch");
     expect(payload.tools[0].function.parameters.properties.suggestions.maxItems).toBe(2);
+  });
+
+  it("filters out split suggestions with invalid paragraph positions", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-2" });
+    vi.mocked(fetch).mockResolvedValue(
+      openAIStreamResponse({
+        suggestions: [
+          {
+            type: "start_new_chapter_here",
+            anchorNodeId: "node-5",
+            anchorParagraphIndex: 2,
+            proposedTitle: "Too Late",
+            reason: "This should be filtered out.",
+          },
+          {
+            type: "rename_recent_chapter",
+            anchorNodeId: "node-4",
+            anchorParagraphIndex: null,
+            proposedTitle: "The Bargain",
+            reason: "The chapter now centers on the pact.",
+          },
+        ],
+      })
+    );
+
+    const handler = (await import("../../api/generate-chapter-suggestions")).default;
+    const response = await handler(
+      new Request("http://localhost/api/generate-chapter-suggestions", {
+        method: "POST",
+        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recentNodes: [
+            {
+              id: "node-4",
+              text: "They argued over the map.",
+              startsChapter: true,
+              chapterTitle: "Old title",
+              paragraphCount: 1,
+            },
+            {
+              id: "node-5",
+              text: "She crossed the viaduct at dusk.\n\nThe radio crackled again.",
+              startsChapter: false,
+              chapterTitle: null,
+              paragraphCount: 2,
+            },
+          ],
+        }),
+      })
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      suggestions: [
+        expect.objectContaining({
+          type: "rename_recent_chapter",
+          anchorNodeId: "node-4",
+        }),
+      ],
+    });
   });
 });

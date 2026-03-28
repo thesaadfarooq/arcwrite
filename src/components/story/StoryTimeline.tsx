@@ -88,7 +88,7 @@ export function StoryTimeline({
   const flat = flattenTree(tree);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       {/* Header */}
       {!embedded ? (
         <div className="p-4 border-b border-border">
@@ -103,7 +103,7 @@ export function StoryTimeline({
       ) : null}
 
       {/* Node list */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {flat.length === 0 ? (
           <div className="px-3 py-6 text-center text-xs text-muted-foreground">
             Story nodes will appear as you write
