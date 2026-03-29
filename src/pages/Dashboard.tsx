@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { getTierLimits } from "@/lib/subscription";
@@ -112,10 +112,10 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background transition-colors duration-500">
       {/* Header */}
       <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50">
-        <div className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-primary" />
           <span className="font-story text-lg font-semibold text-foreground tracking-tight">Arcwrite</span>
-        </div>
+        </Link>
         <div className="flex items-center gap-3">
           <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-secondary transition-colors active:scale-95">
             {theme === "light" ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-muted-foreground" />}
