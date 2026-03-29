@@ -128,4 +128,28 @@ describe("ChoiceCards", () => {
 
     expect(onAddChapterBreak).toHaveBeenCalledTimes(1);
   });
+
+  it("stacks the action row on small screens so chapter break stays readable", () => {
+    const onAddChapterBreak = vi.fn();
+
+    render(
+      <ChoiceCards
+        {...baseProps}
+        choices={[
+          { type: "safe", label: "Hold position", preview: "Keep things steady." },
+        ]}
+        onAddChapterBreak={onAddChapterBreak}
+      />,
+    );
+
+    expect(screen.getByText(/what happens next\?/i).parentElement).toHaveClass(
+      "flex",
+      "flex-col",
+      "gap-3",
+      "sm:flex-row",
+      "sm:items-center",
+      "sm:justify-between",
+    );
+    expect(screen.getByRole("button", { name: /add chapter break/i })).toHaveClass("max-sm:w-full");
+  });
 });

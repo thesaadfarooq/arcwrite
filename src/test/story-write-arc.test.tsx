@@ -1795,6 +1795,8 @@ describe("StoryWrite narrative arc integration", () => {
     await waitFor(() => {
       expect(screen.queryByText(/chapter edit mode/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/tap a marker between paragraphs to start a new chapter/i)).not.toBeInTheDocument();
+      expect(screen.queryByTestId("chapter-break-mode")).not.toBeInTheDocument();
+      expect(latestStoryCanvasProps.current.chapterEditMode).toBeUndefined();
     });
   });
 

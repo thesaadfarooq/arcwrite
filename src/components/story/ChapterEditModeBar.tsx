@@ -1,9 +1,10 @@
 interface ChapterEditModeBarProps {
   active: boolean;
   onDone: () => void;
+  actionLabel?: string;
 }
 
-export function ChapterEditModeBar({ active, onDone }: ChapterEditModeBarProps) {
+export function ChapterEditModeBar({ active, onDone, actionLabel = "Done" }: ChapterEditModeBarProps) {
   if (!active) return null;
 
   return (
@@ -19,7 +20,7 @@ export function ChapterEditModeBar({ active, onDone }: ChapterEditModeBarProps) 
         onClick={onDone}
         className="rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
       >
-        Done
+        {actionLabel}
       </button>
     </div>
   );
