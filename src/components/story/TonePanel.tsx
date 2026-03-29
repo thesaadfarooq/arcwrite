@@ -1,14 +1,6 @@
 import { Palette, Check, X } from "lucide-react";
 import { useState } from "react";
-
-const presetTones = [
-  "Dark & gritty",
-  "Whimsical & light",
-  "Literary & introspective",
-  "Fast-paced & cinematic",
-  "Poetic & dreamlike",
-  "Humorous & witty",
-];
+import { TONE_PROFILES } from "@/lib/tone-profiles";
 
 interface TonePanelProps {
   currentTone: string | undefined;
@@ -39,21 +31,24 @@ export function TonePanelContent({ currentTone, onToneChange, onDone }: TonePane
       </div>
 
       <div className="space-y-1.5">
-        {presetTones.map((t) => (
+        {TONE_PROFILES.map((profile) => (
           <button
-            key={t}
+            key={profile.label}
             onClick={() => {
-              onToneChange(t);
+              onToneChange(profile.label);
               onDone();
             }}
             className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all duration-150 flex items-center justify-between active:scale-[0.97] ${
-              currentTone === t
+              currentTone === profile.label
                 ? "bg-primary/10 text-primary font-medium"
                 : "text-muted-foreground hover:bg-secondary hover:text-foreground"
             }`}
           >
-            {t}
-            {currentTone === t && <Check className="w-3 h-3" />}
+            <span>
+              <span className="font-medium">{profile.label}</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">{profile.helper}</span>
+            </span>
+            {currentTone === profile.label && <Check className="w-3 h-3 shrink-0" />}
           </button>
         ))}
       </div>

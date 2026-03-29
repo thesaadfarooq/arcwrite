@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { createStory } from "@/lib/story-api";
 import { getTierLimits } from "@/lib/subscription";
 import { GENRE_STARTERS, PREMISE_STARTERS } from "@/lib/story-starters";
+import { TONE_PROFILES } from "@/lib/tone-profiles";
 import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -20,15 +21,6 @@ const genres = [
   { id: "romance", label: "Romance", icon: Heart, desc: "Love, passion, human connection" },
   { id: "horror", label: "Horror", icon: Ghost, desc: "Fear, suspense, the unknown" },
   { id: "thriller", label: "Thriller", icon: Skull, desc: "Danger, high stakes, twists" },
-];
-
-const tones = [
-  "Dark & gritty",
-  "Whimsical & light",
-  "Literary & introspective",
-  "Fast-paced & cinematic",
-  "Poetic & dreamlike",
-  "Humorous & witty",
 ];
 
 const storyLengthOptions = [
@@ -263,18 +255,19 @@ export default function StoryNew() {
             <h1 className="font-story text-3xl font-semibold text-foreground mb-2 text-balance">Set the tone</h1>
             <p className="text-muted-foreground mb-8">How should your story feel?</p>
             <div className="grid grid-cols-2 gap-3">
-              {tones.map((t) => (
+              {TONE_PROFILES.map((profile) => (
                 <button
-                  key={t}
+                  key={profile.label}
                   onClick={() => {
-                    setSelectedTone(t);
+                    setSelectedTone(profile.label);
                     setCustomTone("");
                   }}
                   className={`text-left p-4 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
-                    selectedTone === t ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card hover:border-primary/30"
+                    selectedTone === profile.label ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card hover:border-primary/30"
                   }`}
                 >
-                  <div className="font-medium text-sm text-foreground">{t}</div>
+                  <span className="font-medium text-sm text-foreground">{profile.label}</span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">{profile.helper}</span>
                 </button>
               ))}
             </div>
