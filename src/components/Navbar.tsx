@@ -25,7 +25,8 @@ export function Navbar() {
   const location = useLocation();
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const isActive = (to: string) => location.pathname.startsWith(to);
+  const isActive = (to: string) =>
+    location.pathname === to || location.pathname.startsWith(to + "/");
 
   const themeButton = (
     <button
@@ -124,8 +125,18 @@ export function Navbar() {
                 </Link>
               ))}
             </div>
-            <div className="mt-auto pb-6" onClick={() => setSheetOpen(false)}>
-              {authButton}
+            <div className="mt-auto pb-6">
+              {user ? (
+                <Button size="sm" asChild className="w-full">
+                  <Link to="/dashboard" onClick={() => setSheetOpen(false)}>Dashboard</Link>
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" asChild className="w-full">
+                  <Link to="/auth" onClick={() => setSheetOpen(false)}>
+                    <LogIn className="w-3.5 h-3.5 mr-1" /> Sign in
+                  </Link>
+                </Button>
+              )}
             </div>
           </SheetContent>
         </Sheet>
