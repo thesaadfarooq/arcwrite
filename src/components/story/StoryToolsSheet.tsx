@@ -10,6 +10,7 @@ interface StoryToolsSheetProps {
   currentTone: string | undefined;
   onToneChange: (tone: string) => void;
   toolsSlot?: ReactNode;
+  canCustomTone?: boolean;
 }
 
 export function StoryToolsSheet({
@@ -18,6 +19,7 @@ export function StoryToolsSheet({
   currentTone,
   onToneChange,
   toolsSlot,
+  canCustomTone,
 }: StoryToolsSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -32,6 +34,7 @@ export function StoryToolsSheet({
             currentTone={currentTone}
             onToneChange={onToneChange}
             onDone={() => onOpenChange(false)}
+            canCustomTone={canCustomTone}
           />
           {toolsSlot}
         </div>

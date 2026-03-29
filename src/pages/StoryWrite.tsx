@@ -869,7 +869,23 @@ export default function StoryWrite() {
     setChapterSuggestionsExpanded(true);
 
     try {
-      const recentNodes = reviewActiveNodes.slice(-6).map((node) => ({
+      // Always include the node that starts the current chapter so the AI can
+      // suggest renaming it, even when it falls outside the last-6 window.
+      const tail = reviewActiveNodes.slice(-6);
+      let currentChapterStartIndex = -1;
+      for (let i = reviewActiveNodes.length - 1; i >= 0; i--) {
+        if ((reviewActiveNodes[i] as any).starts_chapter) {
+          currentChapterStartIndex = i;
+          break;
+        }
+      }
+      const tailStartIndex = reviewActiveNodes.length - tail.length;
+      const nodesForReview =
+        currentChapterStartIndex >= 0 && currentChapterStartIndex < tailStartIndex
+          ? [reviewActiveNodes[currentChapterStartIndex], ...tail]
+          : tail;
+
+      const recentNodes = nodesForReview.map((node) => ({
         id: node.id,
         text: node.text || "",
         startsChapter: Boolean((node as any).starts_chapter),
@@ -1607,6 +1623,7 @@ export default function StoryWrite() {
           onToneChange={handleToneChange}
           isOpen={toneOpen}
           onClose={() => setToneOpen(false)}
+          canCustomTone={limits.customTone}
         />
       ) : null}
     </>
@@ -1744,7 +1761,8 @@ export default function StoryWrite() {
             onShare={limits.sharing ? handleShare : undefined}
             onExport={limits.export ? handleExport : undefined}
             onDashboard={() => navigate("/dashboard")}
-            onContinue={handleContinueAnyway}
+            onContinue={limits.arcOverrides ? handleContinueAnyway : undefined}
+            showArcUpgradeHint={!limits.arcOverrides}
           />
         ) : (
           <ChoiceCards
@@ -1851,6 +1869,7 @@ export default function StoryWrite() {
             currentTone={storyMeta.tone}
             onToneChange={handleToneChange}
             toolsSlot={toolsActions}
+            canCustomTone={limits.customTone}
           />
         }
       />

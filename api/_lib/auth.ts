@@ -6,6 +6,8 @@ const supabase = createClient(
   process.env.SUPABASE_PUBLISHABLE_KEY!
 );
 
+export type TierKey = "free" | "plus" | "pro";
+
 /**
  * Validate a Bearer token from the Authorization header.
  * Returns the authenticated user or null.
@@ -21,6 +23,21 @@ export async function getAuthenticatedUser(authHeader: string | null) {
   if (error || !data.user) return null;
 
   return data.user;
+}
+
+/**
+ * Look up a user's subscription tier from the profiles table.
+ * Falls back to "free" if no row exists or query fails.
+ */
+export async function getUserTier(userId: string): Promise<TierKey> {
+  const { data } = await supabase
+    .from("profiles")
+    .select("tier")
+    .eq("user_id", userId)
+    .single();
+  const tier = data?.tier;
+  if (tier === "plus" || tier === "pro") return tier;
+  return "free";
 }
 
 /** Standard 401 response for Edge runtime handlers */

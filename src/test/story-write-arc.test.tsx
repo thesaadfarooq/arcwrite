@@ -60,7 +60,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/subscription", () => ({
-  getTierLimits: () => ({ turns: Infinity, export: true, sharing: true }),
+  getTierLimits: () => ({ turns: Infinity, export: true, sharing: true, customTone: true, arcOverrides: true }),
 }));
 
 vi.mock("@/hooks/use-mobile", () => ({

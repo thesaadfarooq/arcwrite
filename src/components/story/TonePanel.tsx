@@ -1,4 +1,4 @@
-import { Palette, Check, X } from "lucide-react";
+import { Palette, Check, X, Lock } from "lucide-react";
 import { useState } from "react";
 import { TONE_PROFILES } from "@/lib/tone-profiles";
 
@@ -7,15 +7,17 @@ interface TonePanelProps {
   onToneChange: (tone: string) => void;
   isOpen: boolean;
   onClose: () => void;
+  canCustomTone?: boolean;
 }
 
 interface TonePanelContentProps {
   currentTone: string | undefined;
   onToneChange: (tone: string) => void;
   onDone: () => void;
+  canCustomTone?: boolean;
 }
 
-export function TonePanelContent({ currentTone, onToneChange, onDone }: TonePanelContentProps) {
+export function TonePanelContent({ currentTone, onToneChange, onDone, canCustomTone = true }: TonePanelContentProps) {
   const [customTone, setCustomTone] = useState("");
 
   return (
@@ -55,36 +57,43 @@ export function TonePanelContent({ currentTone, onToneChange, onDone }: TonePane
 
       {/* Custom tone input */}
       <div className="mt-3 pt-3 border-t border-border">
-        <div className="flex gap-2">
-          <input
-            value={customTone}
-            onChange={(e) => setCustomTone(e.target.value)}
-            placeholder="Custom tone…"
-            className="flex-1 text-xs px-2.5 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
-          />
-          <button
-            disabled={customTone.trim().length < 3}
-            onClick={() => {
-              onToneChange(customTone.trim());
-              setCustomTone("");
-              onDone();
-            }}
-            className="text-xs px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95"
-          >
-            Set
-          </button>
-        </div>
+        {canCustomTone ? (
+          <div className="flex gap-2">
+            <input
+              value={customTone}
+              onChange={(e) => setCustomTone(e.target.value)}
+              placeholder="Custom tone…"
+              className="flex-1 text-xs px-2.5 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+            />
+            <button
+              disabled={customTone.trim().length < 3}
+              onClick={() => {
+                onToneChange(customTone.trim());
+                setCustomTone("");
+                onDone();
+              }}
+              className="text-xs px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95"
+            >
+              Set
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Lock className="w-3 h-3 shrink-0" />
+            <span>Custom tones available on Plus and Pro plans</span>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-export function TonePanel({ currentTone, onToneChange, isOpen, onClose }: TonePanelProps) {
+export function TonePanel({ currentTone, onToneChange, isOpen, onClose, canCustomTone }: TonePanelProps) {
   if (!isOpen) return null;
 
   return (
     <div className="absolute right-4 top-14 z-30 w-64 p-4 rounded-xl border border-border bg-card shadow-lg animate-fade-in">
-      <TonePanelContent currentTone={currentTone} onToneChange={onToneChange} onDone={onClose} />
+      <TonePanelContent currentTone={currentTone} onToneChange={onToneChange} onDone={onClose} canCustomTone={canCustomTone} />
     </div>
   );
 }

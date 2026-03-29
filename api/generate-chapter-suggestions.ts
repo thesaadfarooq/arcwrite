@@ -94,7 +94,7 @@ export default async function handler(req: Request) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
 
-    const systemPrompt = `You are a structural fiction editor. Review only the recent active branch tail.
+    const systemPrompt = `You are a structural fiction editor. Review the recent active branch tail.
 
 Return at most 2 suggestions. Allowed suggestion types:
 - start_new_chapter_here
@@ -102,6 +102,7 @@ Return at most 2 suggestions. Allowed suggestion types:
 
 Only suggest a new chapter when there is a genuine scene, location, time, or objective shift.
 Do not suggest changes to inactive branches or old, settled chapters.
+Exception: if any chapter still has a generic default title like "Chapter 1", "Chapter 2", etc., always suggest renaming it to something evocative and specific to the content, even if the chapter is otherwise settled.
 Each suggestion must include anchorNodeId, anchorParagraphIndex (or null for rename), proposedTitle (or null), and a short reason.
 For start_new_chapter_here, anchorParagraphIndex must be a valid split point between 1 and paragraphCount - 1 for that node.
 

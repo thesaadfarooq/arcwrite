@@ -1,4 +1,4 @@
-import { getAuthenticatedUser, unauthorizedResponse } from "./_lib/auth.js";
+import { getAuthenticatedUser, getUserTier, unauthorizedResponse } from "./_lib/auth.js";
 
 export const config = { runtime: "edge" };
 
@@ -16,6 +16,9 @@ export default async function handler(req: Request) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
 
+    const tier = await getUserTier(user.id);
+    const model = tier === "free" ? "gpt-5.4-nano" : "gpt-5.4-mini";
+
     const systemPrompt = `You are a story analyst. Your job is to:
 1. Summarize the story so far in 2-3 concise paragraphs
 2. Extract/update the structured story state
@@ -31,7 +34,7 @@ Return your analysis using the provided tool.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-5.4-mini",
+        model,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userContent },
