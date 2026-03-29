@@ -80,3 +80,21 @@ describe("naming guidance", () => {
     expect(guidance).toContain("NAMING");
   });
 });
+
+describe("prompt integration contracts", () => {
+  it("getToneDirective returns TONE: prefix for presets", () => {
+    const directive = getToneDirective("Dark & gritty");
+    expect(directive).toMatch(/^TONE:/);
+    expect(directive).toContain("Short declarative sentences");
+  });
+
+  it("getToneDirective returns TONE: prefix for custom tones", () => {
+    const directive = getToneDirective("Brooding noir");
+    expect(directive).toBe("TONE: Write in a Brooding noir style. Maintain this tone consistently.");
+  });
+
+  it("getNamingGuidance returns NAMING: prefix", () => {
+    const guidance = getNamingGuidance("Fantasy");
+    expect(guidance).toMatch(/^NAMING:/);
+  });
+});

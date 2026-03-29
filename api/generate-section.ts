@@ -1,4 +1,5 @@
 import { getAuthenticatedUser, unauthorizedResponse } from "./_lib/auth.js";
+import { getToneDirective, getNamingGuidance } from "../src/lib/tone-profiles.js";
 
 export const config = { runtime: "edge" };
 
@@ -169,8 +170,10 @@ Use this premise as the foundation and guiding direction for the story. Follow t
 - You are free to introduce new characters, locations, and plot elements as the story naturally demands — the premise is a starting point, not a cage
 - The premise establishes the core concept and direction; honor its spirit while letting the story breathe and evolve organically
 - Never contradict established details from the premise or from earlier in the story`;
-  if (tone) prompt += `\n\nTONE: Write in a ${tone} style. Maintain this tone consistently.`;
+  const toneBlock = getToneDirective(tone);
+  if (toneBlock) prompt += `\n\n${toneBlock}`;
   if (genre) prompt += `\n\nGENRE: ${genre}`;
+  if (genre) prompt += `\n\n${getNamingGuidance(genre)}`;
   if (storyState && Object.keys(storyState).length > 0) {
     prompt += `\n\nSTORY STATE:\n${JSON.stringify(storyState, null, 2)}`;
   }

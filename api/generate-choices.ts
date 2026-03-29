@@ -1,4 +1,5 @@
 import { getAuthenticatedUser, unauthorizedResponse } from "./_lib/auth.js";
+import { getToneDirective } from "../src/lib/tone-profiles.js";
 
 export const config = { runtime: "edge" };
 
@@ -155,7 +156,7 @@ For each direction, provide:
 
 ${moveFamilyInstruction}
 ${premise ? `ORIGINAL PREMISE: ${premise}\nChoices should be consistent with the premise's core concept and any established characters/settings. However, choices may introduce new characters, locations, or plot developments — the premise is a foundation, not a boundary. Never contradict what has already been established.` : ""}
-${tone ? `TONE: ${tone}` : ""}
+${getToneDirective(tone) ?? ""}
 ${genre ? `GENRE: ${genre}` : ""}`;
 
     const userContent = `Current story context:
