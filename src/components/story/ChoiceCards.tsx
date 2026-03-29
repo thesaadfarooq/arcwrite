@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Flag,
   Sparkles,
+  SplitSquareVertical,
 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -67,6 +68,7 @@ interface ChoiceCardsProps {
   isLoading?: boolean;
   isNearEnd?: boolean;
   onBeginConclusion?: () => void;
+  onAddChapterBreak?: () => void;
   isStoryComplete?: boolean;
   sectionLength: SectionLength;
   onSectionLengthChange: (length: SectionLength) => void;
@@ -109,6 +111,7 @@ export function ChoiceCards({
   isLoading,
   isNearEnd,
   onBeginConclusion,
+  onAddChapterBreak,
   isStoryComplete,
   sectionLength,
   onSectionLengthChange,
@@ -195,6 +198,11 @@ export function ChoiceCards({
           <Button variant="ghost" size="sm" onClick={onRegenerate} className="text-muted-foreground hover:text-foreground">
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> New options
           </Button>
+          {onAddChapterBreak ? (
+            <Button variant="ghost" size="sm" onClick={onAddChapterBreak} className="text-muted-foreground hover:text-foreground">
+              <SplitSquareVertical className="w-3.5 h-3.5 mr-1.5" /> Add chapter break
+            </Button>
+          ) : null}
         </div>
       </div>
 

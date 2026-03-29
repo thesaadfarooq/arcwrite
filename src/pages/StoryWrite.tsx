@@ -12,7 +12,6 @@ import { ChoiceCards, type StoryChoice } from "@/components/story/ChoiceCards";
 import { ChapterSidebar, type Chapter } from "@/components/story/ChapterSidebar";
 import { StoryTimeline, type TimelineNode } from "@/components/story/StoryTimeline";
 import { ChapterReviewPrompt } from "@/components/story/ChapterReviewPrompt";
-import { ChapterEditModeBar } from "@/components/story/ChapterEditModeBar";
 import { StoryWriteMobileShell } from "@/components/story/StoryWriteMobileShell";
 import { StoryWriteDesktopShell } from "@/components/story/StoryWriteDesktopShell";
 import { StoryStructureSheet } from "@/components/story/StoryStructureSheet";
@@ -1542,7 +1541,23 @@ export default function StoryWrite() {
         />
       ) : null}
 
-      <ChapterEditModeBar active={chapterEditMode} onDone={() => setChapterEditMode(false)} />
+      {chapterEditMode ? (
+        <div className="sticky top-12 z-10 mb-6 flex items-center justify-between rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">Chapter edit mode</p>
+            <p className="text-xs text-muted-foreground">
+              Tap a marker between paragraphs to start a new chapter.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setChapterEditMode(false)}
+            className="rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : null}
 
       <StoryCanvas
         paragraphs={paragraphs}
@@ -1606,6 +1621,7 @@ export default function StoryWrite() {
             turnCount={limits.turns !== Infinity ? activeNodes.length : undefined}
             turnLimit={limits.turns !== Infinity ? limits.turns : undefined}
             modeLabel={arcOverride === "post_ending" ? "After the ending" : undefined}
+            onAddChapterBreak={handleStartBreakMode}
           />
         )
       ) : null}

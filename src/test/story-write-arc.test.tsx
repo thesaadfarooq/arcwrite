@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import StoryWrite from "@/pages/StoryWrite";
 
@@ -267,6 +267,11 @@ vi.mock("@/components/story/ChoiceCards", () => ({
     return (
       <div data-testid="choice-cards">
         <div data-testid="choice-near-end">{String(Boolean(props.isNearEnd))}</div>
+        {props.onAddChapterBreak ? (
+          <button type="button" onClick={() => props.onAddChapterBreak?.()}>
+            Add chapter break
+          </button>
+        ) : null}
         <button type="button" onClick={() => props.onBeginConclusion?.()}>
           begin conclusion
         </button>
@@ -1761,13 +1766,35 @@ describe("StoryWrite narrative arc integration", () => {
 
     renderStoryWrite();
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /add chapter break/i })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /add chapter break/i }));
+    await waitFor(() => expect(screen.getByTestId("chapter-sidebar")).toBeInTheDocument());
+    fireEvent.click(within(screen.getByTestId("chapter-sidebar")).getByRole("button", { name: /add chapter break/i }));
 
     await waitFor(() => {
       expect(latestStoryCanvasProps.current.chapterEditMode).toBe(true);
       expect(screen.getByTestId("chapter-break-mode")).toBeInTheDocument();
       expect(screen.getByTestId("story-canvas")).toHaveTextContent(/break mode visible/i);
+    });
+  });
+
+  it("enters and exits break mode from the shared choice rail", async () => {
+    useIsMobileMock.mockReturnValue(false);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByTestId("choice-cards")).toBeInTheDocument());
+    fireEvent.click(within(screen.getByTestId("choice-cards")).getByRole("button", { name: /add chapter break/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/chapter edit mode/i)).toBeInTheDocument();
+      expect(screen.getByText(/tap a marker between paragraphs to start a new chapter/i)).toBeInTheDocument();
+      expect(screen.getByTestId("chapter-break-mode")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/chapter edit mode/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/tap a marker between paragraphs to start a new chapter/i)).not.toBeInTheDocument();
     });
   });
 
