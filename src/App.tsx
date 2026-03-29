@@ -17,6 +17,7 @@ import Dashboard from "./pages/Dashboard.tsx";
 import Features from "./pages/Features.tsx";
 import GenreLanding from "./pages/GenreLanding.tsx";
 import Pricing from "./pages/Pricing.tsx";
+import About from "./pages/About.tsx";
 import SharedStory from "./pages/SharedStory.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -47,6 +48,7 @@ const AppRoutes = () => (
     <Route path="/features" element={<Features />} />
     <Route path="/genres/:genre" element={<GenreLanding />} />
     <Route path="/pricing" element={<Pricing />} />
+    <Route path="/about" element={<About />} />
     <Route path="/s/:token" element={<SharedStory />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
