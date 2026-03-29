@@ -114,10 +114,15 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("@/components/story/StoryCanvas", () => ({
-  StoryCanvas: ({ paragraphs, ...props }: { paragraphs: Array<{ text: string }> } & Record<string, unknown>) => {
-    latestStoryCanvasProps.current = props;
+  StoryCanvas: ({
+    paragraphs,
+    chapterEditMode,
+    ...props
+  }: { paragraphs: Array<{ text: string }>; chapterEditMode?: boolean } & Record<string, unknown>) => {
+    latestStoryCanvasProps.current = { ...props, chapterEditMode };
     return (
       <div data-testid="story-canvas">
+        {chapterEditMode ? <div data-testid="chapter-break-mode">Break mode visible</div> : null}
         {paragraphs.map((paragraph, index) => (
           <p key={index}>{paragraph.text}</p>
         ))}
@@ -134,12 +139,16 @@ vi.mock("@/components/story/ChapterSidebar", () => {
       embedded,
       reviewSlot,
       chapters,
+      onStartBreakMode,
+      onEnterEditMode,
       onRename,
       onGenerateTitle,
     }: {
       embedded?: boolean;
       reviewSlot?: React.ReactNode;
       chapters?: Array<{ id: string; title: string }>;
+      onStartBreakMode?: () => void;
+      onEnterEditMode?: () => void;
       onRename?: (id: string, title: string) => void;
       onGenerateTitle?: (id: string) => Promise<string>;
     }) => {
@@ -151,6 +160,16 @@ vi.mock("@/components/story/ChapterSidebar", () => {
       return (
         <div data-testid={embedded ? "embedded-chapter-sidebar" : "chapter-sidebar"}>
           {reviewSlot}
+          {onStartBreakMode ? (
+            <button type="button" onClick={onStartBreakMode}>
+              Add chapter break
+            </button>
+          ) : null}
+          {onEnterEditMode ? (
+            <button type="button" onClick={onEnterEditMode}>
+              Edit chapter titles
+            </button>
+          ) : null}
           {chapters?.map((ch: { id: string; title: string }) => (
             <div key={ch.id}>
               <button
@@ -1735,6 +1754,21 @@ describe("StoryWrite narrative arc integration", () => {
     expect(screen.queryByRole("button", { name: /structure/i })).not.toBeInTheDocument();
     expect(latestStoryCanvasProps.current.chapterEditMode).toBeUndefined();
     expect(latestStoryCanvasProps.current.onRenameChapter).toEqual(expect.any(Function));
+  });
+
+  it("enters visible break mode on desktop when add chapter break is clicked", async () => {
+    useIsMobileMock.mockReturnValue(false);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /add chapter break/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /add chapter break/i }));
+
+    await waitFor(() => {
+      expect(latestStoryCanvasProps.current.chapterEditMode).toBe(true);
+      expect(screen.getByTestId("chapter-break-mode")).toBeInTheDocument();
+      expect(screen.getByTestId("story-canvas")).toHaveTextContent(/break mode visible/i);
+    });
   });
 
   it("enters post-ending mode when continue anyway succeeds", async () => {

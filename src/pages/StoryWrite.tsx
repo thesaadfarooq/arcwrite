@@ -794,7 +794,7 @@ export default function StoryWrite() {
         reviewedTipId: currentTipId,
       });
     } catch {
-      toast.error("Failed to review chapter structure");
+      toast.error("Failed to prepare chapter suggestions");
     } finally {
       setIsChapterReviewLoading(false);
     }
@@ -1550,7 +1550,7 @@ export default function StoryWrite() {
         chapterHeadings={chapterHeadings}
         onInsertBreak={handleInsertBreak}
         onRenameChapter={!isMobile || chapterEditMode ? handleChapterRename : undefined}
-        chapterEditMode={isMobile ? chapterEditMode : undefined}
+        chapterEditMode={isMobile ? chapterEditMode : chapterEditMode ? true : undefined}
         pendingBreakKey={pendingBreakKey}
       />
 
