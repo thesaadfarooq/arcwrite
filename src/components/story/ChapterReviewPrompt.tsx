@@ -17,14 +17,16 @@ export function ChapterReviewPrompt({ suggestionCount, isLoading = false, onRevi
             {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Sparkles className="h-3.5 w-3.5 text-primary" />}
             <p className="text-sm font-medium text-foreground">
               {isLoading
-                ? "Reviewing chapter structure"
+                ? "Preparing chapter suggestions"
                 : hasSuggestions
                 ? `${suggestionCount} chapter suggestion${suggestionCount === 1 ? "" : "s"} ready`
-                : "Review chapter structure"}
+                : "Chapter suggestions ready"}
             </p>
           </div>
           <p className="text-xs text-muted-foreground">
-            {isLoading ? "Looking at the recent story beats now." : "Review when convenient."}
+            {isLoading
+              ? "Looking at recent story beats and chapter titles."
+              : "Suggestions may include chapter breaks or better titles for recent chapters."}
           </p>
         </div>
         <button
@@ -33,7 +35,7 @@ export function ChapterReviewPrompt({ suggestionCount, isLoading = false, onRevi
           disabled={isLoading}
           className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {isLoading ? "Reviewing…" : "Review"}
+          {isLoading ? "Loading..." : "See suggestions"}
         </button>
       </div>
     </div>

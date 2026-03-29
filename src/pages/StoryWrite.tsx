@@ -800,6 +800,11 @@ export default function StoryWrite() {
     }
   };
 
+  const handleStartBreakMode = () => {
+    setStructureOpen(false);
+    setChapterEditMode(true);
+  };
+
   const handleDismissChapterReview = () => {
     setChapterSuggestions([]);
     setChapterSuggestionsTipId(null);
@@ -1278,7 +1283,7 @@ export default function StoryWrite() {
               {chapterSuggestions.length} chapter suggestion{chapterSuggestions.length === 1 ? "" : "s"} ready
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Keep writing or expand this review without losing sight of your chapters.
+              Keep writing or expand these suggestions without losing sight of your chapters.
             </p>
             {isChapterReviewLoading ? (
               <p className="mt-1 text-xs text-primary">Refreshing suggestions…</p>
@@ -1512,6 +1517,7 @@ export default function StoryWrite() {
             onMerge={handleChapterMerge}
             onGenerateTitle={handleGenerateChapterTitle}
             reviewSlot={chapterReviewPanel}
+            onStartBreakMode={handleStartBreakMode}
           />
         ) : (
           <StoryTimeline
@@ -1626,9 +1632,9 @@ export default function StoryWrite() {
           onMerge={handleChapterMerge}
           onGenerateTitle={handleGenerateChapterTitle}
           embedded
+          onStartBreakMode={handleStartBreakMode}
           onEnterEditMode={() => {
-            setStructureOpen(false);
-            setChapterEditMode(true);
+            handleStartBreakMode();
           }}
         />
       }

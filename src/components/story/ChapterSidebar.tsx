@@ -36,6 +36,7 @@ interface ChapterSidebarProps {
   onGenerateTitle?: (id: string) => Promise<string>;
   reviewSlot?: React.ReactNode;
   embedded?: boolean;
+  onStartBreakMode?: () => void;
   onEnterEditMode?: () => void;
 }
 
@@ -49,6 +50,7 @@ export function ChapterSidebar({
   onGenerateTitle,
   reviewSlot,
   embedded = false,
+  onStartBreakMode,
   onEnterEditMode,
 }: ChapterSidebarProps) {
   const [renameTarget, setRenameTarget] = useState<Chapter | null>(null);
@@ -71,17 +73,18 @@ export function ChapterSidebar({
 
       {reviewSlot ? <div className="p-2">{reviewSlot}</div> : null}
 
-      {onEnterEditMode ? (
-        <div className="px-2 pb-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="w-full"
-            onClick={onEnterEditMode}
-          >
-            Edit chapters
-          </Button>
+      {onStartBreakMode || onEnterEditMode ? (
+        <div className="flex flex-col gap-2 px-2 pb-2">
+          {onStartBreakMode ? (
+            <Button type="button" size="sm" className="w-full" onClick={onStartBreakMode}>
+              Add chapter break
+            </Button>
+          ) : null}
+          {onEnterEditMode ? (
+            <Button type="button" variant="secondary" size="sm" className="w-full" onClick={onEnterEditMode}>
+              Edit chapter titles
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
