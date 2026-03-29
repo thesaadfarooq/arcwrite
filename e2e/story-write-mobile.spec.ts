@@ -25,6 +25,10 @@ test.describe("Story Write Page (mobile)", () => {
     await expect(page.getByRole("button", { name: /structure/i })).toBeVisible({ timeout: 60_000 });
     await expect(page.locator("aside")).toHaveCount(0, { timeout: 60_000 });
 
+    await expect(page.getByRole("button", { name: /chapter break/i })).toBeVisible();
+    await page.getByRole("button", { name: /chapter break/i }).click();
+    await expect(page.getByText(/choose where the new chapter should begin/i)).toBeVisible();
+
     await page.getByRole("button", { name: /structure/i }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByRole("tab", { name: /chapters/i })).toBeVisible();

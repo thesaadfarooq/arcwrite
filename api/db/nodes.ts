@@ -140,12 +140,16 @@ async function handleSplit(
 
       await client.query("UPDATE story_nodes SET text = $1 WHERE id = $2", [textBefore, id]);
 
+      // Use a timestamp just after the original node so created_at ordering
+      // stays consistent with tree order even before the tree-walk sort.
+      const splitTimestamp = new Date(new Date(node.created_at).getTime() + 1).toISOString();
+
       const inserted = await client.query(
         `INSERT INTO story_nodes (
            story_id, parent_id, text, summary, story_state, choices,
-           chosen_option, starts_chapter, is_active
+           chosen_option, starts_chapter, is_active, created_at
          )
-         VALUES ($1, $2, $3, $4, $5, $6, NULL, true, $7)
+         VALUES ($1, $2, $3, $4, $5, $6, NULL, true, $7, $8)
          RETURNING *`,
         [
           node.story_id,
@@ -155,6 +159,7 @@ async function handleSplit(
           JSON.stringify(node.story_state ?? null),
           JSON.stringify(node.choices ?? null),
           node.is_active,
+          splitTimestamp,
         ]
       );
       const createdNode = inserted.rows[0];
@@ -344,7 +349,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       sql += " ORDER BY created_at ASC";
 
       const nodes = await query(sql, [story_id]);
-      return res.json(nodes);
+
+      // Sort by tree walk (root → leaf) so split-inserted nodes appear in
+      // the correct position regardless of their created_at timestamp.
+      const childMap = new Map<string | null, typeof nodes[number]>();
+      for (const n of nodes) {
+        childMap.set(n.parent_id ?? null, n);
+      }
+      const sorted: typeof nodes = [];
+      let current = childMap.get(null); // root has no parent
+      while (current) {
+        sorted.push(current);
+        current = childMap.get(current.id);
+      }
+      // Fall back to the original order if the tree walk didn't cover all
+      // nodes (e.g. "all" mode returns branches with multiple children).
+      return res.json(sorted.length === nodes.length ? sorted : nodes);
     }
 
     if (req.method === "POST") {

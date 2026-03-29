@@ -117,9 +117,10 @@ vi.mock("@/components/story/StoryCanvas", () => ({
   StoryCanvas: ({
     paragraphs,
     chapterEditMode,
+    breakTargetNodeIds,
     ...props
-  }: { paragraphs: Array<{ text: string }>; chapterEditMode?: boolean } & Record<string, unknown>) => {
-    latestStoryCanvasProps.current = { ...props, chapterEditMode };
+  }: { paragraphs: Array<{ text: string }>; chapterEditMode?: boolean; breakTargetNodeIds?: string[] } & Record<string, unknown>) => {
+    latestStoryCanvasProps.current = { ...props, chapterEditMode, breakTargetNodeIds };
     return (
       <div data-testid="story-canvas">
         {chapterEditMode ? <div data-testid="chapter-break-mode">Break mode visible</div> : null}
@@ -139,16 +140,12 @@ vi.mock("@/components/story/ChapterSidebar", () => {
       embedded,
       reviewSlot,
       chapters,
-      onStartBreakMode,
-      onEnterEditMode,
       onRename,
       onGenerateTitle,
     }: {
       embedded?: boolean;
       reviewSlot?: React.ReactNode;
       chapters?: Array<{ id: string; title: string }>;
-      onStartBreakMode?: () => void;
-      onEnterEditMode?: () => void;
       onRename?: (id: string, title: string) => void;
       onGenerateTitle?: (id: string) => Promise<string>;
     }) => {
@@ -160,16 +157,6 @@ vi.mock("@/components/story/ChapterSidebar", () => {
       return (
         <div data-testid={embedded ? "embedded-chapter-sidebar" : "chapter-sidebar"}>
           {reviewSlot}
-          {onStartBreakMode ? (
-            <button type="button" onClick={onStartBreakMode}>
-              Add chapter break
-            </button>
-          ) : null}
-          {onEnterEditMode ? (
-            <button type="button" onClick={onEnterEditMode}>
-              Edit chapter titles
-            </button>
-          ) : null}
           {chapters?.map((ch: { id: string; title: string }) => (
             <div key={ch.id}>
               <button
@@ -1761,42 +1748,114 @@ describe("StoryWrite narrative arc integration", () => {
     expect(latestStoryCanvasProps.current.onRenameChapter).toEqual(expect.any(Function));
   });
 
-  it("enters visible break mode on desktop when add chapter break is clicked", async () => {
+  it("enters and exits chapter break mode from the main writing flow", async () => {
     useIsMobileMock.mockReturnValue(false);
 
-    renderStoryWrite();
-
-    await waitFor(() => expect(screen.getByTestId("chapter-sidebar")).toBeInTheDocument());
-    fireEvent.click(within(screen.getByTestId("chapter-sidebar")).getByRole("button", { name: /add chapter break/i }));
-
-    await waitFor(() => {
-      expect(latestStoryCanvasProps.current.chapterEditMode).toBe(true);
-      expect(screen.getByTestId("chapter-break-mode")).toBeInTheDocument();
-      expect(screen.getByTestId("story-canvas")).toHaveTextContent(/break mode visible/i);
-    });
-  });
-
-  it("enters and exits break mode from the shared choice rail", async () => {
-    useIsMobileMock.mockReturnValue(false);
+    // Need multi-paragraph nodes so break points exist
+    getStoryNodesMock.mockResolvedValue([
+      {
+        id: "node-1",
+        text: "Opening paragraph.\n\nSecond paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [],
+        is_active: true,
+      },
+    ]);
+    getAllStoryNodesMock.mockResolvedValue([
+      {
+        id: "node-1",
+        text: "Opening paragraph.\n\nSecond paragraph.",
+        parent_id: null,
+        chosen_option: null,
+        created_at: "2026-03-28T10:00:00.000Z",
+        is_active: true,
+        starts_chapter: true,
+      },
+    ]);
 
     renderStoryWrite();
 
     await waitFor(() => expect(screen.getByTestId("choice-cards")).toBeInTheDocument());
-    fireEvent.click(within(screen.getByTestId("choice-cards")).getByRole("button", { name: /add chapter break/i }));
+    fireEvent.click(within(screen.getByTestId("choice-cards")).getByRole("button", { name: /chapter break/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/chapter edit mode/i)).toBeInTheDocument();
-      expect(screen.getByText(/tap a marker between paragraphs to start a new chapter/i)).toBeInTheDocument();
+      expect(screen.getByText(/choose where the new chapter should begin/i)).toBeInTheDocument();
       expect(screen.getByTestId("chapter-break-mode")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
 
     await waitFor(() => {
-      expect(screen.queryByText(/chapter edit mode/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(/tap a marker between paragraphs to start a new chapter/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/choose where the new chapter should begin/i)).not.toBeInTheDocument();
       expect(screen.queryByTestId("chapter-break-mode")).not.toBeInTheDocument();
       expect(latestStoryCanvasProps.current.chapterEditMode).toBeUndefined();
+    });
+  });
+
+  it("starts chapter break mode on the current chapter and can reveal earlier chapters", async () => {
+    // Scoping is mobile-only — desktop shows all markers
+    useIsMobileMock.mockReturnValue(true);
+
+    // Set up a story with two chapters so there's a scoping boundary
+    getAllStoryNodesMock.mockResolvedValue([
+      {
+        id: "node-1",
+        text: "Opening paragraph.\n\nSecond paragraph.",
+        parent_id: null,
+        chosen_option: null,
+        created_at: "2026-03-28T10:00:00.000Z",
+        is_active: true,
+        starts_chapter: true,
+      },
+      {
+        id: "node-2",
+        text: "Third paragraph.\n\nFourth paragraph.",
+        parent_id: "node-1",
+        chosen_option: null,
+        created_at: "2026-03-28T10:05:00.000Z",
+        is_active: true,
+        starts_chapter: true,
+      },
+    ]);
+
+    getStoryNodesMock.mockResolvedValue([
+      {
+        id: "node-1",
+        text: "Opening paragraph.\n\nSecond paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [],
+        is_active: true,
+        starts_chapter: true,
+      },
+      {
+        id: "node-2",
+        text: "Third paragraph.\n\nFourth paragraph.",
+        summary: "Second",
+        story_state: { stage: "middle" },
+        choices: [],
+        is_active: true,
+        starts_chapter: true,
+      },
+    ]);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByTestId("choice-cards")).toBeInTheDocument());
+    fireEvent.click(within(screen.getByTestId("choice-cards")).getByRole("button", { name: /chapter break/i }));
+
+    // Break mode should scope to the current (last) chapter
+    await waitFor(() => {
+      expect(latestStoryCanvasProps.current.chapterEditMode).toBe(true);
+      expect(latestStoryCanvasProps.current.breakTargetNodeIds).toEqual(["node-2"]);
+    });
+
+    // Reveal earlier chapters
+    fireEvent.click(screen.getByRole("button", { name: /show earlier chapters/i }));
+
+    await waitFor(() => {
+      expect(latestStoryCanvasProps.current.breakTargetNodeIds).toEqual(["node-1", "node-2"]);
     });
   });
 
@@ -1878,6 +1937,14 @@ describe("StoryWrite narrative arc integration", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /use suggestion/i }));
     expect(screen.getByRole("textbox", { name: /chapter title/i })).toHaveValue("The Ash Bell");
+  });
+
+  it("keeps chapter break visible in the choice area even when no AI suggestions are ready", async () => {
+    generateChapterSuggestionsMock.mockResolvedValue([]);
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByTestId("choice-cards")).toBeInTheDocument());
+    expect(within(screen.getByTestId("choice-cards")).getByRole("button", { name: /chapter break/i })).toBeInTheDocument();
   });
 
   it("passes post-ending move families into choice generation", async () => {

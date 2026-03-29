@@ -73,21 +73,6 @@ export function ChapterSidebar({
 
       {reviewSlot ? <div className="p-2">{reviewSlot}</div> : null}
 
-      {onStartBreakMode || onEnterEditMode ? (
-        <div className="flex flex-col gap-2 px-2 pb-2">
-          {onStartBreakMode ? (
-            <Button type="button" size="sm" className="w-full" onClick={onStartBreakMode}>
-              Add chapter break
-            </Button>
-          ) : null}
-          {onEnterEditMode ? (
-            <Button type="button" variant="secondary" size="sm" className="w-full" onClick={onEnterEditMode}>
-              Edit chapter titles
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-
       {/* Chapter List */}
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {chapters.length === 0 ? (

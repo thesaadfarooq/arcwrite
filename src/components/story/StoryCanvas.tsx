@@ -21,6 +21,7 @@ interface StoryCanvasProps {
   onRenameChapter?: (nodeId: string, newTitle: string) => void;
   chapterEditMode?: boolean;
   pendingBreakKey?: string | null;
+  breakTargetNodeIds?: string[];
 }
 
 export function StoryCanvas({
@@ -32,6 +33,7 @@ export function StoryCanvas({
   onRenameChapter,
   chapterEditMode,
   pendingBreakKey,
+  breakTargetNodeIds,
 }: StoryCanvasProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -82,17 +84,17 @@ export function StoryCanvas({
 
             {/* Insert chapter break button — between paragraphs of the same node */}
             {onInsertBreak && !isFirstOfNode && paraIndex > 0 && (
-              chapterEditMode === true ? (
+              chapterEditMode === true && (!breakTargetNodeIds || breakTargetNodeIds.includes(nodeId)) ? (
                 <div className="relative py-3 flex justify-center">
                   <button
                     type="button"
                     onClick={() => onInsertBreak(nodeId, paraIndex)}
                     disabled={isBreakDisabled}
+                    aria-label="Start new chapter after this paragraph"
                     className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs text-primary transition-all duration-200 active:scale-95 hover:bg-primary/10"
-                    aria-label="Chapter break"
                   >
                     <SplitSquareVertical className="h-3 w-3" />
-                    <span>{isPendingBreak ? "Adding chapter…" : "Chapter break"}</span>
+                    <span>{isPendingBreak ? "Adding chapter…" : "Start new chapter after this paragraph"}</span>
                   </button>
                 </div>
               ) : chapterEditMode === undefined ? (
