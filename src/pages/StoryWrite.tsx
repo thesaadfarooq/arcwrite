@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle, Palette, GitBranch, Hash, Download, Share2, Loader2, Link, Crown, Lock } from "lucide-react";
+import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle, Palette, GitBranch, Hash, Download, Share2, Loader2, Link, Crown, Lock, RefreshCw } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
@@ -451,6 +451,107 @@ export default function StoryWrite() {
         } catch (e) {
           console.error("Failed to save node:", e);
           toast.error("Failed to save after retries — please try again");
+        }
+        setIsProcessing(false);
+        setIsLoadingChoices(false);
+      },
+      onError: (err) => {
+        setIsGenerating(false);
+        setIsProcessing(false);
+        toast.error(err);
+      },
+    } as any);
+  };
+
+  const handleRegenerateOpening = async () => {
+    if (!isAtOpening || isGenerating) return;
+    const rootNode = activeNodes[0];
+    if (!rootNode) return;
+
+    setChoices([]);
+    setIsGenerating(true);
+    let fullText = "";
+
+    setParagraphs([{ id: `streaming-${Date.now()}`, text: "", isStreaming: true }]);
+
+    const beat = getCurrentBeat(0);
+    await streamSection({
+      premise: storyMeta.premise,
+      genre: storyMeta.genre,
+      tone: storyMeta.tone,
+      length: sectionLength,
+      arcMode: arcOverride ?? undefined,
+      beat: buildBeatPayload(beat, false),
+      onDelta: (delta) => {
+        fullText += delta;
+        const paras = fullText.split("\n\n").filter(Boolean);
+        setParagraphs(paras.map((t, i) => ({
+          id: `gen-${i}`,
+          text: t,
+          isStreaming: i === paras.length - 1,
+        })));
+      },
+      onDone: async (text) => {
+        setIsGenerating(false);
+        setIsProcessing(true);
+        const paras = text.split("\n\n").filter(Boolean);
+        setParagraphs(paras.map((t, i) => ({ id: `gen-${i}`, text: t })));
+
+        const summarizePromise = summarizeStory({ fullText: text, storyState: {} });
+        const initialMoveFamilies = selectMoveFamilies({
+          phase: beat.phase,
+          arcMode: arcOverride ?? "normal",
+          previousEnding: arcState?.endedWith ?? null,
+          recentFamilies: [],
+          variantOffset: choiceVariantOffset,
+        });
+        const choicesPromise = generateChoices({
+          recentText: text.split("\n\n").slice(-3).join("\n\n"),
+          summary: "",
+          storyState: {},
+          tone: storyMeta.tone,
+          genre: storyMeta.genre,
+          premise: storyMeta.premise,
+          beat: buildBeatPayload(beat, false),
+          arcMode: arcOverride ?? "normal",
+          moveFamilies: initialMoveFamilies,
+          previousEnding: arcState?.endedWith ?? null,
+        });
+
+        try {
+          const results = await Promise.allSettled([summarizePromise, choicesPromise]);
+          const summaryResult = results[0].status === "fulfilled" ? results[0].value : null;
+          const choicesResult = results[1].status === "fulfilled" ? results[1].value : null;
+
+          if (summaryResult) {
+            setSummary(summaryResult.summary);
+            setStoryState(summaryResult.story_state);
+          }
+          if (choicesResult) {
+            setChoices(choicesResult);
+          } else {
+            toast.error("Failed to generate choices — you can regenerate them manually");
+          }
+
+          // Update the existing root node in place — do NOT create a new one
+          await retry(() => apiClient.updateNode(rootNode.id, {
+            text,
+            summary: summaryResult?.summary || "",
+            story_state: summaryResult?.story_state || storyState,
+            choices: choicesResult || [],
+          }));
+          await reloadActiveState();
+
+          // Update title if still auto-derived
+          const firstLine = text.split(".")[0]?.trim();
+          if (firstLine && storyTitle === "Untitled Story") {
+            const title = firstLine.length > 50 ? firstLine.slice(0, 50) + "…" : firstLine;
+            setStoryTitle(title);
+            await updateStoryTitle(storyId!, title);
+          }
+        } catch (e) {
+          console.error("Failed to save regenerated opening:", e);
+          toast.error("Failed to save — please try again");
         }
         setIsProcessing(false);
         setIsLoadingChoices(false);
@@ -973,6 +1074,7 @@ export default function StoryWrite() {
     () => allNodes.filter((n) => n.is_active),
     [allNodes]
   );
+  const isAtOpening = activeNodes.length === 1 && !activeNodes[0]?.chosen_option;
   const currentBeat = useMemo(() => getCurrentBeat(activeNodes.length), [activeNodes.length, arcOverride, targetTurns]);
   const recentMoveFamilies = useMemo(
     () => activeNodes
@@ -1599,6 +1701,19 @@ export default function StoryWrite() {
       />
 
       {isMobile ? reviewPromptCard : null}
+
+      {isAtOpening && !isGenerating && !isProcessing ? (
+        <div className="mt-4 animate-fade-in">
+          <button
+            type="button"
+            onClick={handleRegenerateOpening}
+            className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground transition-colors flex items-center gap-1.5"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Try a different opening
+          </button>
+        </div>
+      ) : null}
 
       {isProcessing && !isGenerating ? (
         <div className="mt-6 flex items-center gap-3 text-muted-foreground animate-fade-in">
