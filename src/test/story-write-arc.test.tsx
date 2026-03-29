@@ -863,8 +863,8 @@ describe("StoryWrite narrative arc integration", () => {
 
     renderStoryWrite();
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /see suggestions/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /see suggestions/i }));
 
     await waitFor(() => expect(generateChapterSuggestionsMock).toHaveBeenCalledTimes(1));
     expect(screen.getByTestId("embedded-chapter-sidebar")).toBeInTheDocument();
@@ -955,13 +955,13 @@ describe("StoryWrite narrative arc integration", () => {
 
     renderStoryWrite();
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /see suggestions/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /see suggestions/i }));
 
     await waitFor(() => {
-      const reviewButtons = screen.getAllByRole("button", { name: /reviewing/i });
-      expect(reviewButtons.length).toBeGreaterThan(0);
-      reviewButtons.forEach((button) => expect(button).toBeDisabled());
+      const loadingButtons = screen.getAllByRole("button", { name: /loading\.\.\./i });
+      expect(loadingButtons.length).toBeGreaterThan(0);
+      loadingButtons.forEach((button) => expect(button).toBeDisabled());
     });
 
     resolveSuggestions?.([]);
@@ -1055,8 +1055,8 @@ describe("StoryWrite narrative arc integration", () => {
 
     renderStoryWrite();
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /see suggestions/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /see suggestions/i }));
     await waitFor(() => expect(screen.getByText(/the bargain/i)).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: /apply/i }));
@@ -1158,8 +1158,8 @@ describe("StoryWrite narrative arc integration", () => {
 
     renderStoryWrite();
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /see suggestions/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /see suggestions/i }));
 
     await waitFor(() => expect(screen.getByText(/rename chapter/i)).toBeInTheDocument());
     expect(screen.getByText(/start new chapter/i)).toBeInTheDocument();
@@ -1260,8 +1260,8 @@ describe("StoryWrite narrative arc integration", () => {
 
     renderStoryWrite();
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /see suggestions/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /see suggestions/i }));
 
     const suggestionList = await screen.findByTestId("chapter-suggestion-list");
     expect(suggestionList).toHaveClass("max-h-[26vh]");
@@ -1361,8 +1361,8 @@ describe("StoryWrite narrative arc integration", () => {
 
     renderStoryWrite();
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /see suggestions/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /see suggestions/i }));
 
     const suggestionList = await screen.findByTestId("chapter-suggestion-list");
     expect(suggestionList).toHaveClass("max-h-[32vh]");
@@ -1462,8 +1462,8 @@ describe("StoryWrite narrative arc integration", () => {
 
     renderStoryWrite();
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /see suggestions/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /see suggestions/i }));
     await waitFor(() => expect(screen.getByText(/the viaduct/i)).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: /insert chapter/i }));
@@ -1712,8 +1712,8 @@ describe("StoryWrite narrative arc integration", () => {
 
     renderStoryWrite();
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /review/i })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: /review/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /see suggestions/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /see suggestions/i }));
     await waitFor(() => expect(screen.getByText(/the viaduct/i)).toBeInTheDocument());
     expect(screen.getByText(/the bargain/i)).toBeInTheDocument();
 
