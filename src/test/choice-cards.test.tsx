@@ -50,7 +50,9 @@ describe("ChoiceCards", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: /begin conclusion/i })).toBeInTheDocument();
+    const btn = screen.getByRole("button", { name: /begin conclusion/i });
+    expect(btn).toBeInTheDocument();
+    expect(btn.tagName).toBe("BUTTON");
   });
 
   it("switches to the story complete view when the story is complete", () => {
@@ -107,7 +109,7 @@ describe("ChoiceCards", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /write your own direction/i }));
+    fireEvent.click(screen.getByRole("button", { name: /write your own/i }));
     expect(screen.getByRole("button", { name: /go/i })).toBeDisabled();
   });
 
@@ -124,12 +126,12 @@ describe("ChoiceCards", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /add chapter break/i }));
+    fireEvent.click(screen.getByRole("button", { name: /chapter break/i }));
 
     expect(onAddChapterBreak).toHaveBeenCalledTimes(1);
   });
 
-  it("stacks the action row on small screens so chapter break stays readable", () => {
+  it("places chapter break alongside custom direction as secondary actions", () => {
     const onAddChapterBreak = vi.fn();
 
     render(
@@ -142,14 +144,7 @@ describe("ChoiceCards", () => {
       />,
     );
 
-    expect(screen.getByText(/what happens next\?/i).parentElement).toHaveClass(
-      "flex",
-      "flex-col",
-      "gap-3",
-      "sm:flex-row",
-      "sm:items-center",
-      "sm:justify-between",
-    );
-    expect(screen.getByRole("button", { name: /add chapter break/i })).toHaveClass("max-sm:w-full");
+    expect(screen.getByRole("button", { name: /chapter break/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /write your own/i })).toBeInTheDocument();
   });
 });

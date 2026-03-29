@@ -70,23 +70,18 @@ describe("mobile story surfaces", () => {
     expect(screen.getByRole("button", { name: /loading\.\.\./i })).toBeDisabled();
   });
 
-  it("renders manual chapter controls above the list when actions are provided", () => {
+  it("renders the chapter list without cluttering the sidebar with action buttons", () => {
     render(
       <ChapterSidebar
         chapters={[{ id: "chapter-1", title: "Chapter 1", wordCount: 120 }]}
         totalWords={120}
         onChapterClick={vi.fn()}
-        onStartBreakMode={vi.fn()}
-        onEnterEditMode={vi.fn()}
       />,
     );
 
-    const addBreak = screen.getByRole("button", { name: /add chapter break/i });
-    const editTitles = screen.getByRole("button", { name: /edit chapter titles/i });
-    const chapterTitle = screen.getByRole("button", { name: /chapter 1/i });
-
-    expect(addBreak.compareDocumentPosition(editTitles) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(editTitles.compareDocumentPosition(chapterTitle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("button", { name: /chapter 1/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /add chapter break/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /edit chapter titles/i })).not.toBeInTheDocument();
   });
 
   it("reuses tone content inside the tools sheet", () => {

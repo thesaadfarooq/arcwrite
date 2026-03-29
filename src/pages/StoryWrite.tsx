@@ -212,6 +212,7 @@ export default function StoryWrite() {
   const [choiceVariantOffset, setChoiceVariantOffset] = useState(0);
   const [chapterSuggestionsExpanded, setChapterSuggestionsExpanded] = useState(false);
   const [pendingBreakKey, setPendingBreakKey] = useState<string | null>(null);
+  const [showEarlierBreakTargets, setShowEarlierBreakTargets] = useState(false);
   const [applyingSuggestionKey, setApplyingSuggestionKey] = useState<string | null>(null);
   const [chapterReviewCheckpoint, setChapterReviewCheckpoint] = useState<ChapterReviewCheckpoint>({
     reviewedAtTurns: 0,
@@ -1040,6 +1041,33 @@ export default function StoryWrite() {
     [activeNodes]
   );
 
+  const currentChapterStartId = useMemo(
+    () => [...activeNodes].reverse().find((node) => (node as any).starts_chapter === true)?.id ?? null,
+    [activeNodes],
+  );
+
+  const breakTargetNodeIds = useMemo(() => {
+    if (showEarlierBreakTargets || !currentChapterStartId) return activeNodes.map((node) => node.id);
+
+    let include = false;
+    return activeNodes
+      .filter((node) => {
+        if (node.id === currentChapterStartId) include = true;
+        return include;
+      })
+      .map((node) => node.id);
+  }, [activeNodes, currentChapterStartId, showEarlierBreakTargets]);
+
+  // Count how many break points exist (paragraphs > 1 within a node = splittable)
+  const breakPointCount = useMemo(
+    () =>
+      activeNodes.reduce((count, node) => {
+        const paraCount = (node.text || "").split("\n\n").filter(Boolean).length;
+        return count + Math.max(0, paraCount - 1);
+      }, 0),
+    [activeNodes],
+  );
+
   const chapters: Chapter[] = useMemo(() => {
     return chapterNodes.map((n, i) => ({
       id: n.id,
@@ -1111,6 +1139,7 @@ export default function StoryWrite() {
 
   const handleChapterMerge = async (id: string) => {
     if (isGenerating || isProcessing) return;
+    setIsProcessing(true);
     try {
       await mergeNodeWithParent(storyId!, id);
       const activeNodes = await getStoryNodes(storyId!);
@@ -1126,6 +1155,8 @@ export default function StoryWrite() {
       toast.success("Chapters merged");
     } catch (e: any) {
       toast.error(e.message || "Failed to merge chapters");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -1178,6 +1209,9 @@ export default function StoryWrite() {
       setSummary(lastNode?.summary || "");
       setStoryState(lastNode?.story_state || {});
       setChoices([]);
+      // Exit break mode — node IDs have changed after the split
+      setChapterEditMode(false);
+      setShowEarlierBreakTargets(false);
       await refreshAllNodes();
       if (lastNode) fetchChoices(paras.map((p) => p.text).join("\n\n"));
       toast.success("Chapter break inserted");
@@ -1542,7 +1576,16 @@ export default function StoryWrite() {
         />
       ) : null}
 
-      <ChapterEditModeBar active={chapterEditMode} onDone={() => setChapterEditMode(false)} actionLabel="Cancel" />
+      <ChapterEditModeBar
+        active={chapterEditMode}
+        onDone={() => {
+          setChapterEditMode(false);
+          setShowEarlierBreakTargets(false);
+        }}
+        onShowEarlier={isMobile ? () => setShowEarlierBreakTargets(true) : undefined}
+        showEarlierExpanded={isMobile ? showEarlierBreakTargets : true}
+        hasBreakPoints={breakPointCount > 0}
+      />
 
       <StoryCanvas
         paragraphs={paragraphs}
@@ -1552,6 +1595,7 @@ export default function StoryWrite() {
         onRenameChapter={!isMobile || chapterEditMode ? handleChapterRename : undefined}
         chapterEditMode={isMobile ? chapterEditMode : chapterEditMode ? true : undefined}
         pendingBreakKey={pendingBreakKey}
+        breakTargetNodeIds={chapterEditMode && isMobile ? breakTargetNodeIds : undefined}
       />
 
       {isMobile ? reviewPromptCard : null}

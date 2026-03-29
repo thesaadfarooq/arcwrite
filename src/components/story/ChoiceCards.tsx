@@ -198,11 +198,6 @@ export function ChoiceCards({
           <Button variant="ghost" size="sm" onClick={onRegenerate} className="text-muted-foreground hover:text-foreground max-sm:w-full">
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> New options
           </Button>
-          {onAddChapterBreak ? (
-            <Button variant="ghost" size="sm" onClick={onAddChapterBreak} className="text-muted-foreground hover:text-foreground max-sm:w-full">
-              <SplitSquareVertical className="w-3.5 h-3.5 mr-1.5" /> Add chapter break
-            </Button>
-          ) : null}
         </div>
       </div>
 
@@ -235,23 +230,35 @@ export function ChoiceCards({
         })}
       </div>
 
-      {isNearEnd && onBeginConclusion && (
-        <div className="flex justify-center">
-          <Button type="button" variant="outline" size="sm" onClick={onBeginConclusion}>
-            Begin conclusion
-          </Button>
-        </div>
-      )}
+      {/* Secondary actions */}
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        {!showCustom ? (
+          <button
+            onClick={() => setShowCustom(true)}
+            className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground transition-colors flex items-center gap-1.5"
+          >
+            <Send className="w-3 h-3" /> Write your own
+          </button>
+        ) : null}
+        {onAddChapterBreak ? (
+          <button
+            onClick={onAddChapterBreak}
+            className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground transition-colors flex items-center gap-1.5"
+          >
+            <SplitSquareVertical className="w-3.5 h-3.5" /> Chapter break
+          </button>
+        ) : null}
+        {isNearEnd && onBeginConclusion && (
+          <button
+            onClick={onBeginConclusion}
+            className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground transition-colors flex items-center gap-1.5"
+          >
+            <Flag className="w-3.5 h-3.5" /> Begin conclusion
+          </button>
+        )}
+      </div>
 
-      {/* Custom direction */}
-      {!showCustom ? (
-        <button
-          onClick={() => setShowCustom(true)}
-          className="w-full p-3 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:border-primary/30 hover:text-foreground transition-colors"
-        >
-          ✍️ Write your own direction…
-        </button>
-      ) : (
+      {showCustom ? (
         <div className="p-4 rounded-xl border border-border bg-card space-y-3 animate-fade-in">
           <Textarea
             value={customText}
@@ -273,7 +280,7 @@ export function ChoiceCards({
             </Button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

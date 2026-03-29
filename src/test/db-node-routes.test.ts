@@ -337,6 +337,7 @@ describe("node database routes", () => {
             story_state: { beat: 1 },
             choices: [{ label: "Go" }],
             is_active: true,
+            created_at: "2026-03-28T10:00:00.000Z",
           },
         ],
       })
@@ -383,6 +384,7 @@ describe("node database routes", () => {
         JSON.stringify({ beat: 1 }),
         JSON.stringify([{ label: "Go" }]),
         true,
+        "2026-03-28T10:00:00.001Z",
       ]
     );
     expect(transactionQueryMock).toHaveBeenNthCalledWith(
