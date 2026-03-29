@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { TIERS, type TierKey } from "@/lib/subscription";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Check, Loader2, Crown } from "lucide-react";
+import { Check, Minus, Loader2, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { Navbar } from "@/components/Navbar";
 import SEO from "@/components/SEO";
@@ -43,10 +43,27 @@ const FAQ_ITEMS = [
   },
 ];
 
-const tierFeatures: Record<TierKey, string[]> = {
-  free: ["2 stories", "10 turns per story", "Standard AI"],
-  plus: ["10 stories", "Unlimited turns", "Enhanced AI", "Custom tones", "Story arc control", "PDF export"],
-  pro: ["Unlimited stories", "Unlimited turns", "Enhanced AI", "Custom tones", "Story arc control", "PDF export", "Public sharing links"],
+type FeatureRow = {
+  label: string;
+  free: string | boolean;
+  plus: string | boolean;
+  pro: string | boolean;
+};
+
+const featureRows: FeatureRow[] = [
+  { label: "Stories",           free: "2",         plus: "10",        pro: "Unlimited" },
+  { label: "Turns per story",   free: "10",        plus: "Unlimited", pro: "Unlimited" },
+  { label: "AI quality",        free: "Standard",  plus: "Enhanced",  pro: "Enhanced" },
+  { label: "Custom tones",      free: false,       plus: true,        pro: true },
+  { label: "Story arc control", free: false,       plus: true,        pro: true },
+  { label: "PDF export",        free: false,       plus: true,        pro: true },
+  { label: "Public sharing",    free: false,       plus: false,       pro: true },
+];
+
+const tierDescriptions: Record<TierKey, string> = {
+  free: "Try AI-assisted interactive fiction",
+  plus: "More stories, better AI, full control",
+  pro: "Unlimited creation and sharing",
 };
 
 export default function Pricing() {
@@ -143,7 +160,7 @@ export default function Pricing() {
             return (
               <div
                 key={tierKey}
-                className={`relative p-6 rounded-2xl border transition-all duration-300 ${
+                className={`relative flex flex-col p-6 rounded-2xl border transition-all duration-300 ${
                   isCurrent
                     ? "border-primary bg-primary/[0.03] shadow-[0_4px_24px_-8px_hsl(var(--primary)/0.15)]"
                     : isPopular
@@ -162,11 +179,12 @@ export default function Pricing() {
                   </div>
                 )}
 
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-2">
+                <div className="mb-5">
+                  <div className="flex items-center gap-2 mb-1">
                     {tierKey === "pro" && <Crown className="w-4 h-4 text-primary" />}
                     <h3 className="font-story text-lg font-semibold text-foreground">{t.name}</h3>
                   </div>
+                  <p className="text-xs text-muted-foreground mb-3">{tierDescriptions[tierKey]}</p>
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-semibold text-foreground" style={{ lineHeight: "1" }}>
                       {t.price === 0 ? "Free" : `$${t.price}`}
@@ -175,14 +193,29 @@ export default function Pricing() {
                   </div>
                 </div>
 
-                <ul className="space-y-3 mb-8">
-                  {tierFeatures[tierKey].map((feature) => (
-                    <li key={feature} className="flex items-start gap-2 text-sm text-foreground">
-                      <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+                <div className="space-y-2.5 mb-6 flex-1">
+                  {featureRows.map((row) => {
+                    const value = row[tierKey];
+                    const included = value !== false;
+                    return (
+                      <div key={row.label} className="flex items-center gap-2.5 text-sm">
+                        {included ? (
+                          <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                        ) : (
+                          <Minus className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+                        )}
+                        <span className={included ? "text-foreground" : "text-muted-foreground/50"}>
+                          {row.label}
+                          {typeof value === "string" && (
+                            <span className={`ml-1.5 ${included ? "text-muted-foreground" : "text-muted-foreground/40"}`}>
+                              — {value}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
 
                 {isCurrent ? (
                   currentTier !== "free" ? (
@@ -235,45 +268,16 @@ export default function Pricing() {
             </button>
           </div>
         )}
-        {/* What's included */}
+        {/* Every plan includes */}
         <section className="mt-16 mb-16">
-          <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-8">
-            What's included in every plan
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
-            {["AI-powered story generation", "Branching narrative choices", "Story tree visualization", "Six genres and six tones", "Dark and light themes", "Auto-save"].map((item) => (
-              <div key={item} className="flex items-start gap-2 text-sm text-foreground">
-                <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <p className="text-center text-sm text-muted-foreground mb-5">Every plan includes</p>
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+            {["AI story generation", "Branching choices", "Story tree view", "6 genres & 6 tones", "Dark & light mode", "Auto-save"].map((item) => (
+              <span key={item} className="flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-muted-foreground/40 shrink-0" />
                 {item}
-              </div>
+              </span>
             ))}
-          </div>
-        </section>
-
-        {/* Who each plan is for */}
-        <section className="mb-16">
-          <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-8">
-            Who each plan is for
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-5 rounded-2xl border border-border bg-card">
-              <h3 className="font-medium text-foreground mb-2">Free</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Perfect for trying out interactive fiction or writing a short story. Get a feel for AI-assisted storytelling with two full stories.
-              </p>
-            </div>
-            <div className="p-5 rounded-2xl border border-border bg-card">
-              <h3 className="font-medium text-foreground mb-2">Plus</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                For regular writers who want longer stories, enhanced AI prose, custom tones, story arc control, and PDF export.
-              </p>
-            </div>
-            <div className="p-5 rounded-2xl border border-border bg-card">
-              <h3 className="font-medium text-foreground mb-2">Pro</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                For power users who want unlimited creation, everything in Plus, and public sharing links to show off your work.
-              </p>
-            </div>
           </div>
         </section>
 
@@ -282,10 +286,10 @@ export default function Pricing() {
           <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-8">
             Frequently asked questions
           </h2>
-          <div className="max-w-2xl mx-auto space-y-6">
+          <div className="max-w-2xl mx-auto divide-y divide-border">
             {FAQ_ITEMS.map((item) => (
-              <div key={item.question}>
-                <h3 className="font-medium text-foreground mb-1">{item.question}</h3>
+              <div key={item.question} className="py-5 first:pt-0 last:pb-0">
+                <h3 className="font-medium text-foreground mb-1.5">{item.question}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{item.answer}</p>
               </div>
             ))}
