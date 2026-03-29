@@ -110,4 +110,22 @@ describe("ChoiceCards", () => {
     fireEvent.click(screen.getByRole("button", { name: /write your own direction/i }));
     expect(screen.getByRole("button", { name: /go/i })).toBeDisabled();
   });
+
+  it("renders an add chapter break action and calls it when clicked", () => {
+    const onAddChapterBreak = vi.fn();
+
+    render(
+      <ChoiceCards
+        {...baseProps}
+        choices={[
+          { type: "safe", label: "Hold position", preview: "Keep things steady." },
+        ]}
+        onAddChapterBreak={onAddChapterBreak}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /add chapter break/i }));
+
+    expect(onAddChapterBreak).toHaveBeenCalledTimes(1);
+  });
 });
