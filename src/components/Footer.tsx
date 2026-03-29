@@ -4,6 +4,8 @@ import { BookOpen } from "lucide-react";
 const PAGE_LINKS = [
   { label: "Features", to: "/features" },
   { label: "Pricing", to: "/pricing" },
+  { label: "About", to: "/about" },
+  { label: "Contact", to: "/contact" },
 ];
 
 const GENRE_LINKS = [
@@ -59,7 +61,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-border/50 pt-6 text-center">
-          <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} Arcwrite. All rights reserved.</p>
+          <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} Silvergrain. All rights reserved.</p>
         </div>
       </div>
     </footer>

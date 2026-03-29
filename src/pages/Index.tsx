@@ -1,12 +1,10 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Sun, Moon, LogIn, PenLine, GitBranch, Sparkles, ArrowRight, Shield, Flame, Heart, Zap } from "lucide-react";
-import { useTheme } from "@/lib/theme";
-import { useAuth } from "@/lib/auth";
-import { QUICK_START_OPTIONS, getGuestOrAuthedHref } from "@/lib/story-starters";
+import { BookOpen, PenLine, GitBranch, Sparkles, ArrowRight, Shield, Flame, Heart, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import SEO from "@/components/SEO";
 import Footer from "@/components/Footer";
+import { Navbar } from "@/components/Navbar";
 
 // ── Fake story data for the hero animation ──────────────────────────
 const DEMO_PARAGRAPHS = [
@@ -38,8 +36,6 @@ const HOW_IT_WORKS = [
     description: "Your story grows chapter by chapter, branching into paths only you can explore.",
   },
 ];
-
-const LANDING_QUICK_STARTS = QUICK_START_OPTIONS.filter((option) => option.id !== "scratch");
 
 // ── Typewriter hook ─────────────────────────────────────────────────
 function useTypewriter(texts: string[], charDelay = 18, paragraphPause = 600) {
@@ -75,11 +71,7 @@ function useTypewriter(texts: string[], charDelay = 18, paragraphPause = 600) {
 // ── Main page ───────────────────────────────────────────────────────
 const Index = () => {
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
-  const { user } = useAuth();
-  const heroRef = useRef<HTMLDivElement>(null);
   const howRef = useRef<HTMLDivElement>(null);
-  const resolveStartHref = (href: string) => getGuestOrAuthedHref(href, !!user);
 
   const { displayed, done: typingDone } = useTypewriter(DEMO_PARAGRAPHS, 16, 500);
   const [showChoices, setShowChoices] = useState(false);
@@ -114,33 +106,11 @@ const Index = () => {
         description="Create branching choose-your-own-adventure stories with AI. You direct the plot, AI writes the prose. Free interactive fiction writing tool with meaningful choices."
         canonical="/"
       />
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50">
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-primary" />
-          <span className="font-story text-lg font-semibold text-foreground tracking-tight">Arcwrite</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg hover:bg-secondary transition-colors active:scale-95"
-            aria-label="Toggle theme"
-          >
-            {theme === "light" ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-muted-foreground" />}
-          </button>
-          {user ? (
-            <Button size="sm" onClick={() => navigate("/dashboard")}>Dashboard</Button>
-          ) : (
-            <Button size="sm" variant="outline" onClick={() => navigate("/auth")}>
-              <LogIn className="w-3.5 h-3.5 mr-1" /> Sign in
-            </Button>
-          )}
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero — text left, animated demo right */}
       <section className="pt-28 pb-20 px-6">
-        <div ref={heroRef} className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left — copy */}
           <div className="animate-fade-up">
             <h1 className="font-story text-4xl md:text-5xl font-semibold text-foreground leading-[1.15] tracking-tight text-balance mb-5">
@@ -152,24 +122,9 @@ const Index = () => {
               Shape plots, steer characters, and craft entire novels — without writing a single paragraph yourself.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button size="lg" onClick={() => navigate(resolveStartHref("/story/new"))}>
+              <Button size="lg" onClick={() => navigate("/story/new")}>
                 Start writing <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate("/pricing")}>
-                View plans
-              </Button>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-3">
-              {LANDING_QUICK_STARTS.map((option) => (
-                <Button
-                  key={option.id}
-                  size="sm"
-                  variant="outline"
-                  onClick={() => navigate(resolveStartHref(option.href))}
-                >
-                  {option.label}
-                </Button>
-              ))}
             </div>
           </div>
 
@@ -280,20 +235,10 @@ const Index = () => {
           <p className="text-muted-foreground mb-8 max-w-md mx-auto">
             Start for free. No credit card required.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button size="lg" onClick={() => navigate(resolveStartHref("/story/new"))}>
+          <div className="flex items-center justify-center">
+            <Button size="lg" onClick={() => navigate("/story/new")}>
               Get started <ArrowRight className="w-4 h-4 ml-1.5" />
             </Button>
-            {LANDING_QUICK_STARTS.map((option) => (
-              <Button
-                key={option.id}
-                size="lg"
-                variant="outline"
-                onClick={() => navigate(resolveStartHref(option.href))}
-              >
-                {option.label}
-              </Button>
-            ))}
           </div>
         </div>
       </section>
