@@ -1997,4 +1997,65 @@ describe("StoryWrite narrative arc integration", () => {
       );
     });
   });
+
+  it("shows a regenerate-opening action when the story has only the root node", async () => {
+    getStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [
+          { type: "safe", label: "Continue", preview: "Go on." },
+        ],
+        is_active: true,
+      },
+    ]);
+
+    getAllStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        parent_id: null,
+        chosen_option: null,
+        created_at: "2026-03-28T10:00:00.000Z",
+        is_active: true,
+        starts_chapter: true,
+      },
+    ]);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByTestId("choice-cards")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /try a different opening/i })).toBeInTheDocument();
+  });
+
+  it("hides the regenerate-opening action after the story progresses beyond the opening", async () => {
+    getStoryNodesMock.mockResolvedValueOnce([
+      {
+        id: "node-1",
+        text: "Opening paragraph.",
+        summary: "Opening",
+        story_state: { stage: "setup" },
+        choices: [
+          { type: "safe", label: "Continue", preview: "Go on." },
+        ],
+        is_active: true,
+        chosen_option: { type: "safe", label: "Continue", preview: "Go on." },
+      },
+      {
+        id: "node-2",
+        text: "Second section.",
+        summary: "Second",
+        story_state: { stage: "setup" },
+        choices: [],
+        is_active: true,
+      },
+    ]);
+
+    renderStoryWrite();
+
+    await waitFor(() => expect(screen.getByTestId("choice-cards")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: /try a different opening/i })).not.toBeInTheDocument();
+  });
 });
