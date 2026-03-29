@@ -86,15 +86,15 @@ describe("phase 3 activation polish", () => {
     });
   });
 
-  it("shows genre and surprise entry points on the landing page", () => {
+  it("shows start-writing and get-started CTAs on the landing page", () => {
     render(
       <MemoryRouter>
         <Index />
       </MemoryRouter>
     );
 
-    expect(screen.getAllByRole("button", { name: /pick a genre/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("button", { name: /surprise me/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /start writing/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /get started/i })).toBeInTheDocument();
   });
 
   it("shows multiple quick-start options in the empty dashboard state", async () => {
