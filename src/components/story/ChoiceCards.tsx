@@ -176,9 +176,9 @@ export function ChoiceCards({
           {modeLabel}
         </p>
       ) : null}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-medium text-muted-foreground">What happens next?</p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <div className="flex items-center gap-0.5 rounded-lg border border-border bg-secondary/50 p-0.5">
             {LENGTH_OPTIONS.map((opt) => (
               <button
@@ -195,11 +195,11 @@ export function ChoiceCards({
               </button>
             ))}
           </div>
-          <Button variant="ghost" size="sm" onClick={onRegenerate} className="text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="sm" onClick={onRegenerate} className="text-muted-foreground hover:text-foreground max-sm:w-full">
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> New options
           </Button>
           {onAddChapterBreak ? (
-            <Button variant="ghost" size="sm" onClick={onAddChapterBreak} className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="sm" onClick={onAddChapterBreak} className="text-muted-foreground hover:text-foreground max-sm:w-full">
               <SplitSquareVertical className="w-3.5 h-3.5 mr-1.5" /> Add chapter break
             </Button>
           ) : null}
