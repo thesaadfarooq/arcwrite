@@ -1,16 +1,15 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-import { BookOpen, Sun, Moon, LogIn, ArrowLeft, Home, BookMarked, CreditCard } from "lucide-react";
-import { useTheme } from "@/lib/theme";
+import { ArrowLeft, Home, BookMarked, CreditCard, LogIn } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { Navbar } from "@/components/Navbar";
 import SEO from "@/components/SEO";
 import Footer from "@/components/Footer";
 
 const NotFound = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
 
   useEffect(() => {
@@ -21,24 +20,7 @@ const NotFound = () => {
     <div className="min-h-screen bg-background transition-colors duration-500 flex flex-col">
       <SEO title="Page Not Found — Arcwrite" noindex />
 
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
-          <BookOpen className="w-5 h-5 text-primary" />
-          <span className="font-story text-lg font-semibold text-foreground tracking-tight">Arcwrite</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-secondary transition-colors active:scale-95" aria-label="Toggle theme">
-            {theme === "light" ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-muted-foreground" />}
-          </button>
-          {user ? (
-            <Button size="sm" onClick={() => navigate("/dashboard")}>Dashboard</Button>
-          ) : (
-            <Button size="sm" variant="outline" onClick={() => navigate("/auth")}>
-              <LogIn className="w-3.5 h-3.5 mr-1" /> Sign in
-            </Button>
-          )}
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="flex-1 flex items-center justify-center px-6 pt-20">
         <div className="text-center max-w-md">

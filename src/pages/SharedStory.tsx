@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { BookOpen, ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Sparkles, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { Navbar } from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { getGuestOrAuthedHref, getSharedStorySecondaryCta } from "@/lib/story-starters";
 import { apiClient } from "@/lib/api-client";
 
@@ -96,16 +98,13 @@ export default function SharedStory() {
   const wordCount = nodes.reduce((acc, n) => acc + (n.text || "").split(/\s+/).filter(Boolean).length, 0);
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50">
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-primary" />
-          <span className="font-story text-lg font-semibold text-foreground tracking-tight">Arcwrite</span>
-        </div>
-        <span className="text-xs text-muted-foreground tabular-nums">{wordCount.toLocaleString()} words</span>
-      </nav>
+    <div className="min-h-screen bg-background flex flex-col">
+      <Navbar />
 
-      <main className="max-w-[680px] mx-auto px-6 md:px-12 py-12 md:py-16">
+      <main className="max-w-[680px] mx-auto px-6 md:px-12 pt-28 pb-16">
+        <div className="flex justify-end mb-4">
+          <span className="text-xs text-muted-foreground tabular-nums">{wordCount.toLocaleString()} words</span>
+        </div>
         <div className="mb-10 text-center">
           {story?.genre && (
             <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">{story.genre}</span>
@@ -151,13 +150,9 @@ export default function SharedStory() {
           </div>
         </section>
 
-        <div className="text-center mt-16 pt-8 border-t border-border/50">
-          <p className="text-xs text-muted-foreground">
-            Created with{" "}
-            <a href="/" className="text-primary hover:underline">Arcwrite</a>
-          </p>
-        </div>
       </main>
+
+      <Footer />
     </div>
   );
 }

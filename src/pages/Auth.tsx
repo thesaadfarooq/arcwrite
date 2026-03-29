@@ -4,9 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BookOpen, Mail, Eye, EyeOff, Sun, Moon } from "lucide-react";
-import { useTheme } from "@/lib/theme";
+import { BookOpen, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import { Navbar } from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import SEO from "@/components/SEO";
 
 export default function AuthPage() {
@@ -16,7 +17,6 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,13 +63,11 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-6 transition-colors duration-500">
+    <div className="min-h-screen bg-background flex flex-col transition-colors duration-500">
       <SEO title="Sign In — Arcwrite" noindex />
-      {/* Theme toggle */}
-      <button onClick={toggleTheme} className="fixed top-4 right-4 p-2 rounded-lg hover:bg-secondary transition-colors active:scale-95">
-        {theme === "light" ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-muted-foreground" />}
-      </button>
+      <Navbar />
 
+      <div className="flex-1 flex items-center justify-center px-6 pt-20">
       <div className="w-full max-w-sm animate-fade-up">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -134,6 +132,9 @@ export default function AuthPage() {
           )}
         </div>
       </div>
+      </div>
+
+      <Footer />
     </div>
   );
 }
