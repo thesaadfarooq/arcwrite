@@ -464,7 +464,7 @@ export default function StoryWrite() {
   };
 
   const handleRegenerateOpening = async () => {
-    if (!isAtOpening || isGenerating) return;
+    if (!isAtOpening || isGenerating || isProcessing) return;
     const rootNode = activeNodes[0];
     if (!rootNode) return;
 
@@ -554,7 +554,6 @@ export default function StoryWrite() {
           toast.error("Failed to save — please try again");
         }
         setIsProcessing(false);
-        setIsLoadingChoices(false);
       },
       onError: (err) => {
         setIsGenerating(false);
