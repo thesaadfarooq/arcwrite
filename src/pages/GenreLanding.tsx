@@ -1,8 +1,8 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { BookOpen, Sun, Moon, LogIn, ArrowRight, Wand2, Rocket, Search, Heart, Ghost, Skull } from "lucide-react";
-import { useTheme } from "@/lib/theme";
+import { ArrowRight, Wand2, Rocket, Search, Heart, Ghost, Skull } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { Navbar } from "@/components/Navbar";
 import SEO from "@/components/SEO";
 import Footer from "@/components/Footer";
 import type { LucideIcon } from "lucide-react";
@@ -116,7 +116,6 @@ const VALID_GENRES = Object.keys(GENRE_DATA);
 export default function GenreLanding() {
   const { genre } = useParams<{ genre: string }>();
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
 
   if (!genre || !VALID_GENRES.includes(genre)) {
@@ -148,25 +147,7 @@ export default function GenreLanding() {
         ]}
       />
 
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
-          <BookOpen className="w-5 h-5 text-primary" />
-          <span className="font-story text-lg font-semibold text-foreground tracking-tight">Arcwrite</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-secondary transition-colors active:scale-95" aria-label="Toggle theme">
-            {theme === "light" ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-muted-foreground" />}
-          </button>
-          {user ? (
-            <Button size="sm" onClick={() => navigate("/dashboard")}>Dashboard</Button>
-          ) : (
-            <Button size="sm" variant="outline" onClick={() => navigate("/auth")}>
-              <LogIn className="w-3.5 h-3.5 mr-1" /> Sign in
-            </Button>
-          )}
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero */}
       <section className="pt-28 pb-16 px-6">

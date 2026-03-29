@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BookOpen } from "lucide-react";
 import { toast } from "sonner";
+import { Navbar } from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import SEO from "@/components/SEO";
 
 export default function ResetPassword() {
@@ -29,8 +31,11 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-6">
+    <div className="min-h-screen bg-background flex flex-col">
       <SEO title="Reset Password — Arcwrite" noindex />
+      <Navbar />
+
+      <div className="flex-1 flex items-center justify-center px-6 pt-20">
       <div className="w-full max-w-sm animate-fade-up">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-3">
@@ -47,6 +52,9 @@ export default function ResetPassword() {
           <Button type="submit" className="w-full" disabled={loading}>{loading ? "..." : "Update password"}</Button>
         </form>
       </div>
+      </div>
+
+      <Footer />
     </div>
   );
 }

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { useTheme } from "@/lib/theme";
 import { TIERS, type TierKey } from "@/lib/subscription";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Sun, Moon, ArrowLeft, Check, Loader2, Crown } from "lucide-react";
+import { Check, Loader2, Crown } from "lucide-react";
 import { toast } from "sonner";
+import { Navbar } from "@/components/Navbar";
 import SEO from "@/components/SEO";
 import Footer from "@/components/Footer";
 
@@ -47,7 +47,6 @@ const tierFeatures: Record<TierKey, string[]> = {
 
 export default function Pricing() {
   const { user, tier: currentTier, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [loadingTier, setLoadingTier] = useState<TierKey | null>(null);
 
@@ -119,22 +118,9 @@ export default function Pricing() {
         canonical="/pricing"
         faqItems={FAQ_ITEMS}
       />
-      <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50">
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-primary" />
-          <span className="font-story text-lg font-semibold text-foreground tracking-tight">Arcwrite</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-secondary transition-colors active:scale-95">
-            {theme === "light" ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-muted-foreground" />}
-          </button>
-          <Button variant="ghost" size="sm" onClick={() => navigate(user ? "/dashboard" : "/")}>
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back
-          </Button>
-        </div>
-      </nav>
+      <Navbar />
 
-      <main className="max-w-4xl mx-auto px-6 py-16">
+      <main className="max-w-4xl mx-auto px-6 pt-28 pb-16">
         <div className="text-center mb-12">
           <h1 className="font-story text-3xl font-semibold text-foreground" style={{ lineHeight: "1.1" }}>
             Choose your plan

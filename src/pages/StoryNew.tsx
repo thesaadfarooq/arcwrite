@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Sparkles, BookOpen, Skull, Heart, Wand2, Search, Rocket, Ghost, Sun, Moon, Crown, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Sparkles, Skull, Heart, Wand2, Search, Rocket, Ghost, Crown, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useTheme } from "@/lib/theme";
+import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/lib/auth";
 import { createStory } from "@/lib/story-api";
 import { getTierLimits } from "@/lib/subscription";
@@ -33,7 +33,6 @@ export default function StoryNew() {
   const [searchParams] = useSearchParams();
   const mode = searchParams.get("mode") || "scratch";
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
   const { user, tier } = useAuth();
 
   const [step, setStep] = useState(mode === "genre" ? "genre" : mode === "surprise" ? "surprise" : "premise");
@@ -114,18 +113,9 @@ export default function StoryNew() {
 
   return (
     <div className="min-h-screen bg-background transition-colors duration-500">
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50">
-        <button onClick={() => navigate("/dashboard")} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-          <BookOpen className="w-5 h-5 text-primary" />
-          <span className="font-story text-lg font-semibold text-foreground tracking-tight">Arcwrite</span>
-        </button>
-        <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-secondary transition-colors active:scale-95">
-          {theme === "light" ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-muted-foreground" />}
-        </button>
-      </nav>
+      <Navbar />
 
-      <main className="pt-24 pb-16 px-6 max-w-2xl mx-auto">
+      <main className="pt-28 pb-16 px-6 max-w-2xl mx-auto">
         {atLimit && (
           <div className="animate-fade-up text-center py-8">
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
