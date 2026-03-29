@@ -81,10 +81,12 @@ describe("mobile story surfaces", () => {
       />,
     );
 
-    const buttons = screen.getAllByRole("button");
-    expect(buttons[0]).toHaveTextContent(/add chapter break/i);
-    expect(buttons[1]).toHaveTextContent(/edit chapter titles/i);
-    expect(buttons[2]).toHaveTextContent(/chapter 1/i);
+    const addBreak = screen.getByRole("button", { name: /add chapter break/i });
+    const editTitles = screen.getByRole("button", { name: /edit chapter titles/i });
+    const chapterTitle = screen.getByRole("button", { name: /chapter 1/i });
+
+    expect(addBreak.compareDocumentPosition(editTitles) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(editTitles.compareDocumentPosition(chapterTitle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("reuses tone content inside the tools sheet", () => {
