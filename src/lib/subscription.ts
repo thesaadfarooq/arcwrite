@@ -5,21 +5,21 @@ export const TIERS = {
     price: 0,
     price_id: null as string | null,
     product_id: null as string | null,
-    limits: { stories: 2, turns: 10, export: false, sharing: false },
+    limits: { stories: 2, turns: 10, export: false, sharing: false, customTone: false, arcOverrides: false },
   },
   plus: {
     name: "Plus",
     price: 9.99,
     price_id: import.meta.env.VITE_STRIPE_PLUS_PRICE_ID || "price_1TE8rWInpGHZDZbfw6nq5vUi",
     product_id: import.meta.env.VITE_STRIPE_PLUS_PRODUCT_ID || "prod_UCXxD7k8Xe3vRO",
-    limits: { stories: 10, turns: Infinity, export: true, sharing: false },
+    limits: { stories: 10, turns: Infinity, export: true, sharing: false, customTone: true, arcOverrides: true },
   },
   pro: {
     name: "Pro",
     price: 15.99,
     price_id: import.meta.env.VITE_STRIPE_PRO_PRICE_ID || "price_1TE8mSDln8cBHnbWHnQv2nwK",
     product_id: import.meta.env.VITE_STRIPE_PRO_PRODUCT_ID || "prod_UCXsdTxzZXQZ36",
-    limits: { stories: Infinity, turns: Infinity, export: true, sharing: true },
+    limits: { stories: Infinity, turns: Infinity, export: true, sharing: true, customTone: true, arcOverrides: true },
   },
 };
 

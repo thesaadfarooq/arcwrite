@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getAuthenticatedUserMock = vi.fn();
+const getUserTierMock = vi.fn();
 const unauthorizedResponseMock = vi.fn();
 
 vi.mock("../../api/_lib/auth", () => ({
   getAuthenticatedUser: getAuthenticatedUserMock,
+  getUserTier: getUserTierMock,
   unauthorizedResponse: unauthorizedResponseMock,
 }));
 
@@ -36,6 +38,7 @@ describe("story generation arc routes", () => {
     vi.resetModules();
     vi.clearAllMocks();
     vi.stubGlobal("fetch", vi.fn());
+    getUserTierMock.mockResolvedValue("pro");
     process.env.OPENAI_API_KEY = "test-key";
   });
 

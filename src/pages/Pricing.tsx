@@ -26,8 +26,12 @@ const FAQ_ITEMS = [
     answer: "Yes. You can cancel your subscription at any time from the customer portal. You'll keep access until the end of your billing period.",
   },
   {
-    question: "What AI models does Arcwrite use?",
-    answer: "Free and Plus plans use standard AI models optimized for interactive fiction. Pro unlocks the best available models for richer, more nuanced prose.",
+    question: "What's the difference between Standard and Enhanced AI?",
+    answer: "Standard AI is optimized for speed and works great for exploring ideas. Enhanced AI (Plus and Pro) produces richer, more nuanced prose with better story continuity.",
+  },
+  {
+    question: "What are custom tones and story arc control?",
+    answer: "Custom tones let you write your own tone description instead of choosing from presets. Story arc control lets you extend your story past its natural ending or resume with a fresh arc. Both are available on Plus and Pro plans.",
   },
   {
     question: "Can I export my stories?",
@@ -40,9 +44,9 @@ const FAQ_ITEMS = [
 ];
 
 const tierFeatures: Record<TierKey, string[]> = {
-  free: ["2 stories", "10 turns per story", "Standard AI models"],
-  plus: ["10 stories", "Unlimited turns", "PDF export", "Standard AI models"],
-  pro: ["Unlimited stories", "Unlimited turns", "PDF export", "Public sharing links", "Best AI models"],
+  free: ["2 stories", "10 turns per story", "Standard AI"],
+  plus: ["10 stories", "Unlimited turns", "Enhanced AI", "Custom tones", "Story arc control", "PDF export"],
+  pro: ["Unlimited stories", "Unlimited turns", "Enhanced AI", "Custom tones", "Story arc control", "PDF export", "Public sharing links"],
 };
 
 export default function Pricing() {
@@ -126,7 +130,7 @@ export default function Pricing() {
             Choose your plan
           </h1>
           <p className="text-muted-foreground mt-3 max-w-md mx-auto">
-            Start free, upgrade when you need more stories, exports, and the best AI models.
+            Start free, upgrade when you need more stories, better AI, and full creative control.
           </p>
         </div>
 
@@ -261,13 +265,13 @@ export default function Pricing() {
             <div className="p-5 rounded-2xl border border-border bg-card">
               <h3 className="font-medium text-foreground mb-2">Plus</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                For regular writers who want longer stories and more of them. Includes PDF export so you can keep polished copies of your work.
+                For regular writers who want longer stories, enhanced AI prose, custom tones, story arc control, and PDF export.
               </p>
             </div>
             <div className="p-5 rounded-2xl border border-border bg-card">
               <h3 className="font-medium text-foreground mb-2">Pro</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                For power users who want unlimited creation, public sharing links, and the best AI models for richer, more nuanced prose.
+                For power users who want unlimited creation, everything in Plus, and public sharing links to show off your work.
               </p>
             </div>
           </div>

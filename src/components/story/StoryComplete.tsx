@@ -1,4 +1,4 @@
-import { ArrowRight, Download, LayoutDashboard, Share2 } from "lucide-react";
+import { ArrowRight, Download, LayoutDashboard, Share2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -7,9 +7,10 @@ interface StoryCompleteProps {
   onExport?: () => void;
   onDashboard?: () => void;
   onContinue?: () => void;
+  showArcUpgradeHint?: boolean;
 }
 
-export function StoryComplete({ onShare, onExport, onDashboard, onContinue }: StoryCompleteProps) {
+export function StoryComplete({ onShare, onExport, onDashboard, onContinue, showArcUpgradeHint }: StoryCompleteProps) {
   return (
     <div className="mt-10">
       <Card className="border-primary/15 bg-primary/[0.03]">
@@ -46,6 +47,12 @@ export function StoryComplete({ onShare, onExport, onDashboard, onContinue }: St
               </Button>
             )}
           </div>
+          {showArcUpgradeHint && (
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Lock className="w-3 h-3 shrink-0" />
+              Extend your story past the ending with Plus or Pro
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
