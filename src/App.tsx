@@ -21,6 +21,7 @@ import About from "./pages/About.tsx";
 import Contact from "./pages/Contact.tsx";
 import SharedStory from "./pages/SharedStory.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import { PromoBanner } from "@/components/PromoBanner";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <PromoBanner />
               <AppRoutes />
             </BrowserRouter>
             <Analytics />

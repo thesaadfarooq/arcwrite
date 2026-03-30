@@ -6,6 +6,7 @@
 
 @layer base {
   :root {
+    --promo-banner-h: 0px;
     --background: 39 32% 96%;
     --foreground: 30 10% 15%;
 
@@ -108,6 +109,7 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, sans-serif;
+    padding-top: var(--promo-banner-h);
   }
 
   .font-story {
