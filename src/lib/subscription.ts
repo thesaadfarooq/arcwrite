@@ -1,4 +1,5 @@
-// Stripe product and price IDs — read from env so sandbox (local) and live (Vercel) use different IDs
+// Stripe product and price IDs — MUST be set via env vars per environment (sandbox vs live)
+// No hardcoded fallbacks to prevent cross-environment contamination
 export const TIERS = {
   free: {
     name: "Free",
@@ -10,15 +11,15 @@ export const TIERS = {
   plus: {
     name: "Plus",
     price: 9.99,
-    price_id: import.meta.env.VITE_STRIPE_PLUS_PRICE_ID || "price_1TE8rWInpGHZDZbfw6nq5vUi",
-    product_id: import.meta.env.VITE_STRIPE_PLUS_PRODUCT_ID || "prod_UCXxD7k8Xe3vRO",
+    price_id: import.meta.env.VITE_STRIPE_PLUS_PRICE_ID || null,
+    product_id: import.meta.env.VITE_STRIPE_PLUS_PRODUCT_ID || null,
     limits: { stories: 10, turns: Infinity, export: true, sharing: false, customTone: true, arcOverrides: true },
   },
   pro: {
     name: "Pro",
     price: 15.99,
-    price_id: import.meta.env.VITE_STRIPE_PRO_PRICE_ID || "price_1TE8mSDln8cBHnbWHnQv2nwK",
-    product_id: import.meta.env.VITE_STRIPE_PRO_PRODUCT_ID || "prod_UCXsdTxzZXQZ36",
+    price_id: import.meta.env.VITE_STRIPE_PRO_PRICE_ID || null,
+    product_id: import.meta.env.VITE_STRIPE_PRO_PRODUCT_ID || null,
     limits: { stories: Infinity, turns: Infinity, export: true, sharing: true, customTone: true, arcOverrides: true },
   },
 };

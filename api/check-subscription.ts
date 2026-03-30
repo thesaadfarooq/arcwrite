@@ -3,10 +3,13 @@ import Stripe from "stripe";
 import { query, queryOne } from "./_db.js";
 import { getAuthenticatedUser } from "./_lib/auth.js";
 
-// Map tier_override values to their corresponding Stripe product IDs
-const TIER_PRODUCT_MAP: Record<string, string> = {
-  plus: process.env.STRIPE_PLUS_PRODUCT_ID || "prod_UCXxD7k8Xe3vRO",
-  pro: process.env.STRIPE_PRO_PRODUCT_ID || "prod_UCXsdTxzZXQZ36",
+// Map tier names to Stripe product IDs — MUST be set via env vars per environment
+const STRIPE_PLUS_PRODUCT_ID = process.env.STRIPE_PLUS_PRODUCT_ID;
+const STRIPE_PRO_PRODUCT_ID = process.env.STRIPE_PRO_PRODUCT_ID;
+
+const TIER_PRODUCT_MAP: Record<string, string | undefined> = {
+  plus: STRIPE_PLUS_PRODUCT_ID,
+  pro: STRIPE_PRO_PRODUCT_ID,
 };
 
 export const config = { runtime: "nodejs", maxDuration: 10 };
@@ -91,10 +94,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       productId = item.price.product;
       cancelAtPeriodEnd = !!subscription.cancel_at_period_end;
 
-      // Map product ID to tier name
-      if (productId === TIER_PRODUCT_MAP.pro) {
+      // Map product ID to tier name (only match if env vars are configured)
+      if (STRIPE_PRO_PRODUCT_ID && productId === STRIPE_PRO_PRODUCT_ID) {
         resolvedTier = "pro";
-      } else if (productId === TIER_PRODUCT_MAP.plus) {
+      } else if (STRIPE_PLUS_PRODUCT_ID && productId === STRIPE_PLUS_PRODUCT_ID) {
         resolvedTier = "plus";
       }
     }
