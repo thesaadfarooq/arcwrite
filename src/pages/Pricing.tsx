@@ -165,7 +165,7 @@ export default function Pricing() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {tierOrder.map((tierKey) => {
             const t = TIERS[tierKey];
-            const isCurrent = currentTier === tierKey;
+            const isCurrent = !!user && currentTier === tierKey;
             const isPopular = tierKey === "plus";
 
             return (

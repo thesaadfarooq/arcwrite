@@ -8,7 +8,7 @@ import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
-  BookOpen, Plus, Sun, Moon, LogOut, LayoutGrid, List, Crown, Lock,
+  BookOpen, Plus, Sun, Moon, LogOut, LayoutGrid, List, Crown, Lock, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { StoryGridCard, StoryListCard } from "@/components/dashboard/EditableStoryCard";
@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [loggingOut, setLoggingOut] = useState(false);
   const limits = getTierLimits(tier);
   const storyCount = stories.length;
   const atStoryLimit = limits.stories !== Infinity && storyCount >= limits.stories;
@@ -133,8 +134,17 @@ export default function Dashboard() {
             )}
             <span className="hidden sm:inline">{profile?.display_name || user?.email}</span>
           </div>
-          <Button variant="ghost" size="icon" onClick={signOut} className="text-muted-foreground">
-            <LogOut className="w-4 h-4" />
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={loggingOut}
+            onClick={async () => {
+              setLoggingOut(true);
+              await signOut();
+            }}
+            className="text-muted-foreground"
+          >
+            {loggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
           </Button>
         </div>
       </nav>
