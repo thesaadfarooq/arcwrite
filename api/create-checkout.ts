@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (authError || !data.user?.email) throw new Error("User not authenticated or email not available");
     const user = data.user;
 
-    const { priceId } = req.body;
+    const { priceId, coupon } = req.body;
     if (!priceId) throw new Error("priceId is required");
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
@@ -31,14 +31,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const customerId = customers.data.length > 0 ? customers.data[0].id : undefined;
 
     const origin = (req.headers.origin as string) || "http://localhost:8080";
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
       success_url: `${origin}/dashboard?checkout=success`,
       cancel_url: `${origin}/pricing?checkout=cancelled`,
-    });
+    };
+    if (typeof coupon === "string" && coupon.length > 0) {
+      sessionParams.discounts = [{ coupon }];
+    }
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return res.json({ url: session.url });
   } catch (error) {

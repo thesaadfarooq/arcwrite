@@ -4,11 +4,12 @@ import { useAuth } from "@/lib/auth";
 import { TIERS, type TierKey } from "@/lib/subscription";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Check, Minus, Loader2, Crown } from "lucide-react";
+import { Check, Minus, Loader2, Crown, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { Navbar } from "@/components/Navbar";
 import SEO from "@/components/SEO";
 import Footer from "@/components/Footer";
+import { ACTIVE_PROMO } from "@/lib/promo";
 
 const tierOrder: TierKey[] = ["free", "plus", "pro"];
 
@@ -66,10 +67,13 @@ const tierDescriptions: Record<TierKey, string> = {
   pro: "Unlimited creation and sharing",
 };
 
+
 export default function Pricing() {
   const { user, tier: currentTier, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription } = useAuth();
   const navigate = useNavigate();
   const [loadingTier, setLoadingTier] = useState<TierKey | null>(null);
+
+  const activePromo = ACTIVE_PROMO;
 
   const handleCheckout = async (tierKey: TierKey) => {
     if (tierKey === "free") return;
@@ -91,7 +95,7 @@ export default function Pricing() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify({ priceId, coupon: activePromo?.couponId || undefined }),
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: "Failed to start checkout" }));
@@ -142,6 +146,13 @@ export default function Pricing() {
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-6 pt-28 pb-16">
+        {activePromo && (
+          <div className="mb-8 flex items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary/[0.04] px-5 py-2.5 mx-auto w-fit">
+            <Tag className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">{activePromo.label}</span>
+          </div>
+        )}
+
         <div className="text-center mb-12">
           <h1 className="font-story text-3xl font-semibold text-foreground" style={{ lineHeight: "1.1" }}>
             Choose your plan
@@ -185,12 +196,35 @@ export default function Pricing() {
                     <h3 className="font-story text-lg font-semibold text-foreground">{t.name}</h3>
                   </div>
                   <p className="text-xs text-muted-foreground mb-3">{tierDescriptions[tierKey]}</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-semibold text-foreground" style={{ lineHeight: "1" }}>
-                      {t.price === 0 ? "Free" : `$${t.price}`}
-                    </span>
-                    {t.price > 0 && <span className="text-sm text-muted-foreground">/month</span>}
-                  </div>
+                  {(() => {
+                    const promoPrice = activePromo?.promoPrices[tierKey];
+                    if (t.price === 0) {
+                      return (
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-semibold text-foreground" style={{ lineHeight: "1" }}>Free</span>
+                        </div>
+                      );
+                    }
+                    if (promoPrice != null) {
+                      return (
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-semibold text-foreground" style={{ lineHeight: "1" }}>
+                            ${promoPrice}
+                          </span>
+                          <span className="text-base text-muted-foreground/50 line-through">${t.price}</span>
+                          <span className="text-sm text-muted-foreground">/month</span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-semibold text-foreground" style={{ lineHeight: "1" }}>
+                          ${t.price}
+                        </span>
+                        <span className="text-sm text-muted-foreground">/month</span>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="space-y-2.5 mb-6 flex-1">
