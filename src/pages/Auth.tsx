@@ -4,16 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BookOpen, Eye, EyeOff } from "lucide-react";
+import { BookOpen, Eye, EyeOff, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { Navbar } from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import SEO from "@/components/SEO";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -31,6 +31,21 @@ export default function AuthPage() {
         toast.success("Check your email for reset instructions");
         setMode("login");
       } else if (mode === "signup") {
+        if (password !== confirmPassword) {
+          toast.error("Passwords do not match.");
+          setLoading(false);
+          return;
+        }
+        if (password.length < 8) {
+          toast.error("Password must be at least 8 characters.");
+          setLoading(false);
+          return;
+        }
+        if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+          toast.error("Password must include uppercase, lowercase, and a number.");
+          setLoading(false);
+          return;
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -44,7 +59,14 @@ export default function AuthPage() {
         navigate("/dashboard");
       }
     } catch (err: any) {
-      toast.error(err.message || "Authentication failed");
+      const msg = err.message?.toLowerCase() || "";
+      if (mode === "signup" && msg.includes("already registered")) {
+        toast.error("An account with this email already exists. Try signing in instead.");
+      } else if (mode === "login" && msg.includes("invalid login credentials")) {
+        toast.error("Incorrect email or password. Please try again.");
+      } else {
+        toast.error(err.message || "Authentication failed");
+      }
     } finally {
       setLoading(false);
     }
@@ -58,7 +80,12 @@ export default function AuthPage() {
       });
       if (error) throw error;
     } catch (err: any) {
-      toast.error(err.message || "Google sign-in failed");
+      const msg = err.message?.toLowerCase() || "";
+      if (msg.includes("already registered") || msg.includes("account exists")) {
+        toast.error("An account with this email already exists. Try a different sign-in method.");
+      } else {
+        toast.error(err.message || "Google sign-in failed");
+      }
     }
   };
 
@@ -101,15 +128,50 @@ export default function AuthPage() {
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required autoComplete="email" />
           </div>
           {mode !== "forgot" && (
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} autoComplete={mode === "signup" ? "new-password" : "current-password"} />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+            <>
+              <div>
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={mode === "signup" ? 8 : 1} autoComplete={mode === "signup" ? "new-password" : "current-password"} />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {mode === "signup" && password.length > 0 && (
+                  <div className="mt-2.5 space-y-1.5">
+                    {[
+                      { met: password.length >= 8, label: "At least 8 characters" },
+                      { met: /[A-Z]/.test(password), label: "Uppercase letter" },
+                      { met: /[a-z]/.test(password), label: "Lowercase letter" },
+                      { met: /[0-9]/.test(password), label: "Number" },
+                    ].map(({ met, label }) => (
+                      <div key={label} className="flex items-center gap-2">
+                        <div className={`flex items-center justify-center w-4 h-4 rounded-full transition-colors duration-200 ${met ? "bg-emerald-500/15 text-emerald-500" : "bg-destructive/10 text-destructive"}`}>
+                          {met ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                        </div>
+                        <span className={`text-xs transition-colors duration-200 ${met ? "text-emerald-500" : "text-muted-foreground"}`}>{label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
+              {mode === "signup" && (
+                <div>
+                  <Label htmlFor="confirmPassword">Confirm password</Label>
+                  <Input id="confirmPassword" type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" required minLength={8} autoComplete="new-password" className={confirmPassword.length > 0 ? (password === confirmPassword ? "border-emerald-500/50 focus-visible:ring-emerald-500/30" : "border-destructive/50 focus-visible:ring-destructive/30") : ""} />
+                  {confirmPassword.length > 0 && (
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <div className={`flex items-center justify-center w-4 h-4 rounded-full transition-colors duration-200 ${password === confirmPassword ? "bg-emerald-500/15 text-emerald-500" : "bg-destructive/10 text-destructive"}`}>
+                        {password === confirmPassword ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                      </div>
+                      <span className={`text-xs transition-colors duration-200 ${password === confirmPassword ? "text-emerald-500" : "text-muted-foreground"}`}>
+                        {password === confirmPassword ? "Passwords match" : "Passwords do not match"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "..." : mode === "login" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"}
@@ -134,7 +196,9 @@ export default function AuthPage() {
       </div>
       </div>
 
-      <Footer />
+      <div className="py-6 text-center">
+        <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} Silvergrain. All rights reserved.</p>
+      </div>
     </div>
   );
 }
