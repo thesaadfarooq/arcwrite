@@ -9,34 +9,26 @@ import { StoryToolsSheet } from "@/components/story/StoryToolsSheet";
 
 describe("mobile story surfaces", () => {
   it("renders the mobile bottom bar actions", () => {
-    render(<MobileStoryBar onWrite={vi.fn()} onStructure={vi.fn()} onTools={vi.fn()} />);
+    render(<MobileStoryBar onWrite={vi.fn()} onStructure={vi.fn()} onTools={vi.fn()} onExplore={vi.fn()} />);
 
     expect(screen.getByRole("button", { name: /write/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /structure/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /chapters/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /explore/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /tools/i })).toBeInTheDocument();
   });
 
-  it("renders review content and switches between chapter and timeline tabs", async () => {
+  it("renders review content and chapters", () => {
     render(
       <StoryStructureSheet
         open
         onOpenChange={vi.fn()}
         reviewSlot={<div>Review chapter structure</div>}
         chaptersSlot={<div>Chapter list</div>}
-        timelineSlot={<div>Timeline list</div>}
       />,
     );
 
     expect(screen.getByText("Review chapter structure")).toBeInTheDocument();
     expect(screen.getByText("Chapter list")).toBeInTheDocument();
-    expect(screen.getByRole("tabpanel", { name: /chapters/i })).toHaveClass("flex", "min-h-0", "flex-1");
-
-    const chaptersTab = screen.getByRole("tab", { name: /chapters/i });
-    await act(async () => {
-      chaptersTab.focus();
-      fireEvent.keyDown(chaptersTab, { key: "ArrowRight" });
-    });
-    expect(await screen.findByText("Timeline list")).toBeInTheDocument();
   });
 
   it("shows chapter suggestion wording when suggestions exist", () => {

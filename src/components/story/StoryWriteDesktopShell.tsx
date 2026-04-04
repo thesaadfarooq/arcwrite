@@ -16,7 +16,7 @@ export function StoryWriteDesktopShell({
       {header}
       <div className="flex flex-1 overflow-hidden">
         {sidebar}
-        <main className="flex-1 overflow-y-auto">{content}</main>
+        {content}
       </div>
     </div>
   );

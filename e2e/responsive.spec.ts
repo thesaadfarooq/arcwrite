@@ -4,7 +4,7 @@ test.describe("Responsive Design", () => {
   test("landing page renders on mobile viewport", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/");
-    await expect(page.locator("text=Arcwrite")).toBeVisible();
+    await expect(page.locator("text=Arcwrite").first()).toBeVisible();
     await expect(page.locator("h1")).toBeVisible();
   });
 
@@ -13,8 +13,8 @@ test.describe("Responsive Design", () => {
     await page.goto("/pricing");
     await expect(page.locator("text=Choose your plan")).toBeVisible();
     await expect(page.locator("text=Free").first()).toBeVisible();
-    await expect(page.locator("text=Plus")).toBeVisible();
-    await expect(page.locator("text=Pro")).toBeVisible();
+    await expect(page.locator("text=Plus").first()).toBeVisible();
+    await expect(page.locator("text=Pro").first()).toBeVisible();
   });
 
   test("auth page renders on mobile viewport", async ({ page }) => {
@@ -27,7 +27,7 @@ test.describe("Responsive Design", () => {
   test("landing page renders on tablet viewport", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto("/");
-    await expect(page.locator("text=Arcwrite")).toBeVisible();
+    await expect(page.locator("text=Arcwrite").first()).toBeVisible();
   });
 
   test("pricing page renders on wide desktop", async ({ page }) => {

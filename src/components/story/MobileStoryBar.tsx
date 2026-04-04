@@ -1,15 +1,16 @@
-import { BookOpen, FolderTree, SlidersHorizontal } from "lucide-react";
+import { BookOpen, FolderTree, GitBranch, SlidersHorizontal } from "lucide-react";
 
 interface MobileStoryBarProps {
   onWrite: () => void;
   onStructure: () => void;
+  onExplore: () => void;
   onTools: () => void;
 }
 
-export function MobileStoryBar({ onWrite, onStructure, onTools }: MobileStoryBarProps) {
+export function MobileStoryBar({ onWrite, onStructure, onExplore, onTools }: MobileStoryBarProps) {
   return (
     <div className="sticky bottom-0 inset-x-0 z-20 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="grid grid-cols-3 gap-2 px-4 py-3">
+      <div className="grid grid-cols-4 gap-2 px-4 py-3">
         <button
           type="button"
           onClick={onWrite}
@@ -27,7 +28,17 @@ export function MobileStoryBar({ onWrite, onStructure, onTools }: MobileStoryBar
         >
           <span className="inline-flex items-center gap-1.5">
             <FolderTree className="h-3.5 w-3.5" />
-            Structure
+            Chapters
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={onExplore}
+          className="rounded-xl bg-secondary px-3 py-2 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80 active:scale-[0.98]"
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <GitBranch className="h-3.5 w-3.5" />
+            Explore
           </span>
         </button>
         <button

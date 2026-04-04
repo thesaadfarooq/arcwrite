@@ -167,6 +167,7 @@ describe("node database routes", () => {
         JSON.stringify([]),
         null,
         true,
+        null,
       ]
     );
     expect(res.statusCode).toBe(201);

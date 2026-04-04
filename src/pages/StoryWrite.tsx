@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, BookOpen, PanelLeft, Sun, Moon, AlertTriangle, Palette, GitBranch, Hash, Download, Share2, Loader2, Link, Crown, Lock, RefreshCw } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -10,11 +10,15 @@ import { apiClient } from "@/lib/api-client";
 import { StoryCanvas, type StoryParagraph } from "@/components/story/StoryCanvas";
 import { ChoiceCards, type StoryChoice } from "@/components/story/ChoiceCards";
 import { ChapterSidebar, type Chapter } from "@/components/story/ChapterSidebar";
-import { StoryTimeline, type TimelineNode } from "@/components/story/StoryTimeline";
+import { ExplorePane } from "@/components/story/ExplorePane";
+import { ExploreModeBar } from "@/components/story/ExploreModeBar";
+import { BranchGraph, type GraphNode } from "@/components/story/BranchGraph";
+import { type Branch, getBranches, createBranch, promoteBranch, deleteBranch } from "@/lib/branch-api";
 import { ChapterReviewPrompt } from "@/components/story/ChapterReviewPrompt";
 import { ChapterEditModeBar } from "@/components/story/ChapterEditModeBar";
 import { StoryWriteMobileShell } from "@/components/story/StoryWriteMobileShell";
 import { StoryWriteDesktopShell } from "@/components/story/StoryWriteDesktopShell";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { StoryStructureSheet } from "@/components/story/StoryStructureSheet";
 import { StoryToolsSheet } from "@/components/story/StoryToolsSheet";
 import { TonePanel } from "@/components/story/TonePanel";
@@ -181,13 +185,17 @@ export default function StoryWrite() {
   const isMobile = useIsMobile();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [sidebarTab, setSidebarTab] = useState<"chapters" | "timeline">("chapters");
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [explorePaneOpen, setExplorePaneOpen] = useState(false);
+  const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
   const [structureOpen, setStructureOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [exploreSheetOpen, setExploreSheetOpen] = useState(false);
   const [chapterEditMode, setChapterEditMode] = useState(false);
   const [paragraphs, setParagraphs] = useState<StoryParagraph[]>([]);
   const [choices, setChoices] = useState<StoryChoice[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [jumpingNodeId, setJumpingNodeId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingChoices, setIsLoadingChoices] = useState(false);
   const [storyTitle, setStoryTitle] = useState("Untitled Story");
@@ -220,6 +228,10 @@ export default function StoryWrite() {
     reviewedTipId: null,
   });
   const loadedRef = useRef(false);
+
+  const mainBranch = useMemo(() => branches.find((b) => b.is_main) ?? null, [branches]);
+  const isExploring = useMemo(() => activeBranchId !== null && activeBranchId !== mainBranch?.id, [activeBranchId, mainBranch]);
+  const activeBranch = useMemo(() => branches.find((b) => b.id === activeBranchId) ?? null, [branches, activeBranchId]);
 
   useEffect(() => {
     if (!storyId || loadedRef.current) return;
@@ -262,6 +274,11 @@ export default function StoryWrite() {
       ]);
 
       setAllNodes(allStoryNodes);
+
+      const loadedBranches = await getBranches(storyId!);
+      setBranches(loadedBranches);
+      const main = loadedBranches.find((b: Branch) => b.is_main);
+      if (main) setActiveBranchId(main.id);
 
       if (activeNodes.length > 0) {
         const paras = buildParagraphsFromNodes(activeNodes);
@@ -438,6 +455,7 @@ export default function StoryWrite() {
             summary: summaryResult?.summary || "",
             storyState: summaryResult?.story_state || storyState,
             choices: choicesResult || [],
+            branchId: activeBranchId ?? undefined,
           }));
           setLastNodeId(node.id);
           await reloadActiveState();
@@ -721,6 +739,7 @@ export default function StoryWrite() {
             storyState: summaryResult?.story_state || storyState,
             chosenOption: choice,
             choices: choicesResult || [],
+            branchId: activeBranchId ?? undefined,
           }));
           setLastNodeId(node.id);
           if (isFinalSection) {
@@ -778,7 +797,9 @@ export default function StoryWrite() {
 
   const handleJumpToNode = async (nodeId: string) => {
     if (isGenerating || isProcessing) return;
+    if (nodeId === lastNodeId) return; // already here
 
+    setJumpingNodeId(nodeId);
     try {
       await jumpToNode(storyId!, nodeId);
 
@@ -802,8 +823,11 @@ export default function StoryWrite() {
       }
 
       toast.success("Jumped to this point");
-    } catch {
+    } catch (err) {
+      console.error("[jump]", err);
       toast.error("Failed to jump");
+    } finally {
+      setJumpingNodeId(null);
     }
   };
 
@@ -811,6 +835,66 @@ export default function StoryWrite() {
     await handleJumpToNode(nodeId);
     toast.info("Forked — choose a new direction");
   };
+
+  const handleBranchFromNode = useCallback(async (nodeId: string) => {
+    if (!storyId || !mainBranch) return;
+    try {
+      const newBranch = await createBranch(storyId, nodeId);
+      setBranches((prev) => [...prev, newBranch]);
+      await handleJumpToNode(nodeId);
+      setActiveBranchId(newBranch.id);
+      toast.success("Branch created — explore a new path");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to create branch");
+    }
+  }, [storyId, mainBranch, handleJumpToNode]);
+
+  const handlePromoteBranch = useCallback(async (branchId: string) => {
+    if (!storyId) return;
+    try {
+      await promoteBranch(branchId);
+      const updatedBranches = await getBranches(storyId);
+      setBranches(updatedBranches);
+      const newMain = updatedBranches.find((b: Branch) => b.is_main);
+      if (newMain) setActiveBranchId(newMain.id);
+      const updatedNodes = await getAllStoryNodes(storyId);
+      setAllNodes(updatedNodes);
+      toast.success("Branch promoted to main");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to promote branch");
+    }
+  }, [storyId]);
+
+  const handleDeleteBranch = useCallback(async (branchId: string) => {
+    if (!storyId) return;
+    try {
+      await deleteBranch(branchId);
+      setBranches((prev) => prev.filter((b) => b.id !== branchId));
+      if (activeBranchId === branchId && mainBranch?.tip_node_id) {
+        setActiveBranchId(mainBranch.id);
+        await handleJumpToNode(mainBranch.tip_node_id);
+      }
+      const updatedNodes = await getAllStoryNodes(storyId);
+      setAllNodes(updatedNodes);
+      toast.success("Branch deleted");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to delete branch");
+    }
+  }, [storyId, activeBranchId, mainBranch, handleJumpToNode]);
+
+  const handleReturnToMain = useCallback(async () => {
+    if (!mainBranch?.tip_node_id) return;
+    setActiveBranchId(mainBranch.id);
+    await handleJumpToNode(mainBranch.tip_node_id);
+  }, [mainBranch, handleJumpToNode]);
+
+  const handleExploreNodeClick = useCallback(async (nodeId: string) => {
+    const node = allNodes.find((n: any) => n.id === nodeId);
+    if (node?.branch_id) {
+      setActiveBranchId(node.branch_id);
+    }
+    await handleJumpToNode(nodeId);
+  }, [allNodes, handleJumpToNode]);
 
   const handleToneChange = async (tone: string) => {
     setStoryMeta((prev) => ({ ...prev, tone }));
@@ -1089,7 +1173,9 @@ export default function StoryWrite() {
     () => allNodes.filter((n) => n.is_active),
     [allNodes]
   );
-  const isAtOpening = activeNodes.length === 1 && !activeNodes[0]?.chosen_option;
+  const isAtOpening = activeNodes.length === 1
+    && !activeNodes[0]?.chosen_option
+    && !allNodes.some((n) => n.parent_id === activeNodes[0]?.id);
   const currentBeat = useMemo(() => getCurrentBeat(activeNodes.length), [activeNodes.length, arcOverride, targetTurns]);
   const recentMoveFamilies = useMemo(
     () => activeNodes
@@ -1202,18 +1288,52 @@ export default function StoryWrite() {
     }));
   }, [chapterNodes]);
 
-  const timelineNodes: TimelineNode[] = useMemo(() =>
-    allNodes.map((n) => ({
-      id: n.id,
-      parentId: n.parent_id,
-      chosenLabel: n.chosen_option?.label || null,
-      createdAt: n.created_at,
-      isActive: n.is_active,
-      wordCount: (n.text || "").split(/\s+/).filter(Boolean).length,
-      startsChapter: (n as any).starts_chapter === true,
-    })),
-    [allNodes]
-  );
+  const graphNodes: GraphNode[] = useMemo(() => {
+    // Identify chapter-split nodes: starts_chapter, no chosen_option, not root,
+    // and only child of their parent. These are structural artifacts from
+    // splitting a node for a chapter break — hide them from the graph.
+    const childCount = new Map<string, number>();
+    for (const n of allNodes) {
+      if (n.parent_id) childCount.set(n.parent_id, (childCount.get(n.parent_id) ?? 0) + 1);
+    }
+    const isSplitNode = (n: typeof allNodes[number]) =>
+      n.starts_chapter === true &&
+      !n.chosen_option &&
+      n.parent_id &&
+      (childCount.get(n.parent_id) ?? 0) === 1;
+
+    const splitIds = new Set(allNodes.filter(isSplitNode).map((n) => n.id));
+
+    // Build a remap: if a node's parent was a split node, point to the split's parent instead
+    const parentRemap = new Map<string, string | null>();
+    for (const n of allNodes) {
+      if (splitIds.has(n.id)) {
+        parentRemap.set(n.id, n.parent_id);
+      }
+    }
+
+    const resolveParent = (parentId: string | null): string | null => {
+      let cur = parentId;
+      while (cur && parentRemap.has(cur)) {
+        cur = parentRemap.get(cur)!;
+      }
+      return cur;
+    };
+
+    return allNodes
+      .filter((n) => !splitIds.has(n.id))
+      .map((n) => ({
+        id: n.id,
+        parentId: resolveParent(n.parent_id),
+        branchId: n.branch_id ?? null,
+        chosenLabel: (n.chosen_option as any)?.label ?? null,
+        chosenType: (n.chosen_option as any)?.type ?? null,
+        chosenPreview: (n.chosen_option as any)?.preview ?? null,
+        wordCount: n.text?.split(/\s+/).filter(Boolean).length ?? 0,
+        isActive: n.is_active,
+        startsChapter: n.starts_chapter === true,
+      }));
+  }, [allNodes]);
 
   const handleChapterClick = (id: string) => {
     const el = document.getElementById(`para-${id}`);
@@ -1614,6 +1734,21 @@ export default function StoryWrite() {
               )}
             </button>
           ) : null}
+          {!isMobile ? (
+            <button
+              type="button"
+              onClick={() => setExplorePaneOpen(!explorePaneOpen)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all active:scale-95 ${
+                explorePaneOpen
+                  ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                  : "bg-primary/10 text-primary hover:bg-primary/20"
+              }`}
+              title="Explore branches"
+            >
+              <GitBranch className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium hidden sm:inline">Explore</span>
+            </button>
+          ) : null}
         </div>
       </header>
 
@@ -1631,57 +1766,17 @@ export default function StoryWrite() {
 
   const desktopSidebar = sidebarOpen ? (
     <aside className="w-56 shrink-0 border-r border-border/50 bg-card/50 overflow-hidden flex flex-col animate-fade-in">
-      <div className="flex border-b border-border">
-        <button
-          type="button"
-          onClick={() => setSidebarTab("chapters")}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
-            sidebarTab === "chapters"
-              ? "text-primary border-b-2 border-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Hash className="w-3 h-3" />
-          Chapters
-        </button>
-        <button
-          type="button"
-          onClick={() => setSidebarTab("timeline")}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
-            sidebarTab === "timeline"
-              ? "text-primary border-b-2 border-primary"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <GitBranch className="w-3 h-3" />
-          Timeline
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-hidden">
-        {sidebarTab === "chapters" ? (
-          <ChapterSidebar
-            chapters={chapters}
-            totalWords={wordCount}
-            onChapterClick={handleChapterClick}
-            onRename={handleChapterRename}
-            onDelete={handleChapterDelete}
-            onMerge={handleChapterMerge}
-            onGenerateTitle={handleGenerateChapterTitle}
-            reviewSlot={chapterReviewPanel}
-            onStartBreakMode={handleStartBreakMode}
-          />
-        ) : (
-          <StoryTimeline
-            nodes={timelineNodes}
-            currentNodeId={lastNodeId}
-            onJumpToNode={handleJumpToNode}
-            onForkFromNode={handleForkFromNode}
-            totalWords={wordCount}
-            storyTitle={storyTitle}
-          />
-        )}
-      </div>
+      <ChapterSidebar
+        chapters={chapters}
+        totalWords={wordCount}
+        onChapterClick={handleChapterClick}
+        onRename={handleChapterRename}
+        onDelete={handleChapterDelete}
+        onMerge={handleChapterMerge}
+        onGenerateTitle={handleGenerateChapterTitle}
+        reviewSlot={chapterReviewPanel}
+        onStartBreakMode={handleStartBreakMode}
+      />
     </aside>
   ) : null;
 
@@ -1693,6 +1788,14 @@ export default function StoryWrite() {
           onRename={chapters.length > 0 ? (newTitle: string) => handleChapterRename(chapters[0].id, newTitle) : undefined}
         />
       ) : null}
+
+      {isExploring && (
+        <ExploreModeBar
+          branchName={activeBranch?.name ?? null}
+          onSetAsMain={() => activeBranchId && handlePromoteBranch(activeBranchId)}
+          onReturnToMain={handleReturnToMain}
+        />
+      )}
 
       <ChapterEditModeBar
         active={chapterEditMode}
@@ -1815,23 +1918,6 @@ export default function StoryWrite() {
           }}
         />
       }
-      timelineSlot={
-        <StoryTimeline
-          nodes={timelineNodes}
-          currentNodeId={lastNodeId}
-          onJumpToNode={(nodeId) => {
-            void handleJumpToNode(nodeId);
-            setStructureOpen(false);
-          }}
-          onForkFromNode={(nodeId) => {
-            void handleForkFromNode(nodeId);
-            setStructureOpen(false);
-          }}
-          totalWords={wordCount}
-          storyTitle={storyTitle}
-          embedded
-        />
-      }
     />
   );
 
@@ -1861,6 +1947,7 @@ export default function StoryWrite() {
           setStructureOpen(false);
           setToolsOpen(true);
         }}
+        onShowExplore={() => setExploreSheetOpen(true)}
         structureSheet={structureSheet}
         toolsSheet={
           <StoryToolsSheet
@@ -1872,9 +1959,76 @@ export default function StoryWrite() {
             canCustomTone={limits.customTone}
           />
         }
+        exploreSheet={
+          <Sheet open={exploreSheetOpen} onOpenChange={setExploreSheetOpen}>
+            <SheetContent side="bottom" className="flex max-h-[85vh] flex-col overflow-hidden rounded-t-3xl px-0">
+              <SheetHeader className="px-4 pb-3 text-left">
+                <SheetTitle>Explore Branches</SheetTitle>
+                <SheetDescription className="sr-only">View and manage story branches.</SheetDescription>
+              </SheetHeader>
+              <div className="flex-1 overflow-hidden px-2 pb-6">
+                <BranchGraph
+                  nodes={graphNodes}
+                  branches={branches}
+                  currentNodeId={lastNodeId}
+                  mainBranchId={mainBranch?.id ?? null}
+                  isGenerating={isGenerating}
+                  jumpingNodeId={jumpingNodeId}
+                  onNodeClick={(nodeId) => {
+                    void handleExploreNodeClick(nodeId);
+                    setExploreSheetOpen(false);
+                  }}
+                  onBranchFromNode={(nodeId) => {
+                    void handleBranchFromNode(nodeId);
+                    setExploreSheetOpen(false);
+                  }}
+                  onPromoteBranch={(branchId) => {
+                    void handlePromoteBranch(branchId);
+                    setExploreSheetOpen(false);
+                  }}
+                  onDeleteBranch={(branchId) => {
+                    void handleDeleteBranch(branchId);
+                    setExploreSheetOpen(false);
+                  }}
+                  onExpandToFullPage={() => {
+                    setExploreSheetOpen(false);
+                    navigate(`/story/${id}/explore`);
+                  }}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+        }
       />
     );
   }
 
-  return <StoryWriteDesktopShell header={header} sidebar={desktopSidebar} content={content} />;
+  return (
+    <StoryWriteDesktopShell
+      header={header}
+      sidebar={desktopSidebar}
+      content={
+        <div className="flex flex-1 h-full overflow-hidden">
+          <main className="flex-1 overflow-y-auto">
+            {content}
+          </main>
+          <ExplorePane
+            isOpen={explorePaneOpen}
+            onClose={() => setExplorePaneOpen(false)}
+            nodes={graphNodes}
+            branches={branches}
+            currentNodeId={lastNodeId}
+            mainBranchId={mainBranch?.id ?? null}
+            isGenerating={isGenerating}
+            jumpingNodeId={jumpingNodeId}
+            onNodeClick={handleExploreNodeClick}
+            onBranchFromNode={handleBranchFromNode}
+            onPromoteBranch={handlePromoteBranch}
+            onDeleteBranch={handleDeleteBranch}
+            onExpandToFullPage={() => navigate(`/story/${storyId}/explore`)}
+          />
+        </div>
+      }
+    />
+  );
 }

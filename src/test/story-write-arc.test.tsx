@@ -231,15 +231,28 @@ vi.mock("@/components/story/ChapterSidebar", () => {
   };
 });
 
-vi.mock("@/components/story/StoryTimeline", () => ({
-  StoryTimeline: ({ embedded }: { embedded?: boolean }) => (
-    <div data-testid={embedded ? "embedded-story-timeline" : "story-timeline"} />
-  ),
-}));
-
 vi.mock("@/components/story/TonePanel", () => ({
   TonePanel: () => null,
   TonePanelContent: () => null,
+}));
+
+vi.mock("@/components/story/ExplorePane", () => ({
+  ExplorePane: () => null,
+}));
+
+vi.mock("@/components/story/ExploreModeBar", () => ({
+  ExploreModeBar: () => null,
+}));
+
+vi.mock("@/components/story/BranchGraph", () => ({
+  BranchGraph: () => null,
+}));
+
+vi.mock("@/lib/branch-api", () => ({
+  getBranches: vi.fn().mockResolvedValue([{ id: "branch-1", story_id: "test-story", name: null, is_main: true, fork_node_id: null, tip_node_id: "node-1", created_at: "2026-01-01" }]),
+  createBranch: vi.fn(),
+  promoteBranch: vi.fn(),
+  deleteBranch: vi.fn(),
 }));
 
 vi.mock("@/components/ui/tooltip", () => ({
@@ -688,7 +701,7 @@ describe("StoryWrite narrative arc integration", () => {
 
     renderStoryWrite();
 
-    await waitFor(() => expect(screen.getByRole("button", { name: /structure/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: /chapters/i })).toBeInTheDocument());
     expect(screen.queryByTestId("chapter-sidebar")).not.toBeInTheDocument();
     expect(latestStoryCanvasProps.current.chapterEditMode).toBe(false);
     expect(latestStoryCanvasProps.current.onRenameChapter).toBeUndefined();
@@ -1743,7 +1756,7 @@ describe("StoryWrite narrative arc integration", () => {
     renderStoryWrite();
 
     await waitFor(() => expect(screen.getByTestId("chapter-sidebar")).toBeInTheDocument());
-    expect(screen.queryByRole("button", { name: /structure/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /chapters/i })).not.toBeInTheDocument();
     expect(latestStoryCanvasProps.current.chapterEditMode).toBeUndefined();
     expect(latestStoryCanvasProps.current.onRenameChapter).toEqual(expect.any(Function));
   });

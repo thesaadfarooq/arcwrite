@@ -254,6 +254,7 @@ export async function createStoryNode({
   storyState,
   choices,
   chosenOption,
+  branchId,
 }: {
   storyId: string;
   parentId?: string;
@@ -262,6 +263,7 @@ export async function createStoryNode({
   storyState?: any;
   choices?: StoryChoice[];
   chosenOption?: any;
+  branchId?: string;
 }) {
   // A node starts a chapter only if it's the root (no parent)
   const isRoot = !parentId;
@@ -274,6 +276,7 @@ export async function createStoryNode({
     choices: (choices || []) as any,
     chosen_option: chosenOption || null,
     starts_chapter: isRoot,
+    branch_id: branchId || null,
   };
   return apiClient.createNode(insertObj);
 }
