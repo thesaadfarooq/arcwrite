@@ -20,6 +20,7 @@ import Pricing from "./pages/Pricing.tsx";
 import About from "./pages/About.tsx";
 import Contact from "./pages/Contact.tsx";
 import SharedStory from "./pages/SharedStory.tsx";
+import StoryExplore from "@/pages/StoryExplore";
 import NotFound from "./pages/NotFound.tsx";
 import { PromoBanner } from "@/components/PromoBanner";
 
@@ -47,6 +48,7 @@ const AppRoutes = () => (
     <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
     <Route path="/story/new" element={<ProtectedRoute><StoryNew /></ProtectedRoute>} />
     <Route path="/story/:id" element={<ProtectedRoute><StoryWrite /></ProtectedRoute>} />
+    <Route path="/story/:id/explore" element={<ProtectedRoute><StoryExplore /></ProtectedRoute>} />
     <Route path="/features" element={<Features />} />
     <Route path="/genres/:genre" element={<GenreLanding />} />
     <Route path="/pricing" element={<Pricing />} />

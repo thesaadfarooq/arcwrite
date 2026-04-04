@@ -66,14 +66,47 @@ Stripe/export functions (Node.js runtime):
 - `create-checkout` / `customer-portal` — Stripe payment flows
 - `export-story` — HTML export (uses Supabase admin client)
 
-### Environment variables
+### Environment variables & test/prod isolation
+
+The project uses **full environment isolation** to prevent cross-contamination between local development and production.
+
+**Two databases** on the same DigitalOcean instance:
+- `arcwrite` — production database (used by Vercel production deployments)
+- `arcwrite_test` — test database (used locally and by Vercel preview deployments)
+
+**Two Stripe environments:**
+- Live keys (`sk_live_*`) + live product IDs — production only
+- Sandbox keys (`sk_test_*`) + sandbox product IDs — local dev and previews
+
+**How it works:**
+- `.env` (gitignored) — points to `arcwrite_test` DB + Stripe sandbox. This is what `vercel dev` and `vite dev` use locally.
+- Vercel dashboard — env vars are scoped by environment:
+  - **Production**: prod DB, live Stripe key, live product/price IDs
+  - **Preview + Development**: test DB, sandbox Stripe key, sandbox product/price IDs
+- Supabase auth and OpenAI are shared (same keys) since they don't store environment-specific state.
+
+**Important:** Stripe product/price IDs have **no hardcoded fallbacks** in the code. They must be set via env vars (`STRIPE_PLUS_PRODUCT_ID`, `STRIPE_PRO_PRODUCT_ID`, `VITE_STRIPE_*`). If missing, tier resolution defaults to "free". This prevents accidental cross-environment contamination.
+
+**When running migrations**, always apply to both databases:
+```bash
+# Production
+sudo -u postgres psql -d arcwrite -c "ALTER TABLE ..."
+# Test
+sudo -u postgres psql -d arcwrite_test -c "ALTER TABLE ..."
+```
+
+**Environment variable reference:**
 
 Client-side (`VITE_` prefix, exposed to browser):
 - `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_STRIPE_PLUS_PRICE_ID`, `VITE_STRIPE_PRO_PRICE_ID`
+- `VITE_STRIPE_PLUS_PRODUCT_ID`, `VITE_STRIPE_PRO_PRODUCT_ID`
 
 Server-side (API routes only):
 - `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`
 - `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`
+- `STRIPE_PLUS_PRODUCT_ID`, `STRIPE_PRO_PRODUCT_ID`
+- `DATABASE_URL` — points to `arcwrite_test` locally, `arcwrite` in production
 
 ### UI patterns
 
@@ -106,7 +139,7 @@ Vitest and Testing Library are the default stack. Add or update tests for any be
 Recent history uses Conventional Commit prefixes such as `feat:`, `fix:`, `refactor:`, and `chore:`. Keep commit titles short and imperative, for example `feat: add story arc pacing`. PRs should include a concise summary, test evidence (`npm run test`, `npm run build`), and screenshots or screen recordings for UI changes.
 
 ## DigitalOcean DB Access
-The production Postgres database runs on the DigitalOcean Droplet at `188.166.82.107`. For read-only inspection from this repo, load `.env` and use the app connection:
+Both databases (`arcwrite` and `arcwrite_test`) run on the DigitalOcean Droplet at `188.166.82.107`. For read-only inspection from this repo, load `.env` and use the app connection (note: `.env` points to `arcwrite_test` by default):
 
 ```bash
 set -a; . ./.env; set +a
@@ -117,13 +150,16 @@ The `DATABASE_URL` user can inspect data but does not own the schema. For migrat
 
 ```bash
 ssh -i ~/.ssh/id_ed25519 root@188.166.82.107
-sudo -u postgres psql -d arcwrite -c '\d stories'
+sudo -u postgres psql -d arcwrite -c '\d stories'       # production
+sudo -u postgres psql -d arcwrite_test -c '\d stories'   # test
 ```
 
-Example migration pattern:
+Example migration pattern (apply to BOTH databases):
 
 ```bash
 sudo -u postgres psql -d arcwrite -v ON_ERROR_STOP=1 \
+  -c "ALTER TABLE stories ADD COLUMN IF NOT EXISTS target_turns integer DEFAULT 35;"
+sudo -u postgres psql -d arcwrite_test -v ON_ERROR_STOP=1 \
   -c "ALTER TABLE stories ADD COLUMN IF NOT EXISTS target_turns integer DEFAULT 35;"
 ```
 

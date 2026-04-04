@@ -69,14 +69,22 @@ function InlineEditTitle({ title, onSave }: { title: string; onSave: (v: string)
   );
 }
 
+/** Guard: only navigate if the click didn't originate from an interactive child */
+function shouldNavigate(e: React.MouseEvent): boolean {
+  const target = e.target as HTMLElement;
+  if (target.closest("button, input, [role='menuitem'], [data-radix-collection-item]")) return false;
+  return true;
+}
+
 export function StoryGridCard({ story, index, onDelete, onDuplicate, onRename, getStatusColor, getStatusLabel }: Props) {
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <div
       className="group p-5 rounded-xl border border-border bg-card hover:border-primary/20 transition-all duration-300 cursor-pointer hover:shadow-[0_4px_20px_-8px_hsl(var(--primary)/0.1)] animate-fade-up"
       style={{ animationDelay: `${index * 60}ms`, opacity: 0 }}
-      onClick={() => navigate(`/story/${story.id}`)}
+      onClick={(e) => { if (!menuOpen && shouldNavigate(e)) navigate(`/story/${story.id}`); }}
     >
       <div className="flex items-start justify-between mb-3">
         <div className="min-w-0 flex-1 mr-2">
@@ -86,13 +94,13 @@ export function StoryGridCard({ story, index, onDelete, onDuplicate, onRename, g
             <span className={`text-xs font-medium ${getStatusColor(story.status)}`}>{getStatusLabel(story.status)}</span>
           </div>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+        <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
+          <DropdownMenuTrigger asChild>
             <button className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-secondary transition-all">
               <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => navigate(`/story/${story.id}`)}>
               <Pencil className="w-3.5 h-3.5 mr-2" /> Continue
             </DropdownMenuItem>
@@ -115,12 +123,13 @@ export function StoryGridCard({ story, index, onDelete, onDuplicate, onRename, g
 
 export function StoryListCard({ story, index, onDelete, onDuplicate, onRename, getStatusColor, getStatusLabel }: Props) {
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <div
       className="group flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:border-primary/20 transition-all cursor-pointer animate-fade-up"
       style={{ animationDelay: `${index * 40}ms`, opacity: 0 }}
-      onClick={() => navigate(`/story/${story.id}`)}
+      onClick={(e) => { if (!menuOpen && shouldNavigate(e)) navigate(`/story/${story.id}`); }}
     >
       <div className="flex-1 min-w-0">
         <InlineEditTitle title={story.title} onSave={(t) => onRename(story.id, t)} />
@@ -129,13 +138,13 @@ export function StoryListCard({ story, index, onDelete, onDuplicate, onRename, g
       {story.genre && <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-md shrink-0">{story.genre}</span>}
       <span className={`text-xs font-medium shrink-0 ${getStatusColor(story.status)}`}>{getStatusLabel(story.status)}</span>
       <span className="text-xs text-muted-foreground shrink-0">{new Date(story.updated_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+      <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
           <button className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-secondary transition-all">
             <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => navigate(`/story/${story.id}`)}>
             <Pencil className="w-3.5 h-3.5 mr-2" /> Continue
           </DropdownMenuItem>

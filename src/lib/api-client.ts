@@ -164,4 +164,35 @@ export const apiClient = {
       body: payload,
     });
   },
+
+  // Branch operations
+  getBranches(storyId: string) {
+    return request<any[]>(`/api/db/branches?story_id=${storyId}`);
+  },
+
+  createBranch(payload: { story_id: string; fork_node_id: string; name?: string }) {
+    return request<any>("/api/db/branches?action=create", {
+      method: "POST",
+      body: payload,
+    });
+  },
+
+  promoteBranch(branchId: string) {
+    return request<{ success: boolean }>(`/api/db/branches?id=${branchId}&action=promote`, {
+      method: "POST",
+    });
+  },
+
+  renameBranch(branchId: string, name: string) {
+    return request<any>(`/api/db/branches?id=${branchId}`, {
+      method: "PATCH",
+      body: { name },
+    });
+  },
+
+  deleteBranch(branchId: string) {
+    return request<{ success: boolean }>(`/api/db/branches?id=${branchId}`, {
+      method: "DELETE",
+    });
+  },
 };

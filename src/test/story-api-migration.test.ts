@@ -77,6 +77,7 @@ describe("story-api Postgres migration wrappers", () => {
       choices: [{ type: "safe", label: "Go left", preview: "Take the safer road." }],
       chosen_option: null,
       starts_chapter: true,
+      branch_id: null,
     });
   });
 

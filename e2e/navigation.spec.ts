@@ -24,7 +24,7 @@ test.describe("Navigation & Routing", () => {
 
   test("landing page is accessible without auth", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("text=Arcwrite")).toBeVisible();
+    await expect(page.locator("text=Arcwrite").first()).toBeVisible();
   });
 
   test("reset-password page is accessible", async ({ page }) => {

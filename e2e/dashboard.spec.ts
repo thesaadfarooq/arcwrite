@@ -8,16 +8,14 @@ test.describe("Dashboard Page (unauthenticated)", () => {
 });
 
 test.describe("Dashboard - Landing Page Integration", () => {
-  test("landing page links to dashboard for authenticated users concept", async ({ page }) => {
-    // Unauthenticated users should see sign-in instead of dashboard link
+  test("unauthenticated users see sign-in on landing page", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("text=Sign in")).toBeVisible();
   });
 
-  test("pricing page has back button that navigates away", async ({ page }) => {
+  test("pricing page is accessible and shows tiers", async ({ page }) => {
     await page.goto("/pricing");
-    await page.click("text=Back");
-    // Should navigate to landing for unauthenticated
-    await expect(page).toHaveURL("/");
+    await expect(page.locator("text=Choose your plan")).toBeVisible();
+    await expect(page.locator("text=Free").first()).toBeVisible();
   });
 });

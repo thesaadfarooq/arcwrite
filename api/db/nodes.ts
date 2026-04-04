@@ -370,7 +370,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === "POST") {
       const {
         story_id, parent_id, text, summary, story_state,
-        choices, chosen_option, starts_chapter,
+        choices, chosen_option, starts_chapter, branch_id,
       } = req.body ?? {};
 
       if (typeof story_id !== "string") {
@@ -387,9 +387,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const node = await queryOne(
         `INSERT INTO story_nodes (
            story_id, parent_id, text, summary, story_state,
-           choices, chosen_option, starts_chapter
+           choices, chosen_option, starts_chapter, branch_id
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING *`,
         [
           story_id,
@@ -400,8 +400,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           JSON.stringify(choices ?? []),
           chosen_option == null ? null : JSON.stringify(chosen_option),
           starts_chapter ?? isRoot,
+          branch_id || null,
         ]
       );
+      if (node) {
+        if (branch_id) {
+          await queryOne(
+            "UPDATE branches SET tip_node_id = $1 WHERE id = $2",
+            [node.id, branch_id]
+          );
+        } else {
+          // Update main branch tip when creating nodes on the main path
+          await queryOne(
+            "UPDATE branches SET tip_node_id = $1 WHERE story_id = $2 AND is_main = true",
+            [node.id, story_id]
+          );
+        }
+      }
       return res.status(201).json(node);
     }
 
