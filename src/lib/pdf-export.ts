@@ -144,45 +144,31 @@ export function generatePDF(data: ExportData) {
       const lines = doc.splitTextToSize(para, CONTENT_W);
       const lineHeight = 5.5;
       const blockHeight = lines.length * lineHeight;
-      const MIN_LINES = 3; // widow/orphan control
+      const pageContentHeight = MAX_Y - MARGIN_TOP;
 
-      // If the whole paragraph fits, keep it together
-      if (y + blockHeight <= MAX_Y) {
-        for (let li = 0; li < lines.length; li++) {
-          const indent = (pi > 0 && li === 0) ? 8 : 0;
-          doc.text(lines[li], MARGIN_X + indent, y);
-          y += lineHeight;
-        }
-      } else {
-        // Paragraph must split: ensure at least MIN_LINES on this page
-        const linesRemaining = Math.floor((MAX_Y - y) / lineHeight);
-        if (linesRemaining < MIN_LINES) {
-          // Not enough room — start on next page
+      // If the paragraph doesn't fit on the current page but WOULD fit
+      // on a fresh page, move to a new page and keep it together.
+      if (y + blockHeight > MAX_Y && blockHeight <= pageContentHeight) {
+        addPageNumber(doc, pageNum);
+        addFooter(doc);
+        doc.addPage();
+        pageNum++;
+        y = MARGIN_TOP;
+      }
+
+      // Render lines (only splits across pages for very long paragraphs
+      // that exceed an entire page height)
+      for (let li = 0; li < lines.length; li++) {
+        if (y + lineHeight > MAX_Y) {
           addPageNumber(doc, pageNum);
           addFooter(doc);
           doc.addPage();
           pageNum++;
           y = MARGIN_TOP;
         }
-
-        for (let li = 0; li < lines.length; li++) {
-          if (y + lineHeight > MAX_Y) {
-            // Before breaking, check widow: if fewer than MIN_LINES remain, they'd be orphaned on next page
-            const linesLeft = lines.length - li;
-            if (linesLeft < MIN_LINES && li >= MIN_LINES) {
-              // Back up: we should have broken MIN_LINES earlier — but since we already rendered,
-              // just break here and the remaining lines will start the next page
-            }
-            addPageNumber(doc, pageNum);
-            addFooter(doc);
-            doc.addPage();
-            pageNum++;
-            y = MARGIN_TOP;
-          }
-          const indent = (pi > 0 && li === 0) ? 8 : 0;
-          doc.text(lines[li], MARGIN_X + indent, y);
-          y += lineHeight;
-        }
+        const indent = (pi > 0 && li === 0) ? 8 : 0;
+        doc.text(lines[li], MARGIN_X + indent, y);
+        y += lineHeight;
       }
 
       // Space between paragraphs
