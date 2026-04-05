@@ -5,6 +5,7 @@ import { getToneDirective, getNamingGuidance } from "../src/lib/tone-profiles.js
 export const config = { runtime: "edge" };
 
 const LENGTH_PRESETS: Record<string, { paragraphs: string; maxTokens: number }> = {
+  brief:  { paragraphs: "1 short paragraph (~50 words)", maxTokens: 250 },
   short:  { paragraphs: "1-2 paragraphs (~100 words)", maxTokens: 500 },
   medium: { paragraphs: "2-3 paragraphs (~250 words)", maxTokens: 1200 },
   long:   { paragraphs: "4-6 paragraphs (~500 words)", maxTokens: 2500 },
