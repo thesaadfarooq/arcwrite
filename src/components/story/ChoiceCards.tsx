@@ -55,6 +55,7 @@ export interface StoryChoice {
 }
 
 const LENGTH_OPTIONS: { value: SectionLength; label: string; desc: string }[] = [
+  { value: "brief", label: "Brief", desc: "~50w" },
   { value: "short", label: "Short", desc: "~100w" },
   { value: "medium", label: "Medium", desc: "~250w" },
   { value: "long", label: "Long", desc: "~500w" },

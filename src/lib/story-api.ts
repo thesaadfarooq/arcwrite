@@ -6,7 +6,7 @@ import type { NarrativePhase } from "@/lib/story-arc";
 import type { StoryArcMode, StoryMoveFamily } from "@/lib/story-moves";
 import type { StoryEndingType } from "@/lib/story-extension";
 
-export type SectionLength = "short" | "medium" | "long" | "epic";
+export type SectionLength = "brief" | "short" | "medium" | "long" | "epic";
 export type StoryBeat = {
   phase: NarrativePhase;
   progress: number;
