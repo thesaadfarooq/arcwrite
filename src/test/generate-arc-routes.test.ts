@@ -235,4 +235,153 @@ describe("story generation arc routes", () => {
     expect(payload.messages[0].content).toContain("time_skip");
     expect(payload.messages[0].content).toContain("new_problem");
   });
+
+  it("returns 500 when OpenAI returns a non-200 for generate-choices", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-4" });
+    vi.mocked(fetch).mockResolvedValue(
+      new Response("Rate limited", { status: 429 })
+    );
+
+    const handler = (await import("../../api/generate-choices")).default;
+    const response = await handler(
+      new Request("http://localhost/api/generate-choices", {
+        method: "POST",
+        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
+        body: JSON.stringify({ recentText: "Some text" }),
+      })
+    );
+
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error).toBe("Failed to generate choices");
+  });
+
+  it("returns 500 when generate-choices stream contains malformed JSON", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-5" });
+    // Stream has a malformed chunk followed by a valid done
+    vi.mocked(fetch).mockResolvedValue(
+      new Response("data: {invalid json}\ndata: [DONE]\n\n", {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      })
+    );
+
+    const handler = (await import("../../api/generate-choices")).default;
+    const response = await handler(
+      new Request("http://localhost/api/generate-choices", {
+        method: "POST",
+        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
+        body: JSON.stringify({ recentText: "Some text" }),
+      })
+    );
+
+    // The empty argsBuffer will fail JSON.parse, caught by outer catch
+    expect(response.status).toBe(500);
+  });
+
+  it("returns 204 for OPTIONS on generate-choices", async () => {
+    const handler = (await import("../../api/generate-choices")).default;
+    const response = await handler(
+      new Request("http://localhost/api/generate-choices", { method: "OPTIONS" })
+    );
+    expect(response.status).toBe(204);
+  });
+
+  it("returns 429 when OpenAI rate-limits generate-section", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-6" });
+    getUserTierMock.mockResolvedValue("free");
+    vi.mocked(fetch).mockResolvedValue(
+      new Response("Too Many Requests", { status: 429 })
+    );
+
+    const handler = (await import("../../api/generate-section")).default;
+    const response = await handler(
+      new Request("http://localhost/api/generate-section", {
+        method: "POST",
+        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
+        body: JSON.stringify({ tone: "dark", length: "short" }),
+      })
+    );
+
+    expect(response.status).toBe(429);
+    const body = await response.json();
+    expect(body.error).toContain("Rate limited");
+  });
+
+  it("returns 500 when OpenAI returns a non-429 error for generate-section", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-7" });
+    getUserTierMock.mockResolvedValue("free");
+    vi.mocked(fetch).mockResolvedValue(
+      new Response("Server Error", { status: 500 })
+    );
+
+    const handler = (await import("../../api/generate-section")).default;
+    const response = await handler(
+      new Request("http://localhost/api/generate-section", {
+        method: "POST",
+        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
+        body: JSON.stringify({ tone: "dark", length: "medium" }),
+      })
+    );
+
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error).toBe("AI generation failed");
+  });
+
+  it("returns 500 when generate-section throws (missing API key)", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-8" });
+    getUserTierMock.mockResolvedValue("free");
+    delete process.env.OPENAI_API_KEY;
+
+    const handler = (await import("../../api/generate-section")).default;
+    const response = await handler(
+      new Request("http://localhost/api/generate-section", {
+        method: "POST",
+        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
+        body: JSON.stringify({ tone: "dark", length: "medium" }),
+      })
+    );
+
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error).toBe("OPENAI_API_KEY is not configured");
+  });
+
+  it("includes storyState in the system prompt for generate-section", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-9" });
+    getUserTierMock.mockResolvedValue("pro");
+    vi.mocked(fetch).mockResolvedValue(
+      new Response("data: {\"choices\":[{\"delta\":{\"content\":\"Text\"}}]}\n\n", {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      })
+    );
+
+    const handler = (await import("../../api/generate-section")).default;
+    await handler(
+      new Request("http://localhost/api/generate-section", {
+        method: "POST",
+        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tone: "dark",
+          length: "medium",
+          storyState: { tension: "high", location: "castle" },
+        }),
+      })
+    );
+
+    const [, init] = vi.mocked(fetch).mock.calls[0];
+    const payload = JSON.parse(init?.body as string);
+    expect(payload.messages[0].content).toContain("STORY STATE");
+    expect(payload.messages[0].content).toContain("castle");
+  });
+
+  it("returns 204 for OPTIONS on generate-section", async () => {
+    const handler = (await import("../../api/generate-section")).default;
+    const response = await handler(
+      new Request("http://localhost/api/generate-section", { method: "OPTIONS" })
+    );
+    expect(response.status).toBe(204);
+  });
 });

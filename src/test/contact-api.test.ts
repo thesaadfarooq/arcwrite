@@ -50,6 +50,26 @@ describe("contact API", () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
+  it("handles OPTIONS preflight", async () => {
+    const res = mockRes();
+    await handler(mockReq({ method: "OPTIONS" }), res);
+    expect(res.status).toHaveBeenCalledWith(204);
+  });
+
+  it("rejects invalid field types", async () => {
+    const res = mockRes();
+    await handler(mockReq({ body: { name: 123, email: "j@t.com", message: "Hi" } }), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: "Invalid field types" });
+  });
+
+  it("returns 500 on database error", async () => {
+    queryMock.mockRejectedValueOnce(new Error("db error"));
+    const res = mockRes();
+    await handler(mockReq({ body: { name: "Jane", email: "jane@test.com", message: "Hello!" } }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+
   it("inserts valid submission and returns 200", async () => {
     queryMock.mockResolvedValueOnce([]);
     const res = mockRes();
