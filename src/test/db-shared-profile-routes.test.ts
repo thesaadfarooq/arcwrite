@@ -155,6 +155,47 @@ describe("db shared and profile routes", () => {
     expect(res.body).toEqual({ error: "Not found" });
   });
 
+  it("returns 405 for non-GET on profile route", async () => {
+    const handler = (await import("../../api/db/profile")).default;
+    const res = createResponse();
+    await handler({ method: "POST", headers: {} } as any, res as any);
+    expect(res.statusCode).toBe(405);
+  });
+
+  it("returns 500 when profile row is null after creation", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-3" });
+    ensureProfileMock.mockResolvedValue("user-3");
+    queryOneMock.mockResolvedValue(null);
+    const handler = (await import("../../api/db/profile")).default;
+    const res = createResponse();
+    await handler({ method: "GET", headers: { authorization: "Bearer t" } } as any, res as any);
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toEqual({ error: "Failed to create profile" });
+  });
+
+  it("returns 405 for non-GET on shared story route", async () => {
+    const handler = (await import("../../api/db/shared/[token]")).default;
+    const res = createResponse();
+    await handler({ method: "POST", query: { token: "abc" } } as any, res as any);
+    expect(res.statusCode).toBe(405);
+  });
+
+  it("returns 400 for invalid token type on shared route", async () => {
+    const handler = (await import("../../api/db/shared/[token]")).default;
+    const res = createResponse();
+    await handler({ method: "GET", query: { token: ["a", "b"] } } as any, res as any);
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("returns 500 on shared route database error", async () => {
+    queryOneMock.mockRejectedValue(new Error("db error"));
+    const handler = (await import("../../api/db/shared/[token]")).default;
+    const res = createResponse();
+    await handler({ method: "GET", query: { token: "abc" } } as any, res as any);
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toEqual({ error: "Internal server error" });
+  });
+
   it("returns a generic 500 when the profile route fails", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-2" });
     ensureProfileMock.mockResolvedValue("user-2");

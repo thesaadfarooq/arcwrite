@@ -131,6 +131,39 @@ describe("ChoiceCards", () => {
     expect(onAddChapterBreak).toHaveBeenCalledTimes(1);
   });
 
+  it("shows loading skeleton when isLoading", () => {
+    render(<ChoiceCards {...baseProps} choices={[]} isLoading />);
+    expect(screen.getByText("Crafting your options…")).toBeInTheDocument();
+  });
+
+  it("shows turn limit reached when at turn limit", () => {
+    render(
+      <ChoiceCards
+        {...baseProps}
+        choices={[
+          { type: "safe", label: "Hold", preview: "Stay." },
+        ]}
+        turnLimit={10}
+        turnCount={10}
+      />
+    );
+    expect(screen.getByText("Turn limit reached")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /upgrade plan/i })).toBeInTheDocument();
+  });
+
+  it("navigates to pricing when upgrade is clicked at turn limit", () => {
+    render(
+      <ChoiceCards
+        {...baseProps}
+        choices={[{ type: "safe", label: "Hold", preview: "Stay." }]}
+        turnLimit={10}
+        turnCount={10}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /upgrade plan/i }));
+    expect(navigateMock).toHaveBeenCalledWith("/pricing");
+  });
+
   it("places chapter break alongside custom direction as secondary actions", () => {
     const onAddChapterBreak = vi.fn();
 
