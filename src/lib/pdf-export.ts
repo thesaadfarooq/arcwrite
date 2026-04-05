@@ -144,20 +144,30 @@ export function generatePDF(data: ExportData) {
       const lines = doc.splitTextToSize(para, CONTENT_W);
       const lineHeight = 5.5;
       const blockHeight = lines.length * lineHeight;
-      const pageContentHeight = MAX_Y - MARGIN_TOP;
+      const MIN_LINES = 3; // widow/orphan: at least 3 lines on each side of a break
+      const linesAvailable = Math.floor((MAX_Y - y) / lineHeight);
 
-      // If the paragraph doesn't fit on the current page but WOULD fit
-      // on a fresh page, move to a new page and keep it together.
-      if (y + blockHeight > MAX_Y && blockHeight <= pageContentHeight) {
-        addPageNumber(doc, pageNum);
-        addFooter(doc);
-        doc.addPage();
-        pageNum++;
-        y = MARGIN_TOP;
+      if (y + blockHeight > MAX_Y) {
+        // Paragraph doesn't fit on remaining space.
+        // If fewer than MIN_LINES fit here, push entire paragraph to next page.
+        // Otherwise allow it to split with widow/orphan control.
+        if (linesAvailable < MIN_LINES) {
+          addPageNumber(doc, pageNum);
+          addFooter(doc);
+          doc.addPage();
+          pageNum++;
+          y = MARGIN_TOP;
+        } else if (lines.length - linesAvailable < MIN_LINES) {
+          // Splitting would leave fewer than MIN_LINES on the next page (widow).
+          // Push to next page instead.
+          addPageNumber(doc, pageNum);
+          addFooter(doc);
+          doc.addPage();
+          pageNum++;
+          y = MARGIN_TOP;
+        }
       }
 
-      // Render lines (only splits across pages for very long paragraphs
-      // that exceed an entire page height)
       for (let li = 0; li < lines.length; li++) {
         if (y + lineHeight > MAX_Y) {
           addPageNumber(doc, pageNum);
