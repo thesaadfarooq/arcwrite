@@ -175,6 +175,10 @@ export function generatePDF(data: ExportData) {
           doc.addPage();
           pageNum++;
           y = MARGIN_TOP;
+          // Restore body text style after footer changed it
+          doc.setFont("times", "normal");
+          doc.setFontSize(11);
+          doc.setTextColor(BLACK);
         }
         const indent = (pi > 0 && li === 0) ? 8 : 0;
         doc.text(lines[li], MARGIN_X + indent, y);
