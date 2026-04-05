@@ -1,9 +1,11 @@
 import { getAuthenticatedUser, getUserTier, unauthorizedResponse } from "./_lib/auth.js";
+import { PROSE_CRAFT_RULES } from "./_lib/prose-rules.js";
 import { getToneDirective, getNamingGuidance } from "../src/lib/tone-profiles.js";
 
 export const config = { runtime: "edge" };
 
 const LENGTH_PRESETS: Record<string, { paragraphs: string; maxTokens: number }> = {
+  brief:  { paragraphs: "1 short paragraph (~50 words)", maxTokens: 250 },
   short:  { paragraphs: "1-2 paragraphs (~100 words)", maxTokens: 500 },
   medium: { paragraphs: "2-3 paragraphs (~250 words)", maxTokens: 1200 },
   long:   { paragraphs: "4-6 paragraphs (~500 words)", maxTokens: 2500 },
@@ -155,7 +157,7 @@ function buildSystemPrompt({
   paragraphInstruction: string;
   pacingInstruction: string;
 }) {
-  let prompt = `You are a master storyteller and prose writer. Write rich, immersive narrative prose.
+  let prompt = `You are a master storyteller and prose writer. Write rich, immersive narrative prose with the craft and instincts of a seasoned novelist.
 
 RULES:
 - Write ${paragraphInstruction} of polished, publishable prose
@@ -164,7 +166,8 @@ RULES:
 - ${pacingInstruction}
 - Do NOT include meta-commentary, options, or questions — just write the story
 - Each paragraph should be separated by a blank line
-- When naming characters, be creative and varied. Never default to common AI-generated names like "Mara", "Kael", "Elara", "Lyra", or "Aric". Choose distinctive names that fit the specific genre, setting, and cultural context of the story.`;
+- When naming characters, be creative and varied. Never default to common AI-generated names like "Mara", "Kael", "Elara", "Lyra", or "Aric". Choose distinctive names that fit the specific genre, setting, and cultural context of the story.
+${PROSE_CRAFT_RULES}`;
 
   if (premise) prompt += `\n\nORIGINAL PREMISE: ${premise}
 Use this premise as the foundation and guiding direction for the story. Follow these rules regarding the premise:

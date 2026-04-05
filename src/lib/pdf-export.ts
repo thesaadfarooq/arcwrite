@@ -144,8 +144,29 @@ export function generatePDF(data: ExportData) {
       const lines = doc.splitTextToSize(para, CONTENT_W);
       const lineHeight = 5.5;
       const blockHeight = lines.length * lineHeight;
+      const MIN_LINES = 3; // widow/orphan: at least 3 lines on each side of a break
+      const linesAvailable = Math.floor((MAX_Y - y) / lineHeight);
 
-      ensureSpace(lineHeight * 2); // at least 2 lines before page break
+      if (y + blockHeight > MAX_Y) {
+        // Paragraph doesn't fit on remaining space.
+        // If fewer than MIN_LINES fit here, push entire paragraph to next page.
+        // Otherwise allow it to split with widow/orphan control.
+        if (linesAvailable < MIN_LINES) {
+          addPageNumber(doc, pageNum);
+          addFooter(doc);
+          doc.addPage();
+          pageNum++;
+          y = MARGIN_TOP;
+        } else if (lines.length - linesAvailable < MIN_LINES) {
+          // Splitting would leave fewer than MIN_LINES on the next page (widow).
+          // Push to next page instead.
+          addPageNumber(doc, pageNum);
+          addFooter(doc);
+          doc.addPage();
+          pageNum++;
+          y = MARGIN_TOP;
+        }
+      }
 
       for (let li = 0; li < lines.length; li++) {
         if (y + lineHeight > MAX_Y) {
@@ -154,8 +175,11 @@ export function generatePDF(data: ExportData) {
           doc.addPage();
           pageNum++;
           y = MARGIN_TOP;
+          // Restore body text style after footer changed it
+          doc.setFont("times", "normal");
+          doc.setFontSize(11);
+          doc.setTextColor(BLACK);
         }
-        // First line indent for paragraphs after the first
         const indent = (pi > 0 && li === 0) ? 8 : 0;
         doc.text(lines[li], MARGIN_X + indent, y);
         y += lineHeight;
