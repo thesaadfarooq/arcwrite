@@ -52,6 +52,7 @@ import {
   type ChapterReviewCheckpoint,
   type ChapterSuggestion,
 } from "@/lib/chapter-review";
+import { streamRewrite } from "@/lib/rewrite-api";
 import { toast } from "sonner";
 
 async function retry<T>(fn: () => Promise<T>, attempts = 3, delayMs = 1000): Promise<T> {
@@ -227,6 +228,12 @@ export default function StoryWrite() {
     dismissedAtTurns: null,
     reviewedTipId: null,
   });
+  const [chapterViewEnabled, setChapterViewEnabled] = useState(isMobile);
+  const [activeChapterIndex, setActiveChapterIndex] = useState(0);
+  const [rewritingParagraphId, setRewritingParagraphId] = useState<string | null>(null);
+  const [rewriteStreamedText, setRewriteStreamedText] = useState<string>("");
+  const [rewriteOriginalText, setRewriteOriginalText] = useState<string>("");
+  const [rewriteHasResult, setRewriteHasResult] = useState(false);
   const loadedRef = useRef(false);
 
   const mainBranch = useMemo(() => branches.find((b) => b.is_main) ?? null, [branches]);
@@ -256,6 +263,10 @@ export default function StoryWrite() {
     if (!storyId) return;
     sessionStorage.setItem(`chapter-review:${storyId}`, JSON.stringify(chapterReviewCheckpoint));
   }, [storyId, chapterReviewCheckpoint]);
+
+  useEffect(() => {
+    setChapterViewEnabled(isMobile);
+  }, [isMobile]);
 
   const loadStory = async () => {
     try {
@@ -911,6 +922,80 @@ export default function StoryWrite() {
     setIsDesyncced(true);
   };
 
+  const handleRewrite = (paragraphId: string, instruction: string) => {
+    const paragraph = paragraphs.find((p) => p.id === paragraphId);
+    if (!paragraph) return;
+
+    const paraIndex = paragraphs.findIndex((p) => p.id === paragraphId);
+    const before = paragraphs.slice(Math.max(0, paraIndex - 3), paraIndex).map((p) => p.text).join("\n\n");
+    const after = paragraphs.slice(paraIndex + 1, paraIndex + 4).map((p) => p.text).join("\n\n");
+
+    setRewritingParagraphId(paragraphId);
+    setRewriteOriginalText(paragraph.text);
+    setRewriteStreamedText("");
+    setRewriteHasResult(false);
+
+    streamRewrite({
+      paragraphText: paragraph.text,
+      instruction,
+      tone: storyMeta.tone,
+      genre: storyMeta.genre,
+      premise: storyMeta.premise,
+      surroundingContext: { before, after },
+      onDelta: (delta) => {
+        setRewriteStreamedText((prev) => prev + delta);
+      },
+      onDone: (fullText) => {
+        setRewriteStreamedText(fullText);
+        setRewriteHasResult(true);
+      },
+      onError: (error) => {
+        toast.error(error);
+        setRewritingParagraphId(null);
+        setRewriteStreamedText("");
+        setRewriteHasResult(false);
+      },
+    });
+  };
+
+  const handleRewriteAccept = () => {
+    if (!rewritingParagraphId || !rewriteStreamedText) return;
+
+    const paraId = rewritingParagraphId;
+    const newText = rewriteStreamedText.trim();
+
+    setParagraphs((prev) => prev.map((p) => (p.id === paraId ? { ...p, text: newText } : p)));
+
+    const nodeId = paraId.includes("-") ? paraId.substring(0, paraId.lastIndexOf("-")) : paraId;
+    const paraIndexStr = paraId.includes("-") ? paraId.substring(paraId.lastIndexOf("-") + 1) : "0";
+    const paraIdx = parseInt(paraIndexStr, 10);
+
+    const nodeParas = paragraphs
+      .filter((p) => {
+        const nid = p.id.includes("-") ? p.id.substring(0, p.id.lastIndexOf("-")) : p.id;
+        return nid === nodeId;
+      })
+      .map((p) => {
+        const pid = p.id.includes("-") ? p.id.substring(p.id.lastIndexOf("-") + 1) : "0";
+        return pid === String(paraIdx) ? newText : p.text;
+      });
+
+    apiClient.updateNode(nodeId, { text: nodeParas.join("\n\n") });
+
+    setIsDesyncced(true);
+    setRewritingParagraphId(null);
+    setRewriteStreamedText("");
+    setRewriteOriginalText("");
+    setRewriteHasResult(false);
+  };
+
+  const handleRewriteRevert = () => {
+    setRewritingParagraphId(null);
+    setRewriteStreamedText("");
+    setRewriteOriginalText("");
+    setRewriteHasResult(false);
+  };
+
   const handleRealign = async () => {
     setIsDesyncced(false);
     const allText = paragraphs.map((p) => p.text).join("\n\n");
@@ -1244,6 +1329,12 @@ export default function StoryWrite() {
     [activeNodes]
   );
 
+  useEffect(() => {
+    if (chapterViewEnabled && chapterNodes.length > 0) {
+      setActiveChapterIndex(chapterNodes.length - 1);
+    }
+  }, [chapterNodes.length, chapterViewEnabled]);
+
   const currentChapterStartId = useMemo(
     () => [...activeNodes].reverse().find((node) => (node as any).starts_chapter === true)?.id ?? null,
     [activeNodes],
@@ -1336,9 +1427,14 @@ export default function StoryWrite() {
   }, [allNodes]);
 
   const handleChapterClick = (id: string) => {
-    const el = document.getElementById(`para-${id}`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (chapterViewEnabled) {
+      const idx = chapterNodes.findIndex((n) => n.id === id);
+      if (idx !== -1) setActiveChapterIndex(idx);
+    } else {
+      const el = document.getElementById(`para-${id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     }
   };
 
@@ -1720,6 +1816,25 @@ export default function StoryWrite() {
               </button>
             )
           ) : null}
+          {!isMobile ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setChapterViewEnabled((prev) => !prev)}
+                  className={`rounded-lg p-2 transition-colors ${
+                    chapterViewEnabled
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  aria-label={chapterViewEnabled ? "Switch to scroll view" : "Switch to chapter focus view"}
+                >
+                  <BookOpen className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{chapterViewEnabled ? "Scroll view" : "Focus view"}</TooltipContent>
+            </Tooltip>
+          ) : null}
           <span className="text-xs text-muted-foreground tabular-nums">{wordCount.toLocaleString()} words</span>
           {!isMobile ? (
             <button
@@ -1817,6 +1932,16 @@ export default function StoryWrite() {
         chapterEditMode={isMobile ? chapterEditMode : chapterEditMode ? true : undefined}
         pendingBreakKey={pendingBreakKey}
         breakTargetNodeIds={chapterEditMode && isMobile ? breakTargetNodeIds : undefined}
+        chapterViewEnabled={chapterViewEnabled}
+        activeChapterIndex={activeChapterIndex}
+        onChapterNavigate={setActiveChapterIndex}
+        onRewrite={handleRewrite}
+        rewritingParagraphId={rewritingParagraphId}
+        rewriteStreamedText={rewriteStreamedText}
+        rewriteHasResult={rewriteHasResult}
+        onRewriteAccept={handleRewriteAccept}
+        onRewriteRevert={handleRewriteRevert}
+        onRewriteCancel={handleRewriteRevert}
       />
 
       {isMobile ? reviewPromptCard : null}
