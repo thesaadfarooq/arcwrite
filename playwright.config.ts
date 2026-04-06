@@ -1,4 +1,16 @@
+import { readFileSync } from "fs";
 import { defineConfig, devices } from "@playwright/test";
+
+// Load .env so PW_TEST_* vars are available to tests
+try {
+  const env = readFileSync(".env", "utf-8");
+  for (const line of env.split("\n")) {
+    const match = line.match(/^([^#=]+)=(.*)$/);
+    if (match && !process.env[match[1].trim()]) {
+      process.env[match[1].trim()] = match[2].trim();
+    }
+  }
+} catch { /* .env not present */ }
 
 export default defineConfig({
   testDir: "./e2e",
