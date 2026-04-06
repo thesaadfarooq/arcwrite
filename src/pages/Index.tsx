@@ -63,7 +63,7 @@ function useTypewriter(texts: string[], charDelay = 18, paragraphPause = 600) {
     // Small initial delay so the page settles
     const t = setTimeout(run, 800);
     return () => { cancelled = true; clearTimeout(t); };
-  }, []);
+  }, [texts, charDelay, paragraphPause]);
 
   return { displayed, done };
 }

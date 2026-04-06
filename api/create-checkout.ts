@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { priceId, coupon } = req.body;
     if (!priceId) throw new Error("priceId is required");
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as Stripe.LatestApiVersion });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     const customerId = customers.data.length > 0 ? customers.data[0].id : undefined;
 

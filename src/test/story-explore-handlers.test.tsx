@@ -12,28 +12,37 @@ const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
 
 vi.mock("@/lib/story-api", () => ({
-  getStory: (...args: any[]) => mockGetStory(...args),
-  getAllStoryNodes: (...args: any[]) => mockGetAllNodes(...args),
+  getStory: (...args: unknown[]) => mockGetStory(...args),
+  getAllStoryNodes: (...args: unknown[]) => mockGetAllNodes(...args),
 }));
 
 vi.mock("@/lib/branch-api", () => ({
-  getBranches: (...args: any[]) => mockGetBranches(...args),
-  createBranch: (...args: any[]) => mockCreateBranch(...args),
-  promoteBranch: (...args: any[]) => mockPromoteBranch(...args),
-  deleteBranch: (...args: any[]) => mockDeleteBranch(...args),
+  getBranches: (...args: unknown[]) => mockGetBranches(...args),
+  createBranch: (...args: unknown[]) => mockCreateBranch(...args),
+  promoteBranch: (...args: unknown[]) => mockPromoteBranch(...args),
+  deleteBranch: (...args: unknown[]) => mockDeleteBranch(...args),
 }));
 
 vi.mock("sonner", () => ({
   toast: {
-    success: (...args: any[]) => toastSuccessMock(...args),
-    error: (...args: any[]) => toastErrorMock(...args),
+    success: (...args: unknown[]) => toastSuccessMock(...args),
+    error: (...args: unknown[]) => toastErrorMock(...args),
   },
 }));
 
-let capturedBranchGraphProps: any = null;
+interface MockBranchGraphProps {
+  nodes: unknown[];
+  branches: unknown[];
+  onBranchFromNode: (nodeId: string) => Promise<void>;
+  onPromoteBranch: (branchId: string) => Promise<void>;
+  onDeleteBranch: (branchId: string) => Promise<void>;
+  [key: string]: unknown;
+}
+
+let capturedBranchGraphProps: MockBranchGraphProps | null = null;
 
 vi.mock("@/components/story/BranchGraph", () => ({
-  BranchGraph: (props: any) => {
+  BranchGraph: (props: MockBranchGraphProps) => {
     capturedBranchGraphProps = props;
     return (
       <div data-testid="branch-graph">

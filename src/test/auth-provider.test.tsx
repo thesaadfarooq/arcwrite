@@ -2,11 +2,11 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
 
 // Store the callback so we can trigger it
-let authCallback: any = null;
+let authCallback: ((event: string, session: unknown) => void) | null = null;
 
 const getSessionMock = vi.fn();
 const refreshSessionMock = vi.fn();
-const onAuthStateChangeMock = vi.fn().mockImplementation((cb: any) => {
+const onAuthStateChangeMock = vi.fn().mockImplementation((cb: (event: string, session: unknown) => void) => {
   authCallback = cb;
   return { data: { subscription: { unsubscribe: vi.fn() } } };
 });
@@ -16,9 +16,9 @@ const getProfileMock = vi.fn();
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
-      onAuthStateChange: (...args: any[]) => onAuthStateChangeMock(...args),
-      getSession: (...args: any[]) => getSessionMock(...args),
-      refreshSession: (...args: any[]) => refreshSessionMock(...args),
+      onAuthStateChange: (...args: unknown[]) => onAuthStateChangeMock(...args),
+      getSession: (...args: unknown[]) => getSessionMock(...args),
+      refreshSession: (...args: unknown[]) => refreshSessionMock(...args),
       signOut: vi.fn().mockResolvedValue({}),
     },
   },
@@ -26,7 +26,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 vi.mock("@/lib/api-client", () => ({
   apiClient: {
-    getProfile: (...args: any[]) => getProfileMock(...args),
+    getProfile: (...args: unknown[]) => getProfileMock(...args),
   },
 }));
 
@@ -113,7 +113,7 @@ describe("AuthProvider", () => {
 
   it("provides signOut function", async () => {
     const { AuthProvider, useAuth } = await import("@/lib/auth");
-    let signOutFn: any;
+    let signOutFn: (() => Promise<void>) | undefined;
     function Consumer() {
       const auth = useAuth();
       signOutFn = auth.signOut;
@@ -132,7 +132,7 @@ describe("AuthProvider", () => {
 
   it("provides refreshSubscription function", async () => {
     const { AuthProvider, useAuth } = await import("@/lib/auth");
-    let refreshFn: any;
+    let refreshFn: (() => Promise<void>) | undefined;
     function Consumer() {
       const auth = useAuth();
       refreshFn = auth.refreshSubscription;
@@ -153,13 +153,13 @@ describe("AuthProvider", () => {
     getSessionMock.mockResolvedValue({
       data: { session: { user: { id: "u1" }, access_token: "tok" } },
     });
-    (globalThis.fetch as any).mockResolvedValueOnce({
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ product_id: "prod_plus_123", subscription_end: "2025-12-31", cancel_at_period_end: false }),
     });
 
     const { AuthProvider, useAuth } = await import("@/lib/auth");
-    let refreshFn: any;
+    let refreshFn: (() => Promise<void>) | undefined;
     function Consumer() {
       const auth = useAuth();
       refreshFn = auth.refreshSubscription;
@@ -184,13 +184,13 @@ describe("AuthProvider", () => {
     getSessionMock.mockResolvedValue({
       data: { session: { user: { id: "u1" }, access_token: "tok" } },
     });
-    (globalThis.fetch as any).mockResolvedValueOnce({
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ tier_override: "pro", subscription_end: null, cancel_at_period_end: false }),
     });
 
     const { AuthProvider, useAuth } = await import("@/lib/auth");
-    let refreshFn: any;
+    let refreshFn: (() => Promise<void>) | undefined;
     function Consumer() {
       const auth = useAuth();
       refreshFn = auth.refreshSubscription;
@@ -211,7 +211,7 @@ describe("AuthProvider", () => {
     getSessionMock.mockResolvedValue({ data: { session: null } });
 
     const { AuthProvider, useAuth } = await import("@/lib/auth");
-    let refreshFn: any;
+    let refreshFn: (() => Promise<void>) | undefined;
     function Consumer() {
       const auth = useAuth();
       refreshFn = auth.refreshSubscription;
@@ -226,8 +226,8 @@ describe("AuthProvider", () => {
       await refreshFn();
     });
     // fetch should NOT have been called (no session)
-    const fetchCalls = (globalThis.fetch as any).mock.calls.filter(
-      (c: any[]) => c[0] === "/api/check-subscription"
+    const fetchCalls = vi.mocked(globalThis.fetch).mock.calls.filter(
+      (c) => c[0] === "/api/check-subscription"
     );
     expect(fetchCalls.length).toBe(0);
   });
@@ -236,10 +236,10 @@ describe("AuthProvider", () => {
     getSessionMock.mockResolvedValue({
       data: { session: { user: { id: "u1" }, access_token: "tok" } },
     });
-    (globalThis.fetch as any).mockResolvedValueOnce({ ok: false, status: 500 });
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({ ok: false, status: 500 });
 
     const { AuthProvider, useAuth } = await import("@/lib/auth");
-    let refreshFn: any;
+    let refreshFn: (() => Promise<void>) | undefined;
     function Consumer() {
       const auth = useAuth();
       refreshFn = auth.refreshSubscription;
@@ -262,10 +262,10 @@ describe("AuthProvider", () => {
     getSessionMock.mockResolvedValue({
       data: { session: { user: { id: "u1" }, access_token: "tok" } },
     });
-    (globalThis.fetch as any).mockRejectedValueOnce(new Error("network down"));
+    vi.mocked(globalThis.fetch).mockRejectedValueOnce(new Error("network down"));
 
     const { AuthProvider, useAuth } = await import("@/lib/auth");
-    let refreshFn: any;
+    let refreshFn: (() => Promise<void>) | undefined;
     function Consumer() {
       const auth = useAuth();
       refreshFn = auth.refreshSubscription;

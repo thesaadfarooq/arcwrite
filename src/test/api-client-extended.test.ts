@@ -145,7 +145,7 @@ describe("apiClient extended coverage", () => {
     }));
     const { apiClient } = await import("@/lib/api-client");
     await apiClient.getSharedStory("abc123");
-    const fetchCall = (fetch as any).mock.calls[0];
+    const fetchCall = vi.mocked(fetch).mock.calls[0];
     // Should NOT have Authorization header
     expect(fetchCall[1].headers.Authorization).toBeUndefined();
     vi.unstubAllGlobals();

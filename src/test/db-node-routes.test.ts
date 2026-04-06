@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const getAuthenticatedUserMock = vi.fn();
 const ensureProfileMock = vi.fn();
@@ -56,8 +57,8 @@ describe("node database routes", () => {
         method: "GET",
         query: { story_id: "story-1" },
         headers: {},
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(401);
@@ -75,8 +76,8 @@ describe("node database routes", () => {
         method: "GET",
         query: { story_id: "story-1" },
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryOneMock).toHaveBeenCalledWith(
@@ -99,8 +100,8 @@ describe("node database routes", () => {
         method: "GET",
         query: { story_id: "story-2" },
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(ensureProfileMock).toHaveBeenCalledWith("user-2");
@@ -124,8 +125,8 @@ describe("node database routes", () => {
         method: "GET",
         query: { story_id: "story-3", active: "all" },
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     const [sql] = queryMock.mock.calls[0];
@@ -151,8 +152,8 @@ describe("node database routes", () => {
           story_id: "story-4",
           text: "Opening paragraph",
         },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryOneMock).toHaveBeenNthCalledWith(
@@ -186,8 +187,8 @@ describe("node database routes", () => {
         query: { id: "node-5" },
         headers: { authorization: "Bearer token" },
         body: { text: "Updated" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryOneMock).toHaveBeenCalledWith(
@@ -217,8 +218,8 @@ describe("node database routes", () => {
           story_id: "other-story",
           created_at: "yesterday",
         },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     const [sql, params] = queryOneMock.mock.calls[1];
@@ -252,8 +253,8 @@ describe("node database routes", () => {
         method: "POST",
         query: { id: "leaf", action: "jump" },
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(withTransactionMock).toHaveBeenCalledTimes(1);
@@ -305,8 +306,8 @@ describe("node database routes", () => {
         method: "DELETE",
         query: { id: "node-8", action: "subtree" },
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(withTransactionMock).toHaveBeenCalledTimes(1);
@@ -364,8 +365,8 @@ describe("node database routes", () => {
         query: { id: "node-9", action: "split" },
         headers: { authorization: "Bearer token" },
         body: { position: 1 },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(withTransactionMock).toHaveBeenCalledTimes(1);
@@ -431,8 +432,8 @@ describe("node database routes", () => {
         query: { id: "node-9b", action: "split" },
         headers: { authorization: "Bearer token" },
         body: { position: 1 },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(400);
@@ -478,8 +479,8 @@ describe("node database routes", () => {
         method: "POST",
         query: { id: "node-10", action: "merge" },
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(withTransactionMock).toHaveBeenCalledTimes(1);
@@ -520,8 +521,8 @@ describe("node database routes", () => {
         method: "GET",
         query: { story_id: "story-11" },
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(500);
@@ -540,8 +541,8 @@ describe("node database routes", () => {
         method: "POST",
         query: { id: "node-12", action: "jump" },
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(500);

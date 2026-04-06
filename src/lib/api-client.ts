@@ -1,6 +1,62 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
+
+export type StoryRow = {
+  id: string;
+  title: string;
+  genre: string | null;
+  tone: string | null;
+  premise: string | null;
+  status: string;
+  target_turns: number | null;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+};
+
+export type StoryNodeRow = {
+  id: string;
+  story_id: string;
+  parent_id: string | null;
+  text: string;
+  summary: string | null;
+  story_state: Json;
+  choices: Json;
+  chosen_option: Json;
+  is_active: boolean;
+  branch_id: string | null;
+  starts_chapter: boolean;
+  chapter_title: string | null;
+  created_at: string;
+};
+
+type BranchRow = {
+  id: string;
+  story_id: string;
+  fork_node_id: string;
+  name: string | null;
+  is_main: boolean;
+  created_at: string;
+};
+
+type SplitNodeResponse = {
+  success: boolean;
+  newNodeId: string;
+  parentId: string;
+};
+
+type SharedStoryResponse = {
+  story: StoryRow;
+  nodes: StoryNodeRow[];
+};
+
+type ChapterSuggestion = {
+  nodeId: string;
+  suggestedTitle: string;
+  reason: string;
+};
 
 type RequestOptions = {
   method?: HttpMethod;
@@ -65,22 +121,22 @@ export const apiClient = {
   },
 
   getStories() {
-    return request<any[]>("/api/db/stories");
+    return request<StoryRow[]>("/api/db/stories");
   },
 
   getStory(id: string) {
-    return request<any>(`/api/db/stories?id=${id}`);
+    return request<StoryRow>(`/api/db/stories?id=${id}`);
   },
 
   createStory(payload: Record<string, unknown>) {
-    return request<any>("/api/db/stories", {
+    return request<StoryRow>("/api/db/stories", {
       method: "POST",
       body: payload,
     });
   },
 
   updateStory(id: string, payload: Record<string, unknown>) {
-    return request<any>(`/api/db/stories?id=${id}`, {
+    return request<StoryRow>(`/api/db/stories?id=${id}`, {
       method: "PATCH",
       body: payload,
     });
@@ -103,18 +159,18 @@ export const apiClient = {
       params.set("active", "all");
     }
 
-    return request<any[]>(`/api/db/nodes?${params.toString()}`);
+    return request<StoryNodeRow[]>(`/api/db/nodes?${params.toString()}`);
   },
 
   createNode(payload: Record<string, unknown>) {
-    return request<any>("/api/db/nodes", {
+    return request<StoryNodeRow>("/api/db/nodes", {
       method: "POST",
       body: payload,
     });
   },
 
   updateNode(id: string, payload: Record<string, unknown>) {
-    return request<any>(`/api/db/nodes?id=${id}`, {
+    return request<StoryNodeRow>(`/api/db/nodes?id=${id}`, {
       method: "PATCH",
       body: payload,
     });
@@ -127,7 +183,7 @@ export const apiClient = {
   },
 
   splitNode(id: string, position: number) {
-    return request<any>(`/api/db/nodes?id=${id}&action=split`, {
+    return request<SplitNodeResponse>(`/api/db/nodes?id=${id}&action=split`, {
       method: "POST",
       body: { position },
     });
@@ -146,13 +202,13 @@ export const apiClient = {
   },
 
   getSharedStory(token: string) {
-    return request<{ story: any; nodes: any[] }>(`/api/db/shared/${token}`, {
+    return request<SharedStoryResponse>(`/api/db/shared/${token}`, {
       requireAuth: false,
     });
   },
 
   generateChapterSuggestions(payload: Record<string, unknown>) {
-    return request<{ suggestions: any[] }>("/api/generate-chapter-suggestions", {
+    return request<{ suggestions: ChapterSuggestion[] }>("/api/generate-chapter-suggestions", {
       method: "POST",
       body: payload,
     });
@@ -167,11 +223,11 @@ export const apiClient = {
 
   // Branch operations
   getBranches(storyId: string) {
-    return request<any[]>(`/api/db/branches?story_id=${storyId}`);
+    return request<BranchRow[]>(`/api/db/branches?story_id=${storyId}`);
   },
 
   createBranch(payload: { story_id: string; fork_node_id: string; name?: string }) {
-    return request<any>("/api/db/branches?action=create", {
+    return request<BranchRow>("/api/db/branches?action=create", {
       method: "POST",
       body: payload,
     });
@@ -184,7 +240,7 @@ export const apiClient = {
   },
 
   renameBranch(branchId: string, name: string) {
-    return request<any>(`/api/db/branches?id=${branchId}`, {
+    return request<BranchRow>(`/api/db/branches?id=${branchId}`, {
       method: "PATCH",
       body: { name },
     });

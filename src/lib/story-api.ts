@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import type { StoryChoice } from "@/components/story/ChoiceCards";
 import { apiClient } from "@/lib/api-client";
 import type { ChapterSuggestion } from "@/lib/chapter-review";
@@ -34,7 +35,7 @@ export async function streamSection({
   premise, genre, tone, direction, summary, recentText, storyState, length, arcMode, beat, onDelta, onDone, onError,
 }: {
   premise?: string; genre?: string; tone?: string; direction?: string;
-  summary?: string; recentText?: string; storyState?: any; length?: SectionLength;
+  summary?: string; recentText?: string; storyState?: Json; length?: SectionLength;
   arcMode?: StoryArcMode;
   beat?: StoryBeat;
   onDelta: (text: string) => void; onDone: (fullText: string) => void; onError: (error: string) => void;
@@ -110,7 +111,7 @@ export async function streamSection({
 export async function generateChoices({
   recentText, summary, storyState, tone, genre, premise, arcMode, moveFamilies, previousEnding, beat,
 }: {
-  recentText: string; summary?: string; storyState?: any; tone?: string; genre?: string; premise?: string;
+  recentText: string; summary?: string; storyState?: Json; tone?: string; genre?: string; premise?: string;
   arcMode?: StoryArcMode;
   moveFamilies?: StoryMoveFamily[];
   previousEnding?: StoryEndingType | null;
@@ -203,8 +204,8 @@ export async function generateChapterTitle({
 export async function summarizeStory({
   fullText, previousSummary, storyState,
 }: {
-  fullText: string; previousSummary?: string; storyState?: any;
-}): Promise<{ summary: string; story_state: any }> {
+  fullText: string; previousSummary?: string; storyState?: Json;
+}): Promise<{ summary: string; story_state: Json }> {
   const accessToken = await getAccessToken();
   const resp = await fetch("/api/summarize", {
     method: "POST",
@@ -260,20 +261,20 @@ export async function createStoryNode({
   parentId?: string;
   text: string;
   summary?: string;
-  storyState?: any;
+  storyState?: Json;
   choices?: StoryChoice[];
-  chosenOption?: any;
+  chosenOption?: Json;
   branchId?: string;
 }) {
   // A node starts a chapter only if it's the root (no parent)
   const isRoot = !parentId;
-  const insertObj: Record<string, any> = {
+  const insertObj: Record<string, unknown> = {
     story_id: storyId,
     parent_id: parentId || null,
     text,
     summary: summary || null,
     story_state: storyState || {},
-    choices: (choices || []) as any,
+    choices: (choices || []) as Json,
     chosen_option: chosenOption || null,
     starts_chapter: isRoot,
     branch_id: branchId || null,

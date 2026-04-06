@@ -149,7 +149,7 @@ function buildSystemPrompt({
   pacingInstruction,
 }: {
   tone?: string;
-  storyState?: any;
+  storyState?: Record<string, unknown>;
   summary?: string;
   recentText?: string;
   premise?: string;

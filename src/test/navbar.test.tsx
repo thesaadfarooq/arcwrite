@@ -59,7 +59,7 @@ describe("Navbar", () => {
   });
 
   it("shows dashboard button for logged-in users", () => {
-    authReturn = { user: mockUser, loading: false } as any;
+    authReturn = { user: mockUser, loading: false };
     renderNavbar();
     expect(screen.getByRole("link", { name: /dashboard/i })).toBeInTheDocument();
   });

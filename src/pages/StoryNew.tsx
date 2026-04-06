@@ -99,8 +99,8 @@ export default function StoryNew() {
         targetTurns,
       });
       navigate(`/story/${story.id}`);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to create story");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to create story");
       setCreating(false);
     }
   };

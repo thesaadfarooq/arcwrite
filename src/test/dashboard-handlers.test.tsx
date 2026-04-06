@@ -30,17 +30,17 @@ vi.mock("@/lib/theme", () => ({
 
 vi.mock("@/lib/api-client", () => ({
   apiClient: {
-    getStories: (...args: any[]) => mockGetStories(...args),
-    deleteStory: (...args: any[]) => mockDeleteStory(...args),
-    createStory: (...args: any[]) => mockCreateStory(...args),
-    updateStory: (...args: any[]) => mockUpdateStory(...args),
+    getStories: (...args: unknown[]) => mockGetStories(...args),
+    deleteStory: (...args: unknown[]) => mockDeleteStory(...args),
+    createStory: (...args: unknown[]) => mockCreateStory(...args),
+    updateStory: (...args: unknown[]) => mockUpdateStory(...args),
   },
 }));
 
 vi.mock("sonner", () => ({
   toast: {
-    success: (...args: any[]) => toastSuccessMock(...args),
-    error: (...args: any[]) => toastErrorMock(...args),
+    success: (...args: unknown[]) => toastSuccessMock(...args),
+    error: (...args: unknown[]) => toastErrorMock(...args),
   },
 }));
 

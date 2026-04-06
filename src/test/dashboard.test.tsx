@@ -27,10 +27,10 @@ vi.mock("@/lib/theme", () => ({
 
 vi.mock("@/lib/api-client", () => ({
   apiClient: {
-    getStories: (...args: any[]) => getStoriesMock(...args),
-    deleteStory: (...args: any[]) => deleteStoryMock(...args),
-    createStory: (...args: any[]) => createStoryMock(...args),
-    updateStory: (...args: any[]) => updateStoryMock(...args),
+    getStories: (...args: unknown[]) => getStoriesMock(...args),
+    deleteStory: (...args: unknown[]) => deleteStoryMock(...args),
+    createStory: (...args: unknown[]) => createStoryMock(...args),
+    updateStory: (...args: unknown[]) => updateStoryMock(...args),
   },
 }));
 

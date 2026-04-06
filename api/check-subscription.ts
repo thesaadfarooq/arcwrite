@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as Stripe.LatestApiVersion });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
     if (customers.data.length === 0) {
@@ -83,7 +83,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let resolvedTier = "free";
 
     if (hasActiveSub) {
-      const subscription = subscriptions.data[0] as any;
+      const subscription = subscriptions.data[0];
       const item = subscription.items.data[0];
       const periodEnd = item.current_period_end ?? subscription.cancel_at;
       if (typeof periodEnd === "number") {

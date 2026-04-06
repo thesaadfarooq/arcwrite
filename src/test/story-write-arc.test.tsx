@@ -38,8 +38,8 @@ const {
   splitNodeAtPositionMock: vi.fn(),
   apiUpdateStoryMock: vi.fn(),
   apiUpdateNodeMock: vi.fn(),
-  latestChoiceCardsProps: { current: null as any },
-  latestStoryCanvasProps: { current: null as any },
+  latestChoiceCardsProps: { current: null as Record<string, unknown> | null },
+  latestStoryCanvasProps: { current: null as Record<string, unknown> | null },
   useIsMobileMock: vi.fn(),
 }));
 
@@ -262,7 +262,7 @@ vi.mock("@/components/ui/tooltip", () => ({
 }));
 
 vi.mock("@/components/story/ChoiceCards", () => ({
-  ChoiceCards: (props: any) => {
+  ChoiceCards: (props: Record<string, unknown> & { isNearEnd?: boolean; onAddChapterBreak?: () => void; onBeginConclusion?: () => void; choices: { label: string }[]; onSelect: (choice: { label: string }) => void }) => {
     latestChoiceCardsProps.current = props;
     return (
       <div data-testid="choice-cards">
@@ -275,7 +275,7 @@ vi.mock("@/components/story/ChoiceCards", () => ({
         <button type="button" onClick={() => props.onBeginConclusion?.()}>
           begin conclusion
         </button>
-        {props.choices.map((choice: any) => (
+        {props.choices.map((choice: { label: string }) => (
           <button
             key={choice.label}
             type="button"
@@ -898,7 +898,7 @@ describe("StoryWrite narrative arc integration", () => {
 
   it("shows a loading state while chapter review suggestions are generated", async () => {
     useIsMobileMock.mockReturnValue(true);
-    let resolveSuggestions: ((value: any[]) => void) | undefined;
+    let resolveSuggestions: ((value: unknown[]) => void) | undefined;
     generateChapterSuggestionsMock.mockReturnValue(
       new Promise((resolve) => {
         resolveSuggestions = resolve;

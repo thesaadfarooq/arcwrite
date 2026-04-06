@@ -6,7 +6,8 @@ import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { getTierLimits } from "@/lib/subscription";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, type StoryNodeRow } from "@/lib/api-client";
+import type { Json } from "@/integrations/supabase/types";
 import { StoryCanvas, type StoryParagraph } from "@/components/story/StoryCanvas";
 import { ChoiceCards, type StoryChoice } from "@/components/story/ChoiceCards";
 import { ChapterSidebar, type Chapter } from "@/components/story/ChapterSidebar";
@@ -202,12 +203,12 @@ export default function StoryWrite() {
   const [storyTitle, setStoryTitle] = useState("Untitled Story");
   const [storyMeta, setStoryMeta] = useState<{ genre?: string; tone?: string; premise?: string }>({});
   const [summary, setSummary] = useState<string>("");
-  const [storyState, setStoryState] = useState<any>({});
+  const [storyState, setStoryState] = useState<Json>({});
   const [lastNodeId, setLastNodeId] = useState<string | null>(null);
   const [isDesyncced, setIsDesyncced] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toneOpen, setToneOpen] = useState(false);
-  const [allNodes, setAllNodes] = useState<any[]>([]);
+  const [allNodes, setAllNodes] = useState<StoryNodeRow[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [sectionLength, setSectionLength] = useState<SectionLength>("medium");
@@ -277,7 +278,7 @@ export default function StoryWrite() {
       setArcOverride((story.arc_override as StoryArcMode) ?? null);
       setArcState(story.arc_state ?? null);
       setIsStoryComplete(story.status === "completed");
-      setShareToken((story as any).share_token || null);
+      setShareToken((story as StoryRow & { share_token?: string }).share_token || null);
 
       const [activeNodes, allStoryNodes] = await Promise.all([
         getStoryNodes(storyId!),
@@ -298,8 +299,8 @@ export default function StoryWrite() {
         setLastNodeId(lastNode.id);
         setSummary(lastNode.summary || "");
         setStoryState(lastNode.story_state || {});
-        if (lastNode.choices && Array.isArray(lastNode.choices) && (lastNode.choices as any[]).length > 0) {
-          setChoices(lastNode.choices as any as StoryChoice[]);
+        if (lastNode.choices && Array.isArray(lastNode.choices) && (lastNode.choices as Json[]).length > 0) {
+          setChoices(lastNode.choices as unknown as StoryChoice[]);
         } else if (story.status !== "completed") {
           fetchChoices(paras.map((p) => p.text).join("\n\n"), {
             activeNodeCount: activeNodes.length,
@@ -320,7 +321,7 @@ export default function StoryWrite() {
           tone: story.tone || undefined,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error("Failed to load story");
       navigate("/dashboard");
     } finally {
@@ -352,7 +353,7 @@ export default function StoryWrite() {
     isFinalSection,
   });
 
-  const buildParagraphsFromNodes = (nodes: any[]): StoryParagraph[] => {
+  const buildParagraphsFromNodes = (nodes: StoryNodeRow[]): StoryParagraph[] => {
     const nextParagraphs: StoryParagraph[] = [];
 
     nodes.forEach((node) => {
@@ -369,7 +370,7 @@ export default function StoryWrite() {
     try {
       const nodes = await getAllStoryNodes(storyId!);
       setAllNodes(nodes);
-    } catch {}
+    } catch { /* refreshAllNodes is best-effort */ }
   };
 
   /** Reload paragraphs + state from DB so IDs match real nodes (needed for chapter headings) */
@@ -388,7 +389,7 @@ export default function StoryWrite() {
       setLastNodeId(lastNode?.id || null);
       setSummary(lastNode?.summary || "");
       setStoryState(lastNode?.story_state || {});
-    } catch {}
+    } catch { /* reloadActiveState is best-effort */ }
   };
 
   const generateOpening = async (meta?: { premise?: string; genre?: string; tone?: string }) => {
@@ -489,7 +490,7 @@ export default function StoryWrite() {
         setIsProcessing(false);
         toast.error(err);
       },
-    } as any);
+    });
   };
 
   const handleRegenerateOpening = async () => {
@@ -589,7 +590,7 @@ export default function StoryWrite() {
         setIsProcessing(false);
         toast.error(err);
       },
-    } as any);
+    });
   };
 
   const fetchChoices = async (
@@ -613,7 +614,7 @@ export default function StoryWrite() {
       const effectiveArcState = options?.arcStateOverride !== undefined ? options.arcStateOverride : arcState;
       const moveFamilies = selectMoveFamilies({
         phase: beat.phase,
-        arcMode: (effectiveArcOverride as any) ?? "normal",
+        arcMode: (effectiveArcOverride as StoryArcMode) ?? "normal",
         previousEnding: effectiveArcState?.endedWith ?? null,
         recentFamilies: recentMoveFamilies as StoryMoveFamily[],
         variantOffset: choiceVariantOffset,
@@ -626,14 +627,14 @@ export default function StoryWrite() {
         genre: meta.genre,
         premise: meta.premise,
         beat: buildBeatPayload(beat, false),
-        arcMode: (effectiveArcOverride as any) ?? undefined,
+        arcMode: (effectiveArcOverride as StoryArcMode) ?? undefined,
         moveFamilies,
         previousEnding: effectiveArcState?.endedWith ?? null,
       });
       setChoices(result);
 
       if (lastNodeId) {
-        await apiClient.updateNode(lastNodeId, { choices: result as any });
+        await apiClient.updateNode(lastNodeId, { choices: result as unknown as Json });
       }
     } catch {
       toast.error("Failed to generate choices");
@@ -827,8 +828,8 @@ export default function StoryWrite() {
 
       refreshAllNodes();
 
-      if (lastNode?.choices && (lastNode.choices as any[]).length > 0) {
-        setChoices(lastNode.choices as any as StoryChoice[]);
+      if (lastNode?.choices && (lastNode.choices as Json[]).length > 0) {
+        setChoices(lastNode.choices as unknown as StoryChoice[]);
       } else if (!isStoryComplete) {
         fetchChoices(paras.map((p) => p.text).join("\n\n"), { activeNodeCount: activeNodes.length });
       }
@@ -855,8 +856,8 @@ export default function StoryWrite() {
       await handleJumpToNode(nodeId);
       setActiveBranchId(newBranch.id);
       toast.success("Branch created — explore a new path");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to create branch");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to create branch");
     }
   }, [storyId, mainBranch, handleJumpToNode]);
 
@@ -871,8 +872,8 @@ export default function StoryWrite() {
       const updatedNodes = await getAllStoryNodes(storyId);
       setAllNodes(updatedNodes);
       toast.success("Branch promoted to main");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to promote branch");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to promote branch");
     }
   }, [storyId]);
 
@@ -888,8 +889,8 @@ export default function StoryWrite() {
       const updatedNodes = await getAllStoryNodes(storyId);
       setAllNodes(updatedNodes);
       toast.success("Branch deleted");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to delete branch");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete branch");
     }
   }, [storyId, activeBranchId, mainBranch, handleJumpToNode]);
 
@@ -900,7 +901,7 @@ export default function StoryWrite() {
   }, [mainBranch, handleJumpToNode]);
 
   const handleExploreNodeClick = useCallback(async (nodeId: string) => {
-    const node = allNodes.find((n: any) => n.id === nodeId);
+    const node = allNodes.find((n) => n.id === nodeId);
     if (node?.branch_id) {
       setActiveBranchId(node.branch_id);
     }
@@ -1012,7 +1013,7 @@ export default function StoryWrite() {
 
   const handleOpenChapterReview = async (options?: {
     force?: boolean;
-    activeNodesOverride?: any[];
+    activeNodesOverride?: StoryNodeRow[];
     currentTipIdOverride?: string | null;
   }) => {
     const reviewActiveNodes = options?.activeNodesOverride ?? activeNodes;
@@ -1043,7 +1044,7 @@ export default function StoryWrite() {
       const tail = reviewActiveNodes.slice(-6);
       let currentChapterStartIndex = -1;
       for (let i = reviewActiveNodes.length - 1; i >= 0; i--) {
-        if ((reviewActiveNodes[i] as any).starts_chapter) {
+        if ((reviewActiveNodes[i] as StoryNodeRow).starts_chapter) {
           currentChapterStartIndex = i;
           break;
         }
@@ -1057,8 +1058,8 @@ export default function StoryWrite() {
       const recentNodes = nodesForReview.map((node) => ({
         id: node.id,
         text: node.text || "",
-        startsChapter: Boolean((node as any).starts_chapter),
-        chapterTitle: (node as any).chapter_title || null,
+        startsChapter: Boolean((node as StoryNodeRow).starts_chapter),
+        chapterTitle: (node as StoryNodeRow).chapter_title || null,
         paragraphCount: Math.max(1, (node.text || "").split("\n\n").filter(Boolean).length),
       }));
 
@@ -1213,8 +1214,8 @@ export default function StoryWrite() {
       const { generatePDF } = await import("@/lib/pdf-export");
       generatePDF(data);
       toast.success("PDF downloaded");
-    } catch (e: any) {
-      toast.error(e.message || "Export failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Export failed");
     } finally {
       setIsExporting(false);
     }
@@ -1241,8 +1242,8 @@ export default function StoryWrite() {
         await navigator.clipboard.writeText(url);
         toast.success("Story shared! Link copied to clipboard");
       }
-    } catch (e: any) {
-      toast.error(e.message || "Failed to share");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to share");
     }
   };
 
@@ -1278,7 +1279,7 @@ export default function StoryWrite() {
       countWordsSinceChapterStart(
         activeNodes.map((node) => ({
           text: node.text || "",
-          startsChapter: Boolean((node as any).starts_chapter),
+          startsChapter: Boolean((node as StoryNodeRow).starts_chapter),
         })),
       ),
     [activeNodes],
@@ -1325,7 +1326,7 @@ export default function StoryWrite() {
   }, [chapterSuggestionsTipId, lastNodeId]);
 
   const chapterNodes = useMemo(
-    () => activeNodes.filter((n) => (n as any).starts_chapter === true),
+    () => activeNodes.filter((n) => (n as StoryNodeRow).starts_chapter === true),
     [activeNodes]
   );
 
@@ -1336,7 +1337,7 @@ export default function StoryWrite() {
   }, [chapterNodes.length, chapterViewEnabled]);
 
   const currentChapterStartId = useMemo(
-    () => [...activeNodes].reverse().find((node) => (node as any).starts_chapter === true)?.id ?? null,
+    () => [...activeNodes].reverse().find((node) => (node as StoryNodeRow).starts_chapter === true)?.id ?? null,
     [activeNodes],
   );
 
@@ -1365,7 +1366,7 @@ export default function StoryWrite() {
   const chapters: Chapter[] = useMemo(() => {
     return chapterNodes.map((n, i) => ({
       id: n.id,
-      title: (n as any).chapter_title || `Chapter ${i + 1}`,
+      title: (n as StoryNodeRow).chapter_title || `Chapter ${i + 1}`,
       wordCount: (n.text || "").split(/\s+/).filter(Boolean).length,
       isActive: n.id === lastNodeId,
       isRoot: !n.parent_id,
@@ -1375,7 +1376,7 @@ export default function StoryWrite() {
   const chapterHeadings: ChapterHeading[] = useMemo(() => {
     return chapterNodes.map((n, i) => ({
       nodeId: n.id,
-      title: (n as any).chapter_title || `Chapter ${i + 1}`,
+      title: (n as StoryNodeRow).chapter_title || `Chapter ${i + 1}`,
     }));
   }, [chapterNodes]);
 
@@ -1417,9 +1418,9 @@ export default function StoryWrite() {
         id: n.id,
         parentId: resolveParent(n.parent_id),
         branchId: n.branch_id ?? null,
-        chosenLabel: (n.chosen_option as any)?.label ?? null,
-        chosenType: (n.chosen_option as any)?.type ?? null,
-        chosenPreview: (n.chosen_option as any)?.preview ?? null,
+        chosenLabel: (n.chosen_option as Record<string, unknown>)?.label as string ?? null,
+        chosenType: (n.chosen_option as Record<string, unknown>)?.type as string ?? null,
+        chosenPreview: (n.chosen_option as Record<string, unknown>)?.preview as string ?? null,
         wordCount: n.text?.split(/\s+/).filter(Boolean).length ?? 0,
         isActive: n.is_active,
         startsChapter: n.starts_chapter === true,
@@ -1465,8 +1466,8 @@ export default function StoryWrite() {
       await refreshAllNodes();
       if (lastNode) fetchChoices(paras.map((p) => p.text).join("\n\n"));
       toast.success("Chapter deleted");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to delete chapter");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete chapter");
     }
   };
 
@@ -1486,8 +1487,8 @@ export default function StoryWrite() {
       await refreshAllNodes();
       if (lastNode) fetchChoices(paras.map((p) => p.text).join("\n\n"));
       toast.success("Chapters merged");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to merge chapters");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to merge chapters");
     } finally {
       setIsProcessing(false);
     }
@@ -1506,8 +1507,8 @@ export default function StoryWrite() {
     const recentNodes = chapterSlice.map((node) => ({
       id: node.id,
       text: node.text || "",
-      startsChapter: (node as any).starts_chapter === true,
-      chapterTitle: (node as any).chapter_title || null,
+      startsChapter: (node as StoryNodeRow).starts_chapter === true,
+      chapterTitle: (node as StoryNodeRow).chapter_title || null,
     }));
 
     return generateChapterTitle({
@@ -1549,8 +1550,8 @@ export default function StoryWrite() {
       if (lastNode) fetchChoices(paras.map((p) => p.text).join("\n\n"));
       toast.success("Chapter break inserted");
       return true;
-    } catch (e: any) {
-      toast.error(e.message || "Failed to insert break");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to insert break");
       return false;
     } finally {
       setPendingBreakKey(null);

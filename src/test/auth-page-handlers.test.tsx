@@ -32,8 +32,8 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 vi.mock("sonner", () => ({
   toast: {
-    error: (...args: any[]) => toastErrorMock(...args),
-    success: (...args: any[]) => toastSuccessMock(...args),
+    error: (...args: unknown[]) => toastErrorMock(...args),
+    success: (...args: unknown[]) => toastSuccessMock(...args),
   },
 }));
 
@@ -68,7 +68,7 @@ describe("Auth page handlers", () => {
   });
 
   it("shows error for invalid login credentials", async () => {
-    signInMock.mockResolvedValue({ error: { message: "Invalid login credentials" } });
+    signInMock.mockResolvedValue({ error: new Error("Invalid login credentials") });
     await renderAuth();
 
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@example.com" } });
@@ -137,7 +137,7 @@ describe("Auth page handlers", () => {
   });
 
   it("handles already registered error on signup", async () => {
-    signUpMock.mockResolvedValue({ error: { message: "User already registered" } });
+    signUpMock.mockResolvedValue({ error: new Error("User already registered") });
     await renderAuth();
     fireEvent.click(screen.getByText("Sign up"));
 
@@ -176,7 +176,7 @@ describe("Auth page handlers", () => {
   });
 
   it("handles Google OAuth error", async () => {
-    signInOAuthMock.mockResolvedValue({ error: { message: "OAuth failed" } });
+    signInOAuthMock.mockResolvedValue({ error: new Error("OAuth failed") });
     await renderAuth();
     fireEvent.click(screen.getByRole("button", { name: /continue with google/i }));
 

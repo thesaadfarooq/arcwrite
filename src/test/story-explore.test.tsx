@@ -7,19 +7,19 @@ const getAllStoryNodesMock = vi.fn();
 const getBranchesMock = vi.fn();
 
 vi.mock("@/lib/story-api", () => ({
-  getStory: (...args: any[]) => getStoryMock(...args),
-  getAllStoryNodes: (...args: any[]) => getAllStoryNodesMock(...args),
+  getStory: (...args: unknown[]) => getStoryMock(...args),
+  getAllStoryNodes: (...args: unknown[]) => getAllStoryNodesMock(...args),
 }));
 
 vi.mock("@/lib/branch-api", () => ({
-  getBranches: (...args: any[]) => getBranchesMock(...args),
+  getBranches: (...args: unknown[]) => getBranchesMock(...args),
   createBranch: vi.fn(),
   promoteBranch: vi.fn(),
   deleteBranch: vi.fn(),
 }));
 
 vi.mock("@/components/story/BranchGraph", () => ({
-  BranchGraph: (props: any) => <div data-testid="branch-graph">BranchGraph ({props.nodes?.length ?? 0} nodes)</div>,
+  BranchGraph: (props: { nodes?: unknown[] }) => <div data-testid="branch-graph">BranchGraph ({props.nodes?.length ?? 0} nodes)</div>,
 }));
 
 function renderStoryExplore(Page: React.ComponentType) {
@@ -38,7 +38,7 @@ describe("StoryExplore page", () => {
     getAllStoryNodesMock.mockReturnValue(new Promise(() => {}));
     getBranchesMock.mockReturnValue(new Promise(() => {}));
     const { default: StoryExplore } = await import("@/pages/StoryExplore");
-    const { container } = renderStoryExplore(StoryExplore) as any || {};
+    renderStoryExplore(StoryExplore);
     // Should show spinner
     expect(document.querySelector(".animate-spin")).toBeDefined();
   });

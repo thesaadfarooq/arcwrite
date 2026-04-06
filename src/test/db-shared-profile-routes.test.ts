@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const getAuthenticatedUserMock = vi.fn();
 const ensureProfileMock = vi.fn();
@@ -47,8 +48,8 @@ describe("db shared and profile routes", () => {
       {
         method: "GET",
         headers: {},
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(401);
@@ -72,8 +73,8 @@ describe("db shared and profile routes", () => {
       {
         method: "GET",
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(getAuthenticatedUserMock).toHaveBeenCalledWith("Bearer token");
@@ -110,8 +111,8 @@ describe("db shared and profile routes", () => {
       {
         method: "GET",
         query: { token: "share-token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryOneMock).toHaveBeenCalledWith(
@@ -147,8 +148,8 @@ describe("db shared and profile routes", () => {
       {
         method: "GET",
         query: { token: "missing-token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(404);
@@ -158,7 +159,7 @@ describe("db shared and profile routes", () => {
   it("returns 405 for non-GET on profile route", async () => {
     const handler = (await import("../../api/db/profile")).default;
     const res = createResponse();
-    await handler({ method: "POST", headers: {} } as any, res as any);
+    await handler({ method: "POST", headers: {} } as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(405);
   });
 
@@ -168,7 +169,7 @@ describe("db shared and profile routes", () => {
     queryOneMock.mockResolvedValue(null);
     const handler = (await import("../../api/db/profile")).default;
     const res = createResponse();
-    await handler({ method: "GET", headers: { authorization: "Bearer t" } } as any, res as any);
+    await handler({ method: "GET", headers: { authorization: "Bearer t" } } as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(500);
     expect(res.body).toEqual({ error: "Failed to create profile" });
   });
@@ -176,14 +177,14 @@ describe("db shared and profile routes", () => {
   it("returns 405 for non-GET on shared story route", async () => {
     const handler = (await import("../../api/db/shared/[token]")).default;
     const res = createResponse();
-    await handler({ method: "POST", query: { token: "abc" } } as any, res as any);
+    await handler({ method: "POST", query: { token: "abc" } } as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(405);
   });
 
   it("returns 400 for invalid token type on shared route", async () => {
     const handler = (await import("../../api/db/shared/[token]")).default;
     const res = createResponse();
-    await handler({ method: "GET", query: { token: ["a", "b"] } } as any, res as any);
+    await handler({ method: "GET", query: { token: ["a", "b"] } } as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(400);
   });
 
@@ -191,7 +192,7 @@ describe("db shared and profile routes", () => {
     queryOneMock.mockRejectedValue(new Error("db error"));
     const handler = (await import("../../api/db/shared/[token]")).default;
     const res = createResponse();
-    await handler({ method: "GET", query: { token: "abc" } } as any, res as any);
+    await handler({ method: "GET", query: { token: "abc" } } as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(500);
     expect(res.body).toEqual({ error: "Internal server error" });
   });
@@ -207,8 +208,8 @@ describe("db shared and profile routes", () => {
       {
         method: "GET",
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(500);

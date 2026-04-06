@@ -10,7 +10,7 @@ export default function StoryExplore() {
   const { id: storyId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [allNodes, setAllNodes] = useState<any[]>([]);
+  const [allNodes, setAllNodes] = useState<Record<string, unknown>[]>([]);
   const [storyTitle, setStoryTitle] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -26,8 +26,8 @@ export default function StoryExplore() {
         setStoryTitle(story.title);
         setAllNodes(nodes);
         setBranches(branchList);
-      } catch (e: any) {
-        toast.error(e.message || "Failed to load story");
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "Failed to load story");
       } finally {
         setLoading(false);
       }
@@ -65,9 +65,9 @@ export default function StoryExplore() {
         id: n.id,
         parentId: resolveParent(n.parent_id),
         branchId: n.branch_id ?? null,
-        chosenLabel: (n.chosen_option as any)?.label ?? null,
-        chosenType: (n.chosen_option as any)?.type ?? null,
-        chosenPreview: (n.chosen_option as any)?.preview ?? null,
+        chosenLabel: (n.chosen_option as Record<string, unknown>)?.label as string ?? null,
+        chosenType: (n.chosen_option as Record<string, unknown>)?.type as string ?? null,
+        chosenPreview: (n.chosen_option as Record<string, unknown>)?.preview as string ?? null,
         wordCount: n.text?.split(/\s+/).filter(Boolean).length ?? 0,
         isActive: n.is_active,
         startsChapter: n.starts_chapter === true,
@@ -90,8 +90,8 @@ export default function StoryExplore() {
       const newBranch = await createBranch(storyId, nodeId);
       setBranches((prev) => [...prev, newBranch]);
       toast.success("Branch created");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to create branch");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to create branch");
     }
   }, [storyId]);
 
@@ -106,8 +106,8 @@ export default function StoryExplore() {
       setBranches(updatedBranches);
       setAllNodes(updatedNodes);
       toast.success("Branch promoted to main");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to promote branch");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to promote branch");
     }
   }, [storyId]);
 
@@ -122,8 +122,8 @@ export default function StoryExplore() {
       setBranches(updatedBranches);
       setAllNodes(updatedNodes);
       toast.success("Branch deleted");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to delete branch");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete branch");
     }
   }, [storyId]);
 

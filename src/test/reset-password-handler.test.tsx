@@ -23,8 +23,8 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 vi.mock("sonner", () => ({
   toast: {
-    success: (...args: any[]) => toastSuccessMock(...args),
-    error: (...args: any[]) => toastErrorMock(...args),
+    success: (...args: unknown[]) => toastSuccessMock(...args),
+    error: (...args: unknown[]) => toastErrorMock(...args),
   },
 }));
 
@@ -52,7 +52,7 @@ describe("ResetPassword form handler", () => {
   });
 
   it("handles password reset error", async () => {
-    updateUserMock.mockResolvedValue({ error: { message: "Token expired" } });
+    updateUserMock.mockResolvedValue({ error: new Error("Token expired") });
     const { default: ResetPassword } = await import("@/pages/ResetPassword");
     render(
       <HelmetProvider>

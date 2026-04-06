@@ -8,11 +8,11 @@ const deleteBranchMock = vi.fn();
 
 vi.mock("@/lib/api-client", () => ({
   apiClient: {
-    getBranches: (...args: any[]) => getBranchesMock(...args),
-    createBranch: (...args: any[]) => createBranchMock(...args),
-    promoteBranch: (...args: any[]) => promoteBranchMock(...args),
-    renameBranch: (...args: any[]) => renameBranchMock(...args),
-    deleteBranch: (...args: any[]) => deleteBranchMock(...args),
+    getBranches: (...args: unknown[]) => getBranchesMock(...args),
+    createBranch: (...args: unknown[]) => createBranchMock(...args),
+    promoteBranch: (...args: unknown[]) => promoteBranchMock(...args),
+    renameBranch: (...args: unknown[]) => renameBranchMock(...args),
+    deleteBranch: (...args: unknown[]) => deleteBranchMock(...args),
   },
 }));
 
