@@ -31,8 +31,8 @@ export default function Contact() {
       setName("");
       setEmail("");
       setMessage("");
-    } catch (err: any) {
-      toast.error(err.message || "Something went wrong. Please try emailing us directly.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong. Please try emailing us directly.");
     } finally {
       setSubmitting(false);
     }

@@ -99,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let title = fallbackTitle;
   let description = fallbackDesc;
-  let url = token ? `${BASE_URL}/s/${token}` : BASE_URL;
+  const url = token ? `${BASE_URL}/s/${token}` : BASE_URL;
 
   if (token) {
     try {

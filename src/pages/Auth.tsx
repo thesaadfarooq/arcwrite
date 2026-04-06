@@ -58,14 +58,14 @@ export default function AuthPage() {
         if (error) throw error;
         navigate("/dashboard");
       }
-    } catch (err: any) {
-      const msg = err.message?.toLowerCase() || "";
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message.toLowerCase() : "";
       if (mode === "signup" && msg.includes("already registered")) {
         toast.error("An account with this email already exists. Try signing in instead.");
       } else if (mode === "login" && msg.includes("invalid login credentials")) {
         toast.error("Incorrect email or password. Please try again.");
       } else {
-        toast.error(err.message || "Authentication failed");
+        toast.error(err instanceof Error ? err.message : "Authentication failed");
       }
     } finally {
       setLoading(false);
@@ -79,12 +79,12 @@ export default function AuthPage() {
         options: { redirectTo: window.location.origin },
       });
       if (error) throw error;
-    } catch (err: any) {
-      const msg = err.message?.toLowerCase() || "";
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message.toLowerCase() : "";
       if (msg.includes("already registered") || msg.includes("account exists")) {
         toast.error("An account with this email already exists. Try a different sign-in method.");
       } else {
-        toast.error(err.message || "Google sign-in failed");
+        toast.error(err instanceof Error ? err.message : "Google sign-in failed");
       }
     }
   };

@@ -76,7 +76,7 @@ describe("ChoiceCards", () => {
       <ChoiceCards
         {...baseProps}
         choices={[
-          { type: "aftermath", label: "Count the cost", preview: "The ending's cost lands." } as any,
+          { type: "aftermath" as const, label: "Count the cost", preview: "The ending's cost lands." },
         ]}
         modeLabel="After the ending"
       />,

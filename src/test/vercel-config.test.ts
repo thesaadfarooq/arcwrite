@@ -14,7 +14,7 @@ describe("vercel.json configuration", () => {
 
   it("has SPA catch-all rewrite to index.html", () => {
     const catchAll = vercelConfig.rewrites.find(
-      (r: any) => r.destination === "/index.html"
+      (r: { source: string; destination: string }) => r.destination === "/index.html"
     );
     expect(catchAll).toBeDefined();
     // The source pattern should exclude /api/ and Vite dev-server paths
@@ -24,14 +24,14 @@ describe("vercel.json configuration", () => {
 
   it("has shared story OG rewrite before the catch-all", () => {
     const ogRewrite = vercelConfig.rewrites.find(
-      (r: any) => r.source === "/s/:token"
+      (r: { source: string; destination: string }) => r.source === "/s/:token"
     );
     expect(ogRewrite).toBeDefined();
     expect(ogRewrite.destination).toContain("/api/og-shared-story");
 
     const ogIndex = vercelConfig.rewrites.indexOf(ogRewrite);
     const catchAllIndex = vercelConfig.rewrites.findIndex(
-      (r: any) => r.destination === "/index.html"
+      (r: { source: string; destination: string }) => r.destination === "/index.html"
     );
     expect(ogIndex).toBeLessThan(catchAllIndex);
   });

@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { StoryCanvas } from "@/components/story/StoryCanvas";
 
 vi.mock("@/components/story/ChapterNavigation", () => ({
-  ChapterNavigation: (props: any) => (
+  ChapterNavigation: (props: { currentIndex: number; totalChapters: number }) => (
     <div data-testid="chapter-nav">
       Chapter {props.currentIndex + 1} of {props.totalChapters}
     </div>
@@ -11,7 +11,7 @@ vi.mock("@/components/story/ChapterNavigation", () => ({
 }));
 
 vi.mock("@/components/story/ParagraphActionBar", () => ({
-  ParagraphActionBar: (props: any) => (
+  ParagraphActionBar: (props: { onEdit: () => void; onRewrite: () => void }) => (
     <div data-testid="action-bar">
       <button onClick={props.onEdit}>Edit</button>
       <button onClick={props.onRewrite}>Rewrite</button>
@@ -23,7 +23,7 @@ vi.mock("@/components/story/ParagraphActionBar", () => ({
 Element.prototype.scrollIntoView = vi.fn();
 
 vi.mock("@/components/story/RewriteInput", () => ({
-  RewriteInput: (props: any) => (
+  RewriteInput: (props: { onSubmit: (text: string) => void; onCancel: () => void }) => (
     <div data-testid="rewrite-input">
       <button onClick={() => props.onSubmit("make it better")}>Submit</button>
       <button onClick={props.onCancel}>Cancel</button>

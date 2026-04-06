@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 vi.mock("../../api/_db", () => ({
   query: vi.fn(),
@@ -9,16 +10,17 @@ import { query } from "../../api/_db";
 
 const queryMock = vi.mocked(query);
 
-function mockReq(overrides: any = {}) {
-  return { method: "POST", body: {}, ...overrides } as any;
+function mockReq(overrides: Record<string, unknown> = {}) {
+  return { method: "POST", body: {}, ...overrides } as unknown as VercelRequest;
 }
 
 function mockRes() {
-  const res: any = {};
-  res.status = vi.fn().mockReturnValue(res);
-  res.json = vi.fn().mockReturnValue(res);
-  res.end = vi.fn().mockReturnValue(res);
-  return res;
+  const res = {
+    status: vi.fn().mockReturnThis(),
+    json: vi.fn().mockReturnThis(),
+    end: vi.fn().mockReturnThis(),
+  };
+  return res as typeof res & VercelResponse;
 }
 
 describe("contact API", () => {

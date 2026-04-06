@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const getSessionMock = vi.fn();
 const getUserMock = vi.fn();
@@ -18,7 +19,7 @@ vi.mock("stripe", () => ({
   })),
 }));
 
-function createReqRes(overrides: Record<string, any> = {}) {
+function createReqRes(overrides: Record<string, unknown> = {}) {
   const req = {
     method: "POST",
     headers: { authorization: "Bearer tok", origin: "http://localhost:8080" },
@@ -47,7 +48,7 @@ describe("create-checkout route", () => {
   it("returns 204 for OPTIONS", async () => {
     const handler = (await import("../../api/create-checkout")).default;
     const { req, res } = createReqRes({ method: "OPTIONS" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(204);
   });
 
@@ -55,7 +56,7 @@ describe("create-checkout route", () => {
     delete process.env.STRIPE_SECRET_KEY;
     const handler = (await import("../../api/create-checkout")).default;
     const { req, res } = createReqRes();
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(500);
     expect(res.body).toEqual({ error: "STRIPE_SECRET_KEY is not set" });
   });
@@ -63,7 +64,7 @@ describe("create-checkout route", () => {
   it("returns 500 when no authorization header", async () => {
     const handler = (await import("../../api/create-checkout")).default;
     const { req, res } = createReqRes({ headers: {} });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(500);
     expect(res.body).toEqual({ error: "No authorization header provided" });
   });
@@ -72,7 +73,7 @@ describe("create-checkout route", () => {
     getUserMock.mockResolvedValue({ data: { user: null }, error: { message: "bad" } });
     const handler = (await import("../../api/create-checkout")).default;
     const { req, res } = createReqRes();
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(500);
   });
 
@@ -80,7 +81,7 @@ describe("create-checkout route", () => {
     getUserMock.mockResolvedValue({ data: { user: { email: "test@example.com" } }, error: null });
     const handler = (await import("../../api/create-checkout")).default;
     const { req, res } = createReqRes({ body: {} });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(500);
     expect(res.body).toEqual({ error: "priceId is required" });
   });
@@ -91,7 +92,7 @@ describe("create-checkout route", () => {
     checkoutSessionsCreateMock.mockResolvedValue({ url: "https://checkout.stripe.com/session" });
     const handler = (await import("../../api/create-checkout")).default;
     const { req, res } = createReqRes();
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ url: "https://checkout.stripe.com/session" });
     expect(checkoutSessionsCreateMock).toHaveBeenCalledWith(
@@ -105,7 +106,7 @@ describe("create-checkout route", () => {
     checkoutSessionsCreateMock.mockResolvedValue({ url: "https://checkout.stripe.com/new" });
     const handler = (await import("../../api/create-checkout")).default;
     const { req, res } = createReqRes();
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(checkoutSessionsCreateMock).toHaveBeenCalledWith(
       expect.objectContaining({ customer: undefined, customer_email: "new@example.com" })
     );
@@ -117,7 +118,7 @@ describe("create-checkout route", () => {
     checkoutSessionsCreateMock.mockResolvedValue({ url: "https://checkout.stripe.com/coupon" });
     const handler = (await import("../../api/create-checkout")).default;
     const { req, res } = createReqRes({ body: { priceId: "price_123", coupon: "SAVE50" } });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(checkoutSessionsCreateMock).toHaveBeenCalledWith(
       expect.objectContaining({ discounts: [{ coupon: "SAVE50" }] })
     );

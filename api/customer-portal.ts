@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data: userData, error: authError } = await supabase.auth.getUser(token);
     if (authError || !userData.user?.email) throw new Error("Authentication failed");
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as Stripe.LatestApiVersion });
     const customers = await stripe.customers.list({ email: userData.user.email, limit: 1 });
     if (customers.data.length === 0) throw new Error("No Stripe customer found for this user");
 

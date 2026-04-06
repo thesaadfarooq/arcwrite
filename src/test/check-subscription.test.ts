@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const getAuthenticatedUserMock = vi.fn();
 const queryMock = vi.fn();
@@ -58,8 +59,8 @@ describe("check-subscription route", () => {
       {
         method: "GET",
         headers: {},
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(401);
@@ -76,8 +77,8 @@ describe("check-subscription route", () => {
       {
         method: "GET",
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(getAuthenticatedUserMock).toHaveBeenCalledWith("Bearer token");
@@ -110,8 +111,8 @@ describe("check-subscription route", () => {
       {
         method: "GET",
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryMock).toHaveBeenCalledWith(
@@ -148,8 +149,8 @@ describe("check-subscription route", () => {
       {
         method: "GET",
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryMock).toHaveBeenCalledWith(
@@ -174,8 +175,8 @@ describe("check-subscription route", () => {
       {
         method: "GET",
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(500);

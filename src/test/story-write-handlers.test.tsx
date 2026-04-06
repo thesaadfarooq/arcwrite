@@ -56,9 +56,9 @@ const {
   streamRewriteMock: vi.fn(),
   apiUpdateStoryMock: vi.fn(),
   apiUpdateNodeMock: vi.fn(),
-  latestChoiceCardsProps: { current: null as any },
-  latestStoryCanvasProps: { current: null as any },
-  latestStoryCompleteProps: { current: null as any },
+  latestChoiceCardsProps: { current: null as Record<string, unknown> | null },
+  latestStoryCanvasProps: { current: null as Record<string, unknown> | null },
+  latestStoryCompleteProps: { current: null as Record<string, unknown> | null },
   useIsMobileMock: vi.fn(),
   toastErrorMock: vi.fn(),
   toastSuccessMock: vi.fn(),
@@ -130,18 +130,18 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 vi.mock("sonner", () => ({
   toast: {
-    error: (...args: any[]) => toastErrorMock(...args),
-    success: (...args: any[]) => toastSuccessMock(...args),
-    info: (...args: any[]) => toastInfoMock(...args),
+    error: (...args: unknown[]) => toastErrorMock(...args),
+    success: (...args: unknown[]) => toastSuccessMock(...args),
+    info: (...args: unknown[]) => toastInfoMock(...args),
   },
 }));
 
 vi.mock("@/components/story/StoryCanvas", () => ({
-  StoryCanvas: (props: any) => {
+  StoryCanvas: (props: Record<string, unknown> & { paragraphs: { id: string; text: string }[]; isEditable?: boolean; onEdit?: (id: string, text: string) => void; onRewrite?: (id: string, instruction: string) => void; onRewriteAccept?: () => void; onRewriteRevert?: () => void }) => {
     latestStoryCanvasProps.current = props;
     return (
       <div data-testid="story-canvas">
-        {props.paragraphs.map((p: any, i: number) => (
+        {props.paragraphs.map((p: { id: string; text: string }, i: number) => (
           <p key={i} data-para-id={p.id}>{p.text}</p>
         ))}
         {props.isEditable !== false && props.onEdit && (
@@ -170,9 +170,9 @@ vi.mock("@/components/story/StoryCanvas", () => ({
 }));
 
 vi.mock("@/components/story/ChapterSidebar", () => ({
-  ChapterSidebar: ({ chapters, onDelete, onMerge }: any) => (
+  ChapterSidebar: ({ chapters, onDelete, onMerge }: { chapters?: { id: string; title: string; isRoot?: boolean }[]; onDelete?: (id: string) => void; onMerge?: (id: string) => void }) => (
     <div data-testid="chapter-sidebar">
-      {chapters?.map((ch: any) => (
+      {chapters?.map((ch: { id: string; title: string; isRoot?: boolean }) => (
         <div key={ch.id}>
           <span>{ch.title}</span>
           {onDelete && !ch.isRoot && (
@@ -188,11 +188,11 @@ vi.mock("@/components/story/ChapterSidebar", () => ({
 }));
 
 vi.mock("@/components/story/ChoiceCards", () => ({
-  ChoiceCards: (props: any) => {
+  ChoiceCards: (props: Record<string, unknown> & { choices: { label: string }[]; onSelect: (choice: { label: string }) => void; onRegenerate?: () => void }) => {
     latestChoiceCardsProps.current = props;
     return (
       <div data-testid="choice-cards">
-        {props.choices.map((choice: any) => (
+        {props.choices.map((choice: { label: string }) => (
           <button key={choice.label} type="button" onClick={() => props.onSelect(choice)}>
             {choice.label}
           </button>
@@ -206,7 +206,7 @@ vi.mock("@/components/story/ChoiceCards", () => ({
 }));
 
 vi.mock("@/components/story/StoryComplete", () => ({
-  StoryComplete: (props: any) => {
+  StoryComplete: (props: Record<string, unknown> & { onExport?: () => void; onShare?: () => void; onContinue?: () => void }) => {
     latestStoryCompleteProps.current = props;
     return (
       <div data-testid="story-complete">
@@ -240,9 +240,9 @@ vi.mock("@/lib/branch-api", () => ({
   deleteBranch: vi.fn(),
 }));
 vi.mock("@/components/ui/tooltip", () => ({
-  Tooltip: ({ children }: any) => <>{children}</>,
-  TooltipTrigger: ({ children }: any) => <>{children}</>,
-  TooltipContent: ({ children }: any) => <>{children}</>,
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock("@/components/story/ChapterReviewPrompt", () => ({
   ChapterReviewPrompt: () => null,
@@ -365,7 +365,7 @@ describe("StoryWrite handlers", () => {
     fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
     vi.stubGlobal("fetch", fetchMock);
 
-    streamSectionMock.mockImplementation(async ({ onDone }: any) => {
+    streamSectionMock.mockImplementation(async ({ onDone }: { onDone: (text: string) => void }) => {
       await onDone("New section text.");
     });
   });
@@ -433,7 +433,7 @@ describe("StoryWrite handlers", () => {
 
   it("triggers rewrite flow via canvas callback", async () => {
     twoNodeStory();
-    streamRewriteMock.mockImplementation(({ onDone }: any) => {
+    streamRewriteMock.mockImplementation(({ onDone }: { onDone: (text: string) => void }) => {
       onDone("Rewritten text here.");
     });
     renderStoryWrite();
@@ -450,7 +450,7 @@ describe("StoryWrite handlers", () => {
 
   it("accepts a rewrite and persists to node", async () => {
     twoNodeStory();
-    streamRewriteMock.mockImplementation(({ onDone }: any) => {
+    streamRewriteMock.mockImplementation(({ onDone }: { onDone: (text: string) => void }) => {
       onDone("Rewritten text here.");
     });
     renderStoryWrite();
@@ -469,7 +469,7 @@ describe("StoryWrite handlers", () => {
 
   it("reverts a rewrite without persisting", async () => {
     twoNodeStory();
-    streamRewriteMock.mockImplementation(({ onDone }: any) => {
+    streamRewriteMock.mockImplementation(({ onDone }: { onDone: (text: string) => void }) => {
       onDone("Rewritten text.");
     });
     renderStoryWrite();
@@ -489,7 +489,7 @@ describe("StoryWrite handlers", () => {
 
   it("handles rewrite stream error", async () => {
     twoNodeStory();
-    streamRewriteMock.mockImplementation(({ onError }: any) => {
+    streamRewriteMock.mockImplementation(({ onError }: { onError: (msg: string) => void }) => {
       onError("Rewrite failed");
     });
     renderStoryWrite();
@@ -740,7 +740,7 @@ describe("StoryWrite handlers", () => {
     getStoryNodesMock.mockResolvedValue([]);
     getAllStoryNodesMock.mockResolvedValue([]);
 
-    streamSectionMock.mockImplementation(async ({ onDone }: any) => {
+    streamSectionMock.mockImplementation(async ({ onDone }: { onDone: (text: string) => void }) => {
       await onDone("The dawn broke over the mountain. A knight stood ready.");
     });
 

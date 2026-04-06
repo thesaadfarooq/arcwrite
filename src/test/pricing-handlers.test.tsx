@@ -26,13 +26,13 @@ vi.mock("@/lib/theme", () => ({
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    auth: { getSession: (...args: any[]) => mockGetSession(...args) },
+    auth: { getSession: (...args: unknown[]) => mockGetSession(...args) },
   },
 }));
 
 vi.mock("sonner", () => ({
   toast: {
-    error: (...args: any[]) => toastErrorMock(...args),
+    error: (...args: unknown[]) => toastErrorMock(...args),
     success: vi.fn(),
   },
 }));

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const getAuthenticatedUserMock = vi.fn();
 const queryMock = vi.fn();
@@ -15,7 +16,7 @@ vi.mock("../../api/_db.js", () => ({
   withTransaction: withTransactionMock,
 }));
 
-function createReqRes(method: string, queryParams: Record<string, string> = {}, body?: any) {
+function createReqRes(method: string, queryParams: Record<string, string> = {}, body?: unknown) {
   const req = {
     method,
     headers: { authorization: "Bearer tok" },
@@ -42,7 +43,7 @@ describe("db/branches route", () => {
     getAuthenticatedUserMock.mockResolvedValue(null);
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("GET", { story_id: "s1" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(401);
   });
 
@@ -53,7 +54,7 @@ describe("db/branches route", () => {
     queryMock.mockResolvedValue([{ id: "b1", is_main: true }]);
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("GET", { story_id: "s1" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([{ id: "b1", is_main: true }]);
   });
@@ -62,7 +63,7 @@ describe("db/branches route", () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "u1" });
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("GET", {});
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(400);
   });
 
@@ -71,7 +72,7 @@ describe("db/branches route", () => {
     queryOneMock.mockResolvedValue(null);
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("GET", { story_id: "s1" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(404);
   });
 
@@ -88,7 +89,7 @@ describe("db/branches route", () => {
       fork_node_id: "n1",
       name: "My Branch",
     });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(201);
   });
 
@@ -96,7 +97,7 @@ describe("db/branches route", () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "u1" });
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("POST", { action: "create" }, {});
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(400);
   });
 
@@ -104,7 +105,7 @@ describe("db/branches route", () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "u1" });
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("POST", { action: "unknown" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(400);
   });
 
@@ -113,7 +114,7 @@ describe("db/branches route", () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "u1" });
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("POST", { action: "promote" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(400);
   });
 
@@ -122,7 +123,7 @@ describe("db/branches route", () => {
     queryOneMock.mockResolvedValue(null);
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("POST", { action: "promote", id: "b1" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(404);
   });
 
@@ -131,7 +132,7 @@ describe("db/branches route", () => {
     queryOneMock.mockResolvedValue({ id: "b1", story_id: "s1", is_main: true, tip_node_id: "n1" });
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("POST", { action: "promote", id: "b1" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({ error: "Branch is already main" });
   });
@@ -141,7 +142,7 @@ describe("db/branches route", () => {
     queryOneMock.mockResolvedValue({ id: "b1", story_id: "s1", is_main: false, tip_node_id: null });
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("POST", { action: "promote", id: "b1" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(400);
   });
 
@@ -151,10 +152,10 @@ describe("db/branches route", () => {
     const clientMock = {
       query: vi.fn().mockResolvedValue({ rows: [{ id: "n3", parent_id: "n2" }, { id: "n2", parent_id: null }] }),
     };
-    withTransactionMock.mockImplementation(async (fn: any) => fn(clientMock));
+    withTransactionMock.mockImplementation(async (fn: (client: unknown) => unknown) => fn(clientMock));
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("POST", { action: "promote", id: "b2" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ success: true });
   });
@@ -165,7 +166,7 @@ describe("db/branches route", () => {
     queryOneMock.mockResolvedValue({ id: "b1", name: "New Name" });
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("PATCH", { id: "b1" }, { name: "New Name" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(200);
   });
 
@@ -173,7 +174,7 @@ describe("db/branches route", () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "u1" });
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("PATCH", { id: "b1" }, { name: 123 });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(400);
   });
 
@@ -182,10 +183,10 @@ describe("db/branches route", () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "u1" });
     queryOneMock.mockResolvedValue({ id: "b2", story_id: "s1", is_main: false, tip_node_id: "n1" });
     const clientMock = { query: vi.fn().mockResolvedValue({ rows: [] }) };
-    withTransactionMock.mockImplementation(async (fn: any) => fn(clientMock));
+    withTransactionMock.mockImplementation(async (fn: (client: unknown) => unknown) => fn(clientMock));
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("DELETE", { id: "b2" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ success: true });
   });
@@ -195,7 +196,7 @@ describe("db/branches route", () => {
     queryOneMock.mockResolvedValue({ id: "b1", story_id: "s1", is_main: true, tip_node_id: "n1" });
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("DELETE", { id: "b1" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(400);
   });
 
@@ -204,7 +205,7 @@ describe("db/branches route", () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "u1" });
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("PUT", { id: "b1" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(405);
   });
 
@@ -212,7 +213,7 @@ describe("db/branches route", () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "u1" });
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("PUT");
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(405);
   });
 
@@ -220,7 +221,7 @@ describe("db/branches route", () => {
     getAuthenticatedUserMock.mockRejectedValue(new Error("boom"));
     const handler = (await import("../../api/db/branches")).default;
     const { req, res } = createReqRes("GET", { story_id: "s1" });
-    await handler(req as any, res as any);
+    await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(500);
   });
 });

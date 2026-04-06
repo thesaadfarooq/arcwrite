@@ -44,7 +44,7 @@ export default function Dashboard() {
       refreshSubscription();
       window.history.replaceState({}, "", window.location.pathname);
     }
-  }, []);
+  }, [refreshSubscription]);
 
   const fetchStories = async () => {
     try {

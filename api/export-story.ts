@@ -1,6 +1,19 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type Stripe from "stripe";
 import { query, queryOne } from "./_db.js";
 import { getAuthenticatedUser } from "./_lib/auth.js";
+
+interface StoryRow {
+  title: string | null;
+  genre: string | null;
+}
+
+interface StoryNodeRow {
+  text: string | null;
+  chosen_option: { label: string } | null;
+  chapter_title: string | null;
+  starts_chapter: boolean | null;
+}
 
 export const config = { runtime: "nodejs", maxDuration: 10 };
 
@@ -30,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (tierOverride !== "plus" && tierOverride !== "pro") {
       // Check Stripe for actual subscription
       const Stripe = (await import("stripe")).default;
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-08-27.basil" as any });
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-08-27.basil" as Stripe.LatestApiVersion });
       const customers = await stripe.customers.list({ email: user.email, limit: 1 });
       if (customers.data.length === 0) {
         return res.status(403).json({ error: "PDF export requires a Plus or Pro plan" });
@@ -41,25 +54,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const story = await queryOne<any>(
+    const story = await queryOne<StoryRow>(
       "SELECT * FROM stories WHERE id = $1 AND user_id = $2",
       [storyId, user.id]
     );
 
     if (!story) return res.status(404).json({ error: "Story not found" });
 
-    const nodes = await query<any>(
+    const nodes = await query<StoryNodeRow>(
       "SELECT text, chosen_option, chapter_title, starts_chapter FROM story_nodes WHERE story_id = $1 AND is_active = true ORDER BY created_at ASC",
       [storyId]
     );
 
-    const sections = nodes.map((node: any, i: number) => ({
+    const sections = nodes.map((node: StoryNodeRow, i: number) => ({
       title: node.chapter_title || node.chosen_option?.label || (i === 0 ? "Opening" : `Section ${i + 1}`),
       paragraphs: (node.text || "").split("\n\n").filter(Boolean),
       startsChapter: !!node.starts_chapter,
     }));
 
-    const fullText = nodes.map((n: any) => n.text).join("\n\n");
+    const fullText = nodes.map((n: StoryNodeRow) => n.text).join("\n\n");
     const wordCount = fullText.split(/\s+/).filter(Boolean).length;
 
     return res.json({

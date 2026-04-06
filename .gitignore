@@ -1,5 +1,15 @@
 # Superpowers brainstorm artifacts
 .superpowers/
+docs/superpowers/
+
+# Claude Code
+.claude/
+
+# Playwright MCP
+.playwright-mcp/
+
+# Coverage reports
+coverage/
 
 # Logs
 logs

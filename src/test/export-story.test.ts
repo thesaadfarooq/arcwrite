@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const getAuthenticatedUserMock = vi.fn();
 const queryMock = vi.fn();
@@ -57,8 +58,8 @@ describe("export-story route", () => {
         method: "POST",
         headers: {},
         body: { storyId: "story-1" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(401);
@@ -96,8 +97,8 @@ describe("export-story route", () => {
         method: "POST",
         headers: { authorization: "Bearer token" },
         body: { storyId: "story-1" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(getAuthenticatedUserMock).toHaveBeenCalledWith("Bearer token");
@@ -146,8 +147,8 @@ describe("export-story route", () => {
         method: "POST",
         headers: { authorization: "Bearer token" },
         body: { storyId: "story-2" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(403);
@@ -165,8 +166,8 @@ describe("export-story route", () => {
         method: "POST",
         headers: { authorization: "Bearer token" },
         body: { storyId: "story-3" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(500);

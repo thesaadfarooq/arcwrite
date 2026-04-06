@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 vi.mock("@/components/story/BranchGraph", () => ({
-  BranchGraph: (props: any) => <div data-testid="branch-graph">Graph ({props.nodes?.length ?? 0} nodes)</div>,
+  BranchGraph: (props: { nodes?: unknown[] }) => <div data-testid="branch-graph">Graph ({props.nodes?.length ?? 0} nodes)</div>,
 }));
 
 describe("ExplorePane", () => {

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const queryOneMock = vi.fn();
 const readFileSyncMock = vi.fn();
@@ -52,8 +53,8 @@ describe("og-shared-story route", () => {
       {
         query: { token: "share-token" },
         headers: { "user-agent": "Mozilla/5.0" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(readFileSyncMock).toHaveBeenCalled();
@@ -74,8 +75,8 @@ describe("og-shared-story route", () => {
       {
         query: { token: "share-token" },
         headers: { "user-agent": "Twitterbot/1.0" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryOneMock).toHaveBeenCalledWith(
@@ -96,8 +97,8 @@ describe("og-shared-story route", () => {
       {
         query: { token: "missing-token" },
         headers: { "user-agent": "Slackbot 1.0" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(200);

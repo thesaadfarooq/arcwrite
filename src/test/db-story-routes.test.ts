@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const getAuthenticatedUserMock = vi.fn();
 const ensureProfileMock = vi.fn();
@@ -50,8 +51,8 @@ describe("story database routes", () => {
         method: "GET",
         query: {},
         headers: {},
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(401);
@@ -69,8 +70,8 @@ describe("story database routes", () => {
         method: "GET",
         query: {},
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(getAuthenticatedUserMock).toHaveBeenCalledWith("Bearer token");
@@ -95,8 +96,8 @@ describe("story database routes", () => {
         query: {},
         headers: { authorization: "Bearer token" },
         body: {},
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryOneMock).toHaveBeenCalledWith(
@@ -123,8 +124,8 @@ describe("story database routes", () => {
           targetTurns: 45,
           arcOverride: "concluding",
         },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryOneMock).toHaveBeenCalledWith(
@@ -157,8 +158,8 @@ describe("story database routes", () => {
           title: "Arc Story",
           arc_state: arcState,
         },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryOneMock).toHaveBeenCalledWith(
@@ -180,8 +181,8 @@ describe("story database routes", () => {
         method: "GET",
         query: {},
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(500);
@@ -200,8 +201,8 @@ describe("story database routes", () => {
         query: { id: "story-3" },
         headers: { authorization: "Bearer token" },
         body: { title: "Renamed", share_token: "share-me" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryOneMock).toHaveBeenCalledWith(
@@ -224,8 +225,8 @@ describe("story database routes", () => {
         query: { id: "story-3b" },
         headers: { authorization: "Bearer token" },
         body: { targetTurns: 18, arcOverride: "concluding" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryOneMock).toHaveBeenCalledWith(
@@ -259,8 +260,8 @@ describe("story database routes", () => {
         query: { id: "story-3bb" },
         headers: { authorization: "Bearer token" },
         body: { arcOverride: "concluding", arcState: arcState },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryOneMock).toHaveBeenCalledWith(
@@ -287,8 +288,8 @@ describe("story database routes", () => {
         query: { id: "story-3c" },
         headers: { authorization: "Bearer token" },
         body: { targetTurns: 18, target_turns: 35 },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryOneMock).toHaveBeenCalledWith(
@@ -310,8 +311,8 @@ describe("story database routes", () => {
         query: { id: "story-4" },
         headers: { authorization: "Bearer token" },
         body: {},
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(404);
@@ -329,8 +330,8 @@ describe("story database routes", () => {
         method: "GET",
         query: { count: "true" },
         headers: { authorization: "Bearer token" },
-      } as any,
-      res as any
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
     );
 
     expect(queryCountMock).toHaveBeenCalledWith(
