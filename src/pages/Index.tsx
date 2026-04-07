@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, PenLine, GitBranch, Sparkles, ArrowRight, Shield, Flame, Heart, Zap } from "lucide-react";
+import { BookOpen, PenLine, GitBranch, Sparkles, ArrowRight, Shield, Flame, Heart, Zap, Network, Palette, Share2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import SEO from "@/components/SEO";
 import Footer from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
+import { HeroGraphSequence } from "@/components/demo/HeroGraphSequence";
 
 // ── Fake story data for the hero animation ──────────────────────────
 const DEMO_PARAGRAPHS = [
@@ -68,6 +69,188 @@ function useTypewriter(texts: string[], charDelay = 18, paragraphPause = 600) {
   return { displayed, done };
 }
 
+// ── How It Works vignette components ────────────────────────────────
+
+function useInView(threshold = 0.3) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [threshold]);
+  return { ref, visible };
+}
+
+function HowItWorksVignette1({ stepIndex }: { stepIndex: number }) {
+  const { ref, visible } = useInView();
+  const { displayed, done } = useTypewriter(
+    visible ? ["A young mage finds a book that breathes..."] : [],
+    38,
+    0
+  );
+
+  return (
+    <div ref={ref} className="text-center md:text-left">
+      {/* Mini input vignette */}
+      <div className="mb-4 h-14 rounded-lg border border-border bg-card/80 px-3 py-2 flex items-center">
+        <span className="font-story text-xs text-foreground/70 leading-snug">
+          {displayed[0] ?? ""}
+          {visible && !done && (
+            <span className="inline-block w-[2px] h-[0.9em] bg-primary ml-0.5 animate-pulse align-middle" />
+          )}
+        </span>
+      </div>
+      <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center text-primary mb-4 mx-auto md:mx-0">
+        <PenLine className="w-5 h-5" />
+      </div>
+      <div className="text-xs font-medium text-primary mb-2 uppercase tracking-wider">Step {stepIndex + 1}</div>
+      <h3 className="font-medium text-foreground mb-1.5">{HOW_IT_WORKS[stepIndex].title}</h3>
+      <p className="text-sm text-muted-foreground leading-relaxed">{HOW_IT_WORKS[stepIndex].description}</p>
+    </div>
+  );
+}
+
+const VIGNETTE2_PILLS = [
+  { label: "safe", color: "choice-safe" },
+  { label: "risky", color: "choice-risky" },
+  { label: "emotional", color: "choice-emotional" },
+  { label: "chaotic", color: "choice-chaotic" },
+];
+
+function HowItWorksVignette2({ stepIndex }: { stepIndex: number }) {
+  const { ref, visible } = useInView();
+  const [highlighted, setHighlighted] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      const t = setTimeout(() => setHighlighted(true), VIGNETTE2_PILLS.length * 120 + 400);
+      return () => clearTimeout(t);
+    }
+  }, [visible]);
+
+  return (
+    <div ref={ref} className="text-center md:text-left">
+      {/* Choice pills vignette */}
+      <div className="mb-4 h-14 flex flex-wrap items-center gap-1.5 px-1">
+        {VIGNETTE2_PILLS.map((pill, i) => (
+          <span
+            key={pill.label}
+            className="px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all duration-300"
+            style={{
+              borderColor: `hsl(var(--${pill.color}) / 0.4)`,
+              color: `hsl(var(--${pill.color}))`,
+              backgroundColor:
+                highlighted && pill.label === "safe"
+                  ? `hsl(var(--${pill.color}) / 0.15)`
+                  : `hsl(var(--${pill.color}) / 0.06)`,
+              opacity: visible ? 1 : 0,
+              transform: visible ? "translateY(0)" : "translateY(6px)",
+              transitionDelay: `${i * 120}ms`,
+              fontWeight: highlighted && pill.label === "safe" ? 700 : undefined,
+            }}
+          >
+            {pill.label}
+          </span>
+        ))}
+      </div>
+      <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center text-primary mb-4 mx-auto md:mx-0">
+        <GitBranch className="w-5 h-5" />
+      </div>
+      <div className="text-xs font-medium text-primary mb-2 uppercase tracking-wider">Step {stepIndex + 1}</div>
+      <h3 className="font-medium text-foreground mb-1.5">{HOW_IT_WORKS[stepIndex].title}</h3>
+      <p className="text-sm text-muted-foreground leading-relaxed">{HOW_IT_WORKS[stepIndex].description}</p>
+    </div>
+  );
+}
+
+const VIGNETTE3_NODES = [
+  { x: 50, y: 12, r: 5 },
+  { x: 25, y: 42, r: 4 },
+  { x: 75, y: 42, r: 4 },
+  { x: 50, y: 72, r: 4 },
+];
+const VIGNETTE3_EDGES = [
+  [0, 1],
+  [0, 2],
+  [1, 3],
+];
+
+function HowItWorksVignette3({ stepIndex }: { stepIndex: number }) {
+  const { ref, visible } = useInView();
+  const [revealedCount, setRevealedCount] = useState(0);
+
+  useEffect(() => {
+    if (!visible) return;
+    let count = 0;
+    const interval = setInterval(() => {
+      count += 1;
+      setRevealedCount(count);
+      if (count >= VIGNETTE3_NODES.length) clearInterval(interval);
+    }, 300);
+    return () => clearInterval(interval);
+  }, [visible]);
+
+  return (
+    <div ref={ref} className="text-center md:text-left">
+      {/* Tiny SVG graph vignette */}
+      <div className="mb-4 h-14 flex items-center justify-start">
+        <svg viewBox="0 0 100 85" className="w-20 h-14" aria-hidden="true">
+          {VIGNETTE3_EDGES.map(([a, b], i) => {
+            const na = VIGNETTE3_NODES[a];
+            const nb = VIGNETTE3_NODES[b];
+            const bothVisible = revealedCount > a && revealedCount > b;
+            return (
+              <line
+                key={i}
+                x1={na.x} y1={na.y}
+                x2={nb.x} y2={nb.y}
+                stroke="hsl(var(--border))"
+                strokeWidth="1.5"
+                style={{
+                  opacity: bothVisible ? 1 : 0,
+                  transition: "opacity 0.3s ease",
+                }}
+              />
+            );
+          })}
+          {VIGNETTE3_NODES.map((n, i) => (
+            <circle
+              key={i}
+              cx={n.x} cy={n.y} r={n.r}
+              fill={i === 0 ? "hsl(var(--primary))" : "hsl(var(--card))"}
+              stroke="hsl(var(--primary))"
+              strokeWidth="1.5"
+              style={{
+                opacity: revealedCount > i ? 1 : 0,
+                transform: `scale(${revealedCount > i ? 1 : 0.4})`,
+                transformOrigin: `${n.x}px ${n.y}px`,
+                transition: "opacity 0.3s ease, transform 0.3s ease",
+              }}
+            />
+          ))}
+        </svg>
+      </div>
+      <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center text-primary mb-4 mx-auto md:mx-0">
+        <Sparkles className="w-5 h-5" />
+      </div>
+      <div className="text-xs font-medium text-primary mb-2 uppercase tracking-wider">Step {stepIndex + 1}</div>
+      <h3 className="font-medium text-foreground mb-1.5">{HOW_IT_WORKS[stepIndex].title}</h3>
+      <p className="text-sm text-muted-foreground leading-relaxed">{HOW_IT_WORKS[stepIndex].description}</p>
+    </div>
+  );
+}
+
 // ── Main page ───────────────────────────────────────────────────────
 const Index = () => {
   const navigate = useNavigate();
@@ -75,6 +258,7 @@ const Index = () => {
 
   const { displayed, done: typingDone } = useTypewriter(DEMO_PARAGRAPHS, 16, 500);
   const [showChoices, setShowChoices] = useState(false);
+  const [graphPhaseStarted, setGraphPhaseStarted] = useState(false);
 
   useEffect(() => {
     if (typingDone) {
@@ -82,6 +266,13 @@ const Index = () => {
       return () => clearTimeout(t);
     }
   }, [typingDone]);
+
+  useEffect(() => {
+    if (showChoices) {
+      const t = setTimeout(() => setGraphPhaseStarted(true), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [showChoices]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -140,7 +331,7 @@ const Index = () => {
               }}
             />
 
-            <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm p-6 md:p-8 max-h-[420px] overflow-hidden">
+            <div className={`rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm p-6 md:p-8 max-h-[420px] overflow-hidden${graphPhaseStarted ? " animate-morph-shrink" : ""}`}>
               {/* Fake editor chrome */}
               <div className="flex items-center gap-2 mb-5 pb-4 border-b border-border/50">
                 <BookOpen className="w-4 h-4 text-primary" />
@@ -192,6 +383,8 @@ const Index = () => {
                 </div>
               )}
             </div>
+
+            {showChoices && <HeroGraphSequence triggered={showChoices} />}
           </div>
         </div>
       </section>
@@ -207,19 +400,39 @@ const Index = () => {
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {HOW_IT_WORKS.map((step, i) => {
-              const Icon = step.icon;
+            {/* Vignette 1 — Describe your idea */}
+            <HowItWorksVignette1 stepIndex={0} />
+            {/* Vignette 2 — Choose what happens */}
+            <HowItWorksVignette2 stepIndex={1} />
+            {/* Vignette 3 — Watch it unfold */}
+            <HowItWorksVignette3 stepIndex={2} />
+          </div>
+        </div>
+      </section>
+
+      {/* Features highlight strip */}
+      <section className="py-16 px-6 border-t border-border/50">
+        <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { icon: GitBranch, title: "Branching choices", desc: "Four directions every turn" },
+              { icon: Palette, title: "Genre & tone", desc: "Six genres, your voice" },
+              { icon: Network, title: "Story tree", desc: "Visualize every path" },
+              { icon: Share2, title: "Export & share", desc: "PDF, public links" },
+            ].map((f, i) => {
+              const Icon = f.icon;
               return (
-                <div key={i} className="text-center md:text-left">
-                  <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center text-primary mb-4 mx-auto md:mx-0">
-                    <Icon className="w-5 h-5" />
+                <button
+                  key={i}
+                  onClick={() => navigate("/features")}
+                  className="p-4 rounded-xl border border-border bg-card/60 hover:bg-card transition-colors text-left group"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center text-primary mb-3 group-hover:bg-primary/10 transition-colors">
+                    <Icon className="w-4 h-4" />
                   </div>
-                  <div className="text-xs font-medium text-primary mb-2 uppercase tracking-wider">
-                    Step {i + 1}
-                  </div>
-                  <h3 className="font-medium text-foreground mb-1.5">{step.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
-                </div>
+                  <div className="text-sm font-medium text-foreground mb-0.5">{f.title}</div>
+                  <div className="text-xs text-muted-foreground">{f.desc}</div>
+                </button>
               );
             })}
           </div>
