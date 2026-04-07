@@ -28,7 +28,7 @@ describe("GenreLanding page", () => {
     const { default: GenreLanding } = await import("@/pages/GenreLanding");
     renderGenre("fantasy", GenreLanding);
     expect(screen.getByText(/write your own fantasy adventure/i)).toBeDefined();
-    expect(screen.getByText("What you can create")).toBeDefined();
+    expect(screen.getByText("More story ideas")).toBeDefined();
   });
 
   it("renders the scifi genre page", async () => {
