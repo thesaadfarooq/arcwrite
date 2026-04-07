@@ -37,28 +37,6 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 
-function renderAuth() {
-  render(
-    <HelmetProvider>
-      <MemoryRouter>
-        <div id="render-root" />
-      </MemoryRouter>
-    </HelmetProvider>
-  );
-}
-
-async function renderAuthPage() {
-  const { default: AuthPage } = await import("@/pages/Auth");
-  const { unmount } = render(
-    <HelmetProvider>
-      <MemoryRouter>
-        <AuthPage />
-      </MemoryRouter>
-    </HelmetProvider>
-  );
-  return { unmount };
-}
-
 describe("Auth OTP verification", () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -173,11 +151,54 @@ describe("Auth OTP verification", () => {
 
     const digitInputs = screen.getAllByRole("textbox") as HTMLInputElement[];
 
-    // Type a digit into the first input — focus should advance
+    // Type a digit into the first input — focus should advance to the second input
+    digitInputs[0].focus();
     fireEvent.change(digitInputs[0], { target: { value: "1" } });
 
     // The first input should now hold "1"
     expect(digitInputs[0].value).toBe("1");
+    // Focus must have moved to the next input
+    expect(document.activeElement).toBe(digitInputs[1]);
+  });
+
+  it("moves focus to previous input on Backspace when current input is empty", async () => {
+    mockSignUp.mockResolvedValueOnce({ error: null });
+
+    const { default: AuthPage } = await import("@/pages/Auth");
+    const { fireEvent } = await import("@testing-library/react");
+
+    render(
+      <HelmetProvider>
+        <MemoryRouter>
+          <AuthPage />
+        </MemoryRouter>
+      </HelmetProvider>
+    );
+
+    fireEvent.click(screen.getByText("Sign up"));
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "test@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "Password1" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirm password"), {
+      target: { value: "Password1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Check your email")).toBeDefined();
+    });
+
+    const digitInputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+
+    // Put focus on the second input (which is empty) and press Backspace
+    digitInputs[1].focus();
+    fireEvent.keyDown(digitInputs[1], { key: "Backspace" });
+
+    // Focus should have moved back to the first input
+    expect(document.activeElement).toBe(digitInputs[0]);
   });
 
   it("calls verifyOtp when all 6 digits are entered", async () => {
