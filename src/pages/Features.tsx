@@ -5,27 +5,29 @@ import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/Navbar";
 import SEO from "@/components/SEO";
 import Footer from "@/components/Footer";
+import { DemoStoryViewer } from "@/components/demo/DemoStoryViewer";
+import { DEMO_TREES } from "@/lib/demo-stories";
 
 const FEATURES = [
-  {
-    icon: Sparkles,
-    title: "AI-Powered Prose",
-    description: "Describe what happens next in plain language. The AI transforms your direction into polished narrative prose — matching your story's tone, genre, and voice.",
-  },
   {
     icon: GitBranch,
     title: "Branching Choices",
     description: "Every turn ends with four AI-generated choices — safe, risky, emotional, and chaotic. Pick one, or write your own direction to steer the plot.",
   },
   {
-    icon: Palette,
-    title: "Genre & Tone",
-    description: "Choose from six genres — fantasy, sci-fi, mystery, romance, horror, and thriller — and set the tone from dark and gritty to whimsical and light.",
-  },
-  {
     icon: Network,
     title: "Story Tree",
     description: "Visualize your entire narrative as a branching tree. See every path you've taken, revisit earlier turns, and explore the roads not traveled.",
+  },
+  {
+    icon: Sparkles,
+    title: "AI-Powered Prose",
+    description: "Describe what happens next in plain language. The AI transforms your direction into polished narrative prose — matching your story's tone, genre, and voice.",
+  },
+  {
+    icon: Palette,
+    title: "Genre & Tone",
+    description: "Choose from six genres — fantasy, sci-fi, mystery, romance, horror, and thriller — and set the tone from dark and gritty to whimsical and light.",
   },
   {
     icon: FileDown,
@@ -83,6 +85,19 @@ export default function Features() {
           <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto">
             Arcwrite combines AI prose generation with branching narrative design. You direct the plot — the AI handles the writing.
           </p>
+        </div>
+      </section>
+
+      {/* Interactive demo */}
+      <section className="py-16 px-6 border-t border-border/50">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground text-center mb-3">
+            Explore a story
+          </h2>
+          <p className="text-muted-foreground text-center mb-10 max-w-md mx-auto">
+            Click any node in the tree to read that part of the story and see the path that led there.
+          </p>
+          <DemoStoryViewer nodes={DEMO_TREES.features.nodes} title={DEMO_TREES.features.title} />
         </div>
       </section>
 
