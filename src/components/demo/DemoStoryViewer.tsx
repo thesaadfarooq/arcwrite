@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { BookOpen } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { BookOpen, CornerDownLeft, Shield, Flame, Heart, Zap } from "lucide-react";
 import { DemoGraph } from "@/components/demo/DemoGraph";
 import type { DemoNode } from "@/lib/demo-stories";
 
@@ -11,13 +11,13 @@ export interface DemoStoryViewerProps {
   className?: string;
 }
 
-// ─── Choice type pill colours ─────────────────────────────────────────────────
+// ─── Choice styling ──────────────────────────────────────────────────────────
 
-const choiceTypeColors: Record<string, string> = {
-  safe: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  risky: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-  emotional: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
-  chaotic: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+const CHOICE_META: Record<string, { icon: typeof Shield; color: string; bg: string }> = {
+  safe:      { icon: Shield, color: "hsl(var(--choice-safe))",      bg: "hsl(var(--choice-safe) / 0.1)" },
+  risky:     { icon: Flame,  color: "hsl(var(--choice-risky))",     bg: "hsl(var(--choice-risky) / 0.1)" },
+  emotional: { icon: Heart,  color: "hsl(var(--choice-emotional))", bg: "hsl(var(--choice-emotional) / 0.1)" },
+  chaotic:   { icon: Zap,    color: "hsl(var(--choice-chaotic))",   bg: "hsl(var(--choice-chaotic) / 0.1)" },
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -26,66 +26,167 @@ export function DemoStoryViewer({ nodes, title, className }: DemoStoryViewerProp
   const rootNode = nodes.find((n) => n.parentId === null)!;
   const [selectedNodeId, setSelectedNodeId] = useState<string>(rootNode.id);
 
+  // Track which nodes have been revealed (grows as user makes choices)
+  const [revealedIds, setRevealedIds] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    initial.add(rootNode.id);
+    // Also reveal root's children (the first set of choices)
+    nodes.filter((n) => n.parentId === rootNode.id).forEach((n) => initial.add(n.id));
+    return initial;
+  });
+
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? rootNode;
-  const isRoot = selectedNode.parentId === null;
+
+  // Build path from root → selected node
+  const pathNodes = useMemo(() => {
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    const path: DemoNode[] = [];
+    let cur: DemoNode | undefined = selectedNode;
+    while (cur) {
+      path.unshift(cur);
+      cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+    }
+    return path;
+  }, [nodes, selectedNode]);
+
+  // Children of selected node = available choices
+  const children = useMemo(
+    () => nodes.filter((n) => n.parentId === selectedNodeId),
+    [nodes, selectedNodeId],
+  );
+
+  const totalWords = pathNodes.reduce((sum, n) => sum + n.wordCount, 0);
+
+  // When user picks a choice, reveal that node + its children
+  const handleChoiceSelect = useCallback((nodeId: string) => {
+    setSelectedNodeId(nodeId);
+    setRevealedIds((prev) => {
+      const next = new Set(prev);
+      next.add(nodeId);
+      nodes.filter((n) => n.parentId === nodeId).forEach((n) => next.add(n.id));
+      return next;
+    });
+  }, [nodes]);
+
+  // When user clicks a node in the tree (revert)
+  const handleTreeNodeSelect = useCallback((nodeId: string) => {
+    setSelectedNodeId(nodeId);
+    // Reveal its children if not already
+    setRevealedIds((prev) => {
+      const next = new Set(prev);
+      nodes.filter((n) => n.parentId === nodeId).forEach((n) => next.add(n.id));
+      return next;
+    });
+  }, [nodes]);
 
   return (
-    <div
-      className={`flex flex-col md:flex-row gap-4${className ? ` ${className}` : ""}`}
-    >
-      {/* Graph panel */}
-      <div className="flex-1 min-h-[280px] md:min-h-[360px] rounded-lg border bg-card overflow-hidden">
-        <DemoGraph
-          nodes={nodes}
-          selectedNodeId={selectedNodeId}
-          onNodeSelect={setSelectedNodeId}
-          className="w-full h-full"
-        />
-      </div>
-
-      {/* Reading panel */}
-      <div className="flex-[1.2] rounded-lg border bg-card p-5 md:p-6 flex flex-col gap-3">
-        {/* Header bar */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <BookOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-          <span className="font-medium text-sm text-foreground">{title}</span>
-          {selectedNode.startsChapter && (
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-              Chapter start
-            </span>
-          )}
-        </div>
-
-        {/* Choice info (non-root only) */}
-        {!isRoot && selectedNode.chosenLabel && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-muted-foreground">Choice made:</span>
-            <span
-              className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                selectedNode.chosenType
-                  ? (choiceTypeColors[selectedNode.chosenType] ?? "bg-muted text-muted-foreground")
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {selectedNode.chosenLabel}
-            </span>
-            {selectedNode.chosenType && (
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
-                {selectedNode.chosenType}
+    <div className={`flex flex-col lg:flex-row gap-4${className ? ` ${className}` : ""}`}>
+      {/* ── Editor panel (left) ──────────────────────────── */}
+      <div className="flex-1 flex flex-col">
+        <p className="text-xs text-muted-foreground mb-2 px-1">
+          Choose what happens next — the AI writes each turn.
+        </p>
+        <div className="rounded-xl border border-border bg-card flex-1 flex flex-col">
+          {/* Editor chrome header */}
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-border/50">
+            <BookOpen className="w-4 h-4 text-primary" />
+            <span className="font-story text-sm font-medium text-foreground">{title}</span>
+            {selectedNode.startsChapter && (
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                Chapter start
               </span>
             )}
+            <span className="ml-auto text-[10px] text-muted-foreground/60 font-medium">
+              {totalWords} words
+            </span>
           </div>
-        )}
 
-        {/* Story text */}
-        <p className="font-story text-sm leading-relaxed text-foreground/80 flex-1">
-          {selectedNode.text}
-        </p>
+          {/* Story text */}
+          <div className="px-5 py-4 space-y-3 max-h-[260px] overflow-y-auto flex-1">
+            {pathNodes.map((node, i) => (
+              <p
+                key={node.id}
+                className={`font-story text-sm leading-relaxed ${
+                  i < pathNodes.length - 1 ? "text-foreground/40" : "text-foreground/80"
+                }`}
+              >
+                {node.text}
+              </p>
+            ))}
+          </div>
 
-        {/* Word count */}
-        <p className="text-xs text-muted-foreground">
-          {selectedNode.wordCount} words
+          {/* Choices or end-of-path */}
+          <div className="px-5 py-4 border-t border-border/50">
+            {children.length > 0 ? (
+              <>
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                  What happens next?
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {children.map((child) => {
+                    const meta = child.chosenType ? CHOICE_META[child.chosenType] : null;
+                    const Icon = meta?.icon;
+                    return (
+                      <button
+                        key={child.id}
+                        onClick={() => handleChoiceSelect(child.id)}
+                        className="p-3 rounded-lg border border-border bg-background hover:bg-muted/50 hover:border-primary/30 transition-colors text-left group"
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          {Icon && (
+                            <div
+                              className="w-5 h-5 rounded flex items-center justify-center"
+                              style={{ backgroundColor: meta!.bg, color: meta!.color }}
+                            >
+                              <Icon className="w-3 h-3" />
+                            </div>
+                          )}
+                          {child.chosenType && (
+                            <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
+                              {child.chosenType}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs font-medium text-foreground/80 group-hover:text-foreground transition-colors">
+                          {child.chosenLabel}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-2">
+                <p className="text-sm text-muted-foreground mb-3">End of this path</p>
+                {selectedNode.parentId && (
+                  <button
+                    onClick={() => handleTreeNodeSelect(selectedNode.parentId!)}
+                    className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
+                  >
+                    <CornerDownLeft className="w-3 h-3" />
+                    Go back and try another path
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Tree panel (right) ───────────────────────────── */}
+      <div className="flex-1 flex flex-col">
+        <p className="text-xs text-muted-foreground mb-2 px-1">
+          Click any node to revert — explore different paths your story could take.
         </p>
+        <div className="rounded-xl border border-border bg-card flex-1 min-h-[320px] lg:min-h-0">
+          <DemoGraph
+            nodes={nodes}
+            selectedNodeId={selectedNodeId}
+            onNodeSelect={handleTreeNodeSelect}
+            revealedNodeIds={revealedIds}
+            className="w-full h-full"
+          />
+        </div>
       </div>
     </div>
   );

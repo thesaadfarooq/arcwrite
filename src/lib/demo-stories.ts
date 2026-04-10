@@ -259,6 +259,15 @@ const fantasyNodes: DemoNode[] = [
     wordCount: 42,
     startsChapter: false,
   },
+  {
+    id: "fan-3d",
+    parentId: "fan-2b",
+    chosenLabel: "Refuse the burden and walk away",
+    chosenType: "risky",
+    text: "She turned from his door without answering. Behind her, the mountain groaned. The glow pulsed once, brighter, then dimmed. By the time she reached the village square, the first frost in living memory was forming on the well.",
+    wordCount: 38,
+    startsChapter: false,
+  },
 ];
 
 // ── scifi: "Signal from the Fold" (6 nodes, 2 branches) ──────────────
@@ -317,6 +326,15 @@ const scifiNodes: DemoNode[] = [
     wordCount: 41,
     startsChapter: false,
   },
+  {
+    id: "sci-3d",
+    parentId: "sci-2b",
+    chosenLabel: "Delete the manifest and deny everything",
+    chosenType: "chaotic",
+    text: "She wiped the file and cleared the transmission log. For eleven seconds, the bridge was quiet. Then the beacon resumed — louder, closer. The new message was one line: deletion acknowledged. Adjusting course to intercept.",
+    wordCount: 35,
+    startsChapter: false,
+  },
 ];
 
 // ── mystery: "The Missing Hour" (6 nodes, 2 branches) ────────────────
@@ -372,6 +390,15 @@ const mysteryNodes: DemoNode[] = [
     chosenLabel: "Trace the knocking pattern",
     chosenType: "chaotic",
     text: "Three quick knocks. She had heard that pattern before — in a cold case from 2011, a different building, a different corridor. The victim in that case had also vanished between camera frames. That case was still open.",
+    wordCount: 38,
+    startsChapter: false,
+  },
+  {
+    id: "mys-3d",
+    parentId: "mys-2b",
+    chosenLabel: "Search the wall where he knocked",
+    chosenType: "risky",
+    text: "She ran her hands along the plaster until she felt it — a seam, painted over, barely visible. Behind it the wall sounded hollow. She pressed three times, fast. Something clicked. The wall moved inward half an inch.",
     wordCount: 38,
     startsChapter: false,
   },
@@ -433,6 +460,15 @@ const romanceNodes: DemoNode[] = [
     wordCount: 42,
     startsChapter: false,
   },
+  {
+    id: "rom-3d",
+    parentId: "rom-2b",
+    chosenLabel: "Pretend it was an accident",
+    chosenType: "safe",
+    text: "Oh no, she said, too brightly, I can't believe I missed it again. He smiled like someone who understood exactly what was happening. Shall we get coffee while we wait? he said. There is no next train for an hour.",
+    wordCount: 40,
+    startsChapter: false,
+  },
 ];
 
 // ── horror: "What the House Kept" (6 nodes, 2 branches) ──────────────
@@ -488,6 +524,15 @@ const horrorNodes: DemoNode[] = [
     chosenLabel: "Ask what happens if it is opened",
     chosenType: "emotional",
     text: "Mrs. Brant set down her cup. She said: the last person who opened it was your great-grandmother. She was a practical woman. After that she would not stay in the house after dark — not for the rest of her life.",
+    wordCount: 41,
+    startsChapter: false,
+  },
+  {
+    id: "hor-3d",
+    parentId: "hor-2b",
+    chosenLabel: "Dismiss the warning and go home",
+    chosenType: "chaotic",
+    text: "She thanked Mrs. Brant and crossed the lane feeling foolish. The house was warm and quiet and entirely ordinary. She went to bed early. At 3 a.m. she woke to the sound of something measuring the hallway in careful, even steps.",
     wordCount: 41,
     startsChapter: false,
   },
@@ -547,6 +592,15 @@ const thrillerNodes: DemoNode[] = [
     chosenType: "emotional",
     text: "She found a forwarding address buried in a property record. She wrote a letter by hand and sent it that afternoon. Three days later, she received a reply: I wondered when someone would find that drive. I put it there myself. Let us meet.",
     wordCount: 44,
+    startsChapter: false,
+  },
+  {
+    id: "thr-3d",
+    parentId: "thr-2b",
+    chosenLabel: "Visit the closed funeral home",
+    chosenType: "risky",
+    text: "The building was boarded but not locked. Inside she found filing cabinets, mostly empty. One drawer held a single folder: the dead man's file. The cause of death was blank. The attending signature belonged to the minister.",
+    wordCount: 37,
     startsChapter: false,
   },
 ];

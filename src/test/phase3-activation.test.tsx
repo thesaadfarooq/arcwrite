@@ -93,8 +93,8 @@ describe("phase 3 activation polish", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole("button", { name: /start writing/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /get started/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /start your story/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try it free/i })).toBeInTheDocument();
   });
 
   it("shows multiple quick-start options in the empty dashboard state", async () => {
@@ -121,7 +121,7 @@ describe("phase 3 activation polish", () => {
       </MemoryRouter>
     );
 
-    const starterButtons = await screen.findAllByRole("button", { name: /try this starter/i });
+    const starterButtons = await screen.findAllByRole("button", { name: /use this/i });
     fireEvent.click(starterButtons[0]);
 
     const textarea = screen.getByPlaceholderText(/a retired astronaut discovers/i) as HTMLTextAreaElement;

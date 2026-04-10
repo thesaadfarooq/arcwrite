@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowRight, Wand2, Rocket, Search, Heart, Ghost, Skull } from "lucide-react";
+import { ArrowRight, ChevronDown, Wand2, Rocket, Search, Heart, Ghost, Skull } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/Navbar";
@@ -158,29 +158,40 @@ export default function GenreLanding() {
 
       <Navbar />
 
-      {/* Hero */}
-      <section className="pt-28 pb-16 px-6">
+      {/* Hero — heading + CTA up top */}
+      <section className="pt-28 pb-20 px-6">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center text-primary mx-auto mb-6">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
             <Icon className="w-7 h-7" />
           </div>
           <h1 className="font-story text-4xl md:text-5xl font-semibold text-foreground leading-tight tracking-tight text-balance mb-5">
             {data.heroHeading}
           </h1>
-          <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto mb-8">
             {data.heroDescription}
           </p>
+          <div className="flex items-center justify-center gap-4">
+            <Button size="lg" onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth")}>
+              Start writing <ArrowRight className="w-4 h-4 ml-1.5" />
+            </Button>
+            <a
+              href="#demo"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+            >
+              See it in action <ChevronDown className="w-3.5 h-3.5" />
+            </a>
+          </div>
         </div>
       </section>
 
       {/* Interactive demo */}
-      <section className="py-16 px-6">
+      <section id="demo" className="py-16 px-6 border-t border-border/50 scroll-mt-20">
         <div className="max-w-5xl mx-auto">
           <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-3">
-            Try a {data.label.toLowerCase()} story
+            Try the experience
           </h2>
           <p className="text-muted-foreground text-center mb-10 max-w-md mx-auto">
-            Click nodes in the tree to explore how a {data.label.toLowerCase()} story branches.
+            Make choices in the editor, then switch to the tree to see your story's shape.
           </p>
           <DemoStoryViewer
             nodes={DEMO_TREES[data.demoTreeKey].nodes}
@@ -189,30 +200,11 @@ export default function GenreLanding() {
         </div>
       </section>
 
-      {/* Story hooks */}
-      <section className="py-16 px-6">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-3">
-            More story ideas
-          </h2>
-          <p className="text-muted-foreground text-center mb-10 max-w-md mx-auto">
-            Here are some story ideas to get you started.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {data.hooks.map((hook, i) => (
-              <div key={i} className="p-5 rounded-2xl border border-border bg-card">
-                <p className="font-story text-sm leading-relaxed text-foreground/80">{hook}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Genre conventions */}
       <section className="py-16 px-6 border-t border-border/50">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-story text-2xl font-semibold text-foreground mb-4">
-            How Arcwrite handles {data.label.toLowerCase()}
+            Built for {data.label.toLowerCase()}
           </h2>
           <p className="text-muted-foreground leading-relaxed max-w-2xl mx-auto">
             {data.conventions}
@@ -220,17 +212,40 @@ export default function GenreLanding() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-16 px-6">
+      {/* Story starters — inspiration before the final push */}
+      <section className="py-16 px-6 border-t border-border/50">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-3">
+            Story starters
+          </h2>
+          <p className="text-muted-foreground text-center mb-10 max-w-md mx-auto">
+            Pick a premise or bring your own — the AI takes it from there.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {data.hooks.map((hook, i) => (
+              <button
+                key={i}
+                onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth")}
+                className="p-5 rounded-2xl border border-border bg-card hover:bg-card/80 hover:border-primary/30 transition-colors text-left group"
+              >
+                <p className="font-story text-sm leading-relaxed text-foreground/80 group-hover:text-foreground/90 transition-colors">{hook}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="py-20 px-6">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="font-story text-2xl font-semibold text-foreground mb-4">
-            Start a {data.label.toLowerCase()} story
+          <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground mb-4">
+            Ready to write?
           </h2>
           <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-            Jump straight into a {data.label.toLowerCase()} adventure. Free to start, no credit card needed.
+            Free to start. No credit card needed.
           </p>
           <Button size="lg" onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth")}>
-            Begin writing <ArrowRight className="w-4 h-4 ml-1.5" />
+            Begin your {data.label.toLowerCase()} story <ArrowRight className="w-4 h-4 ml-1.5" />
           </Button>
         </div>
       </section>

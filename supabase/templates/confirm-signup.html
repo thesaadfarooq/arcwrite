@@ -29,27 +29,23 @@
               <h1 style="margin: 0 0 16px; font-size: 24px; color: #f0e6d3; text-align: center; font-weight: normal;">
                 Welcome, storyteller
               </h1>
-              <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #a0a0b8; text-align: center;">
-                You're one step away from creating branching stories where you direct the plot and AI writes the prose. Confirm your email to get started.
+              <p style="margin: 0 0 28px; font-size: 16px; line-height: 1.6; color: #a0a0b8; text-align: center;">
+                Great stories start with a single step. Enter this code to get started:
               </p>
 
-              <!-- CTA Button -->
+              <!-- OTP Code -->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td align="center" style="padding: 8px 0 24px;">
-                    <a href="{{ .ConfirmationURL }}"
-                       style="display: inline-block; padding: 14px 36px; background-color: #8B4513; color: #f0e6d3; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold; letter-spacing: 0.5px;">
-                      Confirm my email
-                    </a>
+                  <td align="center" style="padding: 0 0 28px;">
+                    <div style="display: inline-block; padding: 16px 32px; background-color: #0f0f17; border: 1px solid #2a2a3e; border-radius: 8px;">
+                      <span style="font-size: 36px; font-weight: bold; color: #f0e6d3; letter-spacing: 12px; font-family: 'Courier New', monospace;">{{ .Token }}</span>
+                    </div>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin: 0 0 8px; font-size: 13px; line-height: 1.5; color: #6b6b80; text-align: center;">
-                If the button doesn't work, copy and paste this link into your browser:
-              </p>
-              <p style="margin: 0 0 24px; font-size: 13px; line-height: 1.5; color: #8B4513; text-align: center; word-break: break-all;">
-                {{ .ConfirmationURL }}
+              <p style="margin: 0 0 24px; font-size: 14px; line-height: 1.5; color: #6b6b80; text-align: center;">
+                This code expires in 10 minutes.
               </p>
 
               <!-- Divider -->

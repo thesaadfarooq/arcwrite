@@ -26,9 +26,9 @@ function renderLanding() {
 }
 
 describe("Landing page CTAs", () => {
-  it("renders 'Start writing' button", () => {
+  it("renders 'Start your story' button", () => {
     renderLanding();
-    expect(screen.getByRole("button", { name: /start writing/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /start your story/i })).toBeInTheDocument();
   });
 
   it("does NOT render 'View plans' button", () => {
@@ -43,8 +43,8 @@ describe("Landing page CTAs", () => {
     expect(screen.queryByRole("button", { name: /sci-fi/i })).not.toBeInTheDocument();
   });
 
-  it("renders 'Get started' button", () => {
+  it("renders 'Try it free' button", () => {
     renderLanding();
-    expect(screen.getByRole("button", { name: /get started/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try it free/i })).toBeInTheDocument();
   });
 });

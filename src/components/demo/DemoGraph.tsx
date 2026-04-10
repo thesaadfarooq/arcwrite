@@ -9,6 +9,8 @@ export interface DemoGraphProps {
   selectedNodeId: string;
   onNodeSelect: (id: string) => void;
   animated?: boolean;
+  /** When set, only these nodes are fully visible; others render as faint ghosts. */
+  revealedNodeIds?: Set<string>;
   className?: string;
 }
 
@@ -36,8 +38,7 @@ const DOT_SIZE = 0.8;
 
 function computeLayout(nodes: DemoNode[]): {
   positions: Map<string, { x: number; y: number }>;
-  width: number;
-  height: number;
+  vb: { x: number; y: number; w: number; h: number };
 } {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
@@ -59,20 +60,29 @@ function computeLayout(nodes: DemoNode[]): {
   dagre.layout(g);
 
   const positions = new Map<string, { x: number; y: number }>();
-  let maxX = 0;
-  let maxY = 0;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
 
   nodes.forEach((n) => {
     const pos = g.node(n.id);
     positions.set(n.id, { x: pos.x, y: pos.y });
+    if (pos.x < minX) minX = pos.x;
     if (pos.x > maxX) maxX = pos.x;
+    if (pos.y < minY) minY = pos.y;
     if (pos.y > maxY) maxY = pos.y;
   });
 
+  const pad = 30;
   return {
     positions,
-    width: maxX + NODE_W / 2 + PADDING,
-    height: maxY + NODE_H / 2 + PADDING,
+    vb: {
+      x: minX - pad,
+      y: minY - pad,
+      w: maxX - minX + pad * 2,
+      h: maxY - minY + pad * 2,
+    },
   };
 }
 
@@ -118,12 +128,13 @@ export function DemoGraph({
   selectedNodeId,
   onNodeSelect,
   animated = false,
+  revealedNodeIds,
   className,
 }: DemoGraphProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
   // Compute layout
-  const { positions, width, height } = useMemo(() => computeLayout(nodes), [nodes]);
+  const { positions, vb } = useMemo(() => computeLayout(nodes), [nodes]);
 
   // Compute active path
   const activePath = useMemo(
@@ -134,8 +145,7 @@ export function DemoGraph({
   // Compute depths for animation stagger
   const depths = useMemo(() => (animated ? computeDepths(nodes) : new Map<string, number>()), [nodes, animated]);
 
-  // viewBox with a little padding around the graph
-  const viewBox = `0 0 ${width} ${height}`;
+  const viewBox = `${vb.x} ${vb.y} ${vb.w} ${vb.h}`;
 
   // Find hovered node for tooltip data
   const hoveredNode = tooltip ? nodes.find((n) => n.id === tooltip.nodeId) : null;
@@ -176,6 +186,7 @@ export function DemoGraph({
             const from = positions.get(n.parentId!)!;
             const to = positions.get(n.id)!;
             const bothActive = activePath.has(n.id) && activePath.has(n.parentId!);
+            const bothRevealed = !revealedNodeIds || (revealedNodeIds.has(n.id) && revealedNodeIds.has(n.parentId!));
             const edgeStyle = animated
               ? {
                   opacity: 0,
@@ -186,17 +197,19 @@ export function DemoGraph({
             return (
               <line
                 key={`e-${n.parentId}-${n.id}`}
-                className="demo-edge"
+                className="demo-edge transition-all duration-500"
                 x1={from.x}
                 y1={from.y}
                 x2={to.x}
                 y2={to.y}
                 stroke={
-                  bothActive
-                    ? "hsl(var(--primary))"
-                    : "hsl(var(--muted-foreground) / 0.25)"
+                  !bothRevealed
+                    ? "hsl(var(--muted-foreground) / 0.08)"
+                    : bothActive
+                      ? "hsl(var(--primary))"
+                      : "hsl(var(--muted-foreground) / 0.25)"
                 }
-                strokeWidth={bothActive ? 2 : 1}
+                strokeWidth={bothActive && bothRevealed ? 2 : 1}
                 style={edgeStyle}
               />
             );
@@ -207,16 +220,19 @@ export function DemoGraph({
           const pos = positions.get(n.id);
           if (!pos) return null;
 
+          const isRevealed = !revealedNodeIds || revealedNodeIds.has(n.id);
           const isSelected = n.id === selectedNodeId;
           const isOnActivePath = activePath.has(n.id);
           const depth = depths.get(n.id) ?? 0;
 
-          const radius = isSelected ? 8 : isOnActivePath ? 6 : 4.5;
-          const fill = isSelected
-            ? "hsl(var(--primary))"
-            : isOnActivePath
-              ? "hsl(var(--primary) / 0.55)"
-              : "hsl(var(--muted-foreground) / 0.3)";
+          const radius = !isRevealed ? 3 : isSelected ? 8 : isOnActivePath ? 6 : 4.5;
+          const fill = !isRevealed
+            ? "hsl(var(--muted-foreground) / 0.08)"
+            : isSelected
+              ? "hsl(var(--primary))"
+              : isOnActivePath
+                ? "hsl(var(--primary) / 0.55)"
+                : "hsl(var(--muted-foreground) / 0.3)";
 
           const nodeStyle = animated
             ? {
@@ -227,6 +243,7 @@ export function DemoGraph({
 
           const classes = [
             "demo-node",
+            "transition-all duration-500",
             isSelected ? "selected" : "",
             isOnActivePath ? "on-active-path" : "",
           ]
@@ -238,22 +255,23 @@ export function DemoGraph({
               key={n.id}
               data-node-id={n.id}
               className={classes}
-              onClick={() => onNodeSelect(n.id)}
-              onMouseEnter={() => setTooltip({ nodeId: n.id, x: pos.x, y: pos.y })}
-              onMouseLeave={() => setTooltip(null)}
-              style={{ cursor: "pointer", ...nodeStyle }}
+              onClick={isRevealed ? () => onNodeSelect(n.id) : undefined}
+              onMouseEnter={isRevealed ? () => setTooltip({ nodeId: n.id, x: pos.x, y: pos.y }) : undefined}
+              onMouseLeave={isRevealed ? () => setTooltip(null) : undefined}
+              style={{ cursor: isRevealed ? "pointer" : "default", ...nodeStyle }}
             >
               {/* Glow circle for selected node */}
-              {isSelected && (
+              {isSelected && isRevealed && (
                 <circle
                   cx={pos.x}
                   cy={pos.y}
                   r={radius + 5}
                   fill="hsl(var(--primary) / 0.1)"
+                  className="transition-all duration-500"
                 />
               )}
               {/* Stroke ring for selected node */}
-              {isSelected && (
+              {isSelected && isRevealed && (
                 <circle
                   cx={pos.x}
                   cy={pos.y}
@@ -261,6 +279,7 @@ export function DemoGraph({
                   fill="none"
                   stroke="hsl(var(--primary) / 0.4)"
                   strokeWidth={1.5}
+                  className="transition-all duration-500"
                 />
               )}
               {/* Main node circle */}
@@ -269,6 +288,7 @@ export function DemoGraph({
                 cy={pos.y}
                 r={radius}
                 fill={fill}
+                className="transition-all duration-500"
               />
             </g>
           );
@@ -281,12 +301,14 @@ export function DemoGraph({
           role="tooltip"
           className="pointer-events-none absolute z-50"
           style={{
-            left: `${(tooltip.x / width) * 100}%`,
-            top: `${(tooltip.y / height) * 100}%`,
-            transform: "translate(12px, -50%)",
+            left: `${((tooltip.x - vb.x) / vb.w) * 100}%`,
+            top: `${((tooltip.y - vb.y) / vb.h) * 100}%`,
+            transform: tooltip.x - vb.x > vb.w * 0.6
+              ? "translate(calc(-100% - 12px), -50%)"
+              : "translate(12px, -50%)",
           }}
         >
-          <div className="bg-popover border border-border rounded-md shadow-md px-2 py-1.5 text-[11px] min-w-[140px] max-w-[180px]">
+          <div className="bg-popover border border-border rounded-md shadow-md px-2 py-1.5 text-[11px] min-w-[140px] max-w-[220px]">
             <div className="font-medium text-foreground leading-snug">
               {hoveredNode.chosenLabel ?? "Story opening"}
             </div>
