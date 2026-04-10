@@ -35,7 +35,7 @@ export default function StoryNew() {
   const navigate = useNavigate();
   const { user, tier } = useAuth();
 
-  const [step, setStep] = useState(mode === "genre" ? "genre" : mode === "surprise" ? "surprise" : "premise");
+  const [step, setStep] = useState(mode === "surprise" ? "surprise" : "idea");
   const [premise, setPremise] = useState("");
   const [selectedGenre, setSelectedGenre] = useState<string | null>(
     searchParams.get("genre") || null
@@ -47,7 +47,6 @@ export default function StoryNew() {
   const [atLimit, setAtLimit] = useState(false);
   const [storyCount, setStoryCount] = useState(0);
   const limits = getTierLimits(tier);
-  const selectedGenreStarters = selectedGenre ? GENRE_STARTERS[selectedGenre] ?? [] : [];
   const trimmedCustomTone = customTone.trim();
   const effectiveTone = trimmedCustomTone.length >= 3 ? trimmedCustomTone : selectedTone || undefined;
 
@@ -93,7 +92,7 @@ export default function StoryNew() {
       const story = await createStory({
         userId: user.id,
         title: premise ? premise.slice(0, 60) : selectedGenre ? `${selectedGenre} story` : "Untitled Story",
-        genre: selectedGenre || undefined,
+        genre: selectedGenre && selectedGenre !== "other" ? selectedGenre : undefined,
         tone: effectiveTone,
         premise: premise || (mode === "surprise" ? "Surprise me with something unexpected" : undefined),
         targetTurns,
@@ -105,9 +104,12 @@ export default function StoryNew() {
     }
   };
 
+  const visibleStarters = selectedGenre && selectedGenre !== "other"
+    ? (GENRE_STARTERS[selectedGenre] ?? PREMISE_STARTERS)
+    : PREMISE_STARTERS;
+
   const canProceed =
-    step === "premise" ? premise.trim().length > 10 :
-    step === "genre" ? !!selectedGenre :
+    step === "idea" ? premise.trim().length > 10 :
     step === "surprise" ? true :
     step === "tone" ? !!effectiveTone && effectiveTone.length >= 3 : false;
 
@@ -139,84 +141,66 @@ export default function StoryNew() {
           </div>
         )}
 
-        {!atLimit && step === "premise" && (
+        {!atLimit && step === "idea" && (
           <div className="animate-fade-up">
             <h1 className="font-story text-3xl font-semibold text-foreground mb-2 text-balance">What's your story about?</h1>
-            <p className="text-muted-foreground mb-8">Describe your idea in a few sentences. The more detail, the richer the opening.</p>
+            <p className="text-muted-foreground mb-8">Pick a genre, describe your idea, or use a starter to get going.</p>
+
+            {/* Genre chips */}
+            <div className="flex gap-1.5 mb-6">
+              {[...genres, { id: "other", label: "Other", icon: null }].map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => setSelectedGenre(selectedGenre === g.id ? null : g.id)}
+                  className={`flex-1 inline-flex items-center justify-center gap-1 py-1.5 rounded-full border text-xs whitespace-nowrap transition-all duration-200 active:scale-[0.97] ${
+                    selectedGenre === g.id
+                      ? "border-primary bg-primary/10 text-primary font-medium shadow-sm"
+                      : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                  }`}
+                >
+                  {g.icon && <g.icon className="w-3 h-3" />}
+                  {g.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Premise textarea */}
             <Textarea
               value={premise}
               onChange={(e) => setPremise(e.target.value)}
-              placeholder="A retired astronaut discovers a signal from a star system she visited decades ago — but the civilization there was supposed to be extinct..."
-              className="min-h-[160px] font-story text-base leading-relaxed resize-none bg-card"
+              placeholder={selectedGenre && selectedGenre !== "other"
+                ? `Describe your ${genres.find((g) => g.id === selectedGenre)?.label.toLowerCase()} story idea...`
+                : "A retired astronaut discovers a signal from a star system she visited decades ago — but the civilization there was supposed to be extinct..."
+              }
+              className="min-h-[140px] font-story text-base leading-relaxed resize-none bg-card"
               autoFocus
             />
+
+            {/* Starters — adapt to selected genre */}
             <div className="mt-6">
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <div>
-                  <h2 className="text-sm font-medium text-foreground">Need a starting point?</h2>
-                  <p className="text-xs text-muted-foreground">Pick a starter prompt and edit it however you like.</p>
-                </div>
+              <div className="mb-3">
+                <h2 className="text-sm font-medium text-foreground">
+                  {selectedGenre && selectedGenre !== "other"
+                    ? `${genres.find((g) => g.id === selectedGenre)?.label} starters`
+                    : "Need a starting point?"}
+                </h2>
+                <p className="text-xs text-muted-foreground">Pick one and edit it however you like.</p>
               </div>
               <div className="grid gap-3">
-                {PREMISE_STARTERS.map((starter) => (
+                {visibleStarters.map((starter) => (
                   <div key={starter} className="rounded-xl border border-border bg-card p-4">
                     <p className="text-sm text-foreground leading-relaxed">{starter}</p>
                     <div className="mt-3">
                       <Button type="button" variant="outline" size="sm" onClick={() => setPremise(starter)}>
-                        Try this starter
+                        Use this
                       </Button>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <Button variant="outline" onClick={() => setStep("tone")} disabled={!canProceed}>
-                Choose tone <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-          </div>
-        )}
 
-        {!atLimit && step === "genre" && (
-          <div className="animate-fade-up">
-            <h1 className="font-story text-3xl font-semibold text-foreground mb-2 text-balance">Pick a genre</h1>
-            <p className="text-muted-foreground mb-8">Choose the world you want to explore.</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {genres.map((g) => (
-                <button
-                  key={g.id}
-                  onClick={() => setSelectedGenre(g.id)}
-                  className={`group text-left p-4 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
-                    selectedGenre === g.id ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card hover:border-primary/30"
-                  }`}
-                >
-                  <g.icon className={`w-5 h-5 mb-2 ${selectedGenre === g.id ? "text-primary" : "text-muted-foreground"}`} />
-                  <div className="font-medium text-sm text-foreground">{g.label}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{g.desc}</div>
-                </button>
-              ))}
-            </div>
-            {selectedGenreStarters.length > 0 && (
-              <div className="mt-6 rounded-2xl border border-border bg-card p-5">
-                <h2 className="text-sm font-medium text-foreground mb-1">Starter prompts for {genres.find((g) => g.id === selectedGenre)?.label}</h2>
-                <p className="text-xs text-muted-foreground mb-4">Use one as your premise, then move on to tone.</p>
-                <div className="grid gap-3">
-                  {selectedGenreStarters.map((starter) => (
-                    <div key={starter} className="rounded-xl border border-border/70 bg-background px-4 py-3">
-                      <p className="text-sm text-foreground leading-relaxed">{starter}</p>
-                      <div className="mt-3">
-                        <Button type="button" variant="outline" size="sm" onClick={() => setPremise(starter)}>
-                          Try this starter
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
             <div className="flex justify-end gap-3 mt-6">
-              <Button variant="outline" onClick={() => setStep("premise")}>Add a premise</Button>
               <Button variant="outline" onClick={() => setStep("tone")} disabled={!canProceed}>
                 Choose tone <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
@@ -303,7 +287,7 @@ export default function StoryNew() {
               </RadioGroup>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <Button variant="outline" onClick={() => setStep(mode === "genre" ? "genre" : "premise")}>
+              <Button variant="outline" onClick={() => setStep("idea")}>
                 <ArrowLeft className="w-4 h-4 mr-1" /> Back
               </Button>
               <Button onClick={handleStart} disabled={!effectiveTone || effectiveTone.length < 3 || creating}>

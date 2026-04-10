@@ -1,75 +1,53 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { HeroGraphSequence } from "@/components/demo/HeroGraphSequence";
-import { DEMO_TREES } from "@/lib/demo-stories";
 
 describe("HeroGraphSequence", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
 
   it("does not render anything when triggered=false", () => {
     const { container } = render(<HeroGraphSequence triggered={false} />);
-    const phaseEl = container.querySelector("[data-phase]");
-    expect(phaseEl).toBeNull();
+    expect(container.innerHTML).toBe("");
   });
 
-  it("shows highlight phase shortly after triggered=true", async () => {
-    const { rerender } = render(<HeroGraphSequence triggered={false} />);
-    await act(async () => {
-      rerender(<HeroGraphSequence triggered={true} />);
-    });
-    // highlight is set synchronously on trigger — no timer advance needed
-    // but advance a small amount to be safe (less than the 500ms morph timer)
-    await act(async () => {
-      vi.advanceTimersByTime(100);
-    });
-
-    const phaseEl = document.querySelector("[data-phase='highlight']");
-    expect(phaseEl).not.toBeNull();
+  it("renders SVG with nodes and edges when triggered=true", async () => {
+    const { container } = render(<HeroGraphSequence triggered={true} />);
+    const svg = container.querySelector("svg");
+    expect(svg).toBeTruthy();
+    // 7 nodes + cursor circles appear after timers
+    const circles = container.querySelectorAll("circle");
+    expect(circles.length).toBeGreaterThanOrEqual(7);
+    const lines = container.querySelectorAll("line");
+    expect(lines.length).toBe(6);
   });
 
-  it("transitions to graph phase after morph delay (~2100ms total)", async () => {
-    const { rerender } = render(<HeroGraphSequence triggered={false} />);
-    await act(async () => {
-      rerender(<HeroGraphSequence triggered={true} />);
-    });
-    // Advance past highlight → morph (500ms)
-    await act(async () => { vi.advanceTimersByTime(600); });
-    // Advance past morph → graph (1500ms)
-    await act(async () => { vi.advanceTimersByTime(1600); });
-
-    const phaseEl = document.querySelector("[data-phase='graph']");
-    expect(phaseEl).not.toBeNull();
+  it("SVG is non-interactive (aria-hidden)", () => {
+    const { container } = render(<HeroGraphSequence triggered={true} />);
+    const svg = container.querySelector("svg[aria-hidden='true']");
+    expect(svg).toBeTruthy();
   });
 
-  it("shows 'Your story, branching' label in done phase (~6000ms total)", async () => {
-    const { rerender } = render(<HeroGraphSequence triggered={false} />);
-    await act(async () => {
-      rerender(<HeroGraphSequence triggered={true} />);
-    });
-    await act(async () => { vi.advanceTimersByTime(600); });
-    await act(async () => { vi.advanceTimersByTime(1600); });
-    await act(async () => { vi.advanceTimersByTime(3500); });
-
-    expect(screen.getByText(/your story, branching/i)).toBeInTheDocument();
+  it("shows choice label after cursor moves to first stop", async () => {
+    render(<HeroGraphSequence triggered={true} />);
+    // Advance past stop 1 (2400ms)
+    await act(async () => { vi.advanceTimersByTime(2500); });
+    expect(screen.getByText(/open the book carefully/i)).toBeInTheDocument();
+    expect(screen.getByText(/safe/i)).toBeInTheDocument();
   });
 
-  it("renders graph nodes from hero demo data in done phase", async () => {
-    const { rerender, container } = render(<HeroGraphSequence triggered={false} />);
-    await act(async () => {
-      rerender(<HeroGraphSequence triggered={true} />);
-    });
-    await act(async () => { vi.advanceTimersByTime(600); });
-    await act(async () => { vi.advanceTimersByTime(1600); });
-    await act(async () => { vi.advanceTimersByTime(3500); });
+  it("shows second choice and story text at stop 2", async () => {
+    render(<HeroGraphSequence triggered={true} />);
+    // Advance past stop 2 (4200ms)
+    await act(async () => { vi.advanceTimersByTime(4300); });
+    expect(screen.getByText(/follow the ink/i)).toBeInTheDocument();
+    expect(screen.getByText(/emotional/i)).toBeInTheDocument();
+  });
 
-    const nodeCount = DEMO_TREES.hero.nodes.length;
-    const renderedNodes = container.querySelectorAll("[data-node-id]");
-    expect(renderedNodes.length).toBe(nodeCount);
+  it("shows tagline after all stops complete", async () => {
+    render(<HeroGraphSequence triggered={true} />);
+    // Advance past stop 3 (6000ms)
+    await act(async () => { vi.advanceTimersByTime(6100); });
+    expect(screen.getByText(/every path is yours/i)).toBeInTheDocument();
   });
 });
