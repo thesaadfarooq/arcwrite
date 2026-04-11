@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { BookOpen, PenLine, GitBranch, Sparkles, ArrowRight, Shield, Flame, Heart, Zap, Network, Palette, Share2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import SEO from "@/components/SEO";
 import Footer from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { HeroGraphSequence } from "@/components/demo/HeroGraphSequence";
+import { Reveal, StaggerGroup } from "@/components/motion";
 
 // ── Fake story data for the hero animation ──────────────────────────
 const DEMO_PARAGRAPHS = [
@@ -74,7 +75,6 @@ function useTypewriter(texts: string[], charDelay = 18, paragraphPause = 600, cy
 // ── Main page ───────────────────────────────────────────────────────
 const Index = () => {
   const navigate = useNavigate();
-  const howRef = useRef<HTMLDivElement>(null);
 
   const [cycle, setCycle] = useState(0);
   const { displayed, done: typingDone } = useTypewriter(DEMO_PARAGRAPHS, 10, 300, cycle);
@@ -103,21 +103,6 @@ const Index = () => {
     return () => clearTimeout(t);
   }, []);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("animate-fade-up");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.2 }
-    );
-    if (howRef.current) observer.observe(howRef.current);
-    return () => observer.disconnect();
-  }, []);
 
   return (
     <div className="min-h-screen bg-background transition-colors duration-500">
@@ -132,25 +117,32 @@ const Index = () => {
       <section className="pt-28 pb-20 px-6">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left — copy */}
-          <div className="animate-fade-up">
-            <h1 className="font-story text-4xl md:text-5xl font-semibold text-foreground leading-[1.15] tracking-tight text-balance mb-5">
-              You direct the story.
-              <br />
-              <span className="text-primary">AI writes it.</span>
-            </h1>
-            <p className="text-muted-foreground text-lg leading-relaxed text-pretty max-w-lg mb-8">
-              Shape plots, steer characters, and craft entire novels — without writing a single paragraph yourself.
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button size="lg" onClick={() => navigate("/story/new")}>
-                Start your story <ArrowRight className="w-4 h-4 ml-1.5" />
-              </Button>
-              <span className="text-xs text-muted-foreground">Free · No credit card needed</span>
-            </div>
+          <div>
+            <Reveal delay={0}>
+              <h1 className="font-story text-4xl md:text-5xl font-semibold text-foreground leading-[1.15] tracking-tight text-balance mb-5">
+                You direct the story.
+                <br />
+                <span className="text-primary">AI writes it.</span>
+              </h1>
+            </Reveal>
+            <Reveal delay={0.15}>
+              <p className="text-muted-foreground text-lg leading-relaxed text-pretty max-w-lg mb-8">
+                Shape plots, steer characters, and craft entire novels — without writing a single paragraph yourself.
+              </p>
+            </Reveal>
+            <Reveal delay={0.3}>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate("/story/new")}>
+                  Start your story <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Button>
+                <span className="text-xs text-muted-foreground">Free · No credit card needed</span>
+              </div>
+            </Reveal>
           </div>
 
           {/* Right — animated story demo */}
-          <div className="relative animate-fade-up min-h-[420px]" style={{ animationDelay: "200ms" }}>
+          <Reveal delay={0.2}>
+          <div className="relative min-h-[420px]">
             {/* Fade edges */}
             <div className="absolute inset-0 z-10 pointer-events-none rounded-2xl"
               style={{
@@ -222,20 +214,26 @@ const Index = () => {
               </div>
             )}
           </div>
+          </Reveal>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="py-20 px-6 border-t border-border/50">
-        <div ref={howRef} className="max-w-4xl mx-auto opacity-0">
-          <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground text-center mb-3">
-            How it works
-          </h2>
-          <p className="text-muted-foreground text-center mb-14 max-w-md mx-auto">
-            Three steps. No writing experience needed.
-          </p>
+      {/* Gradient divider: Hero → How It Works */}
+      <div className="h-16" style={{ background: "linear-gradient(to bottom, hsl(var(--background)), hsl(var(--card) / 0.4))" }} />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+      {/* How it works */}
+      <section className="py-20 px-6 bg-card/40">
+        <div className="max-w-4xl mx-auto">
+          <Reveal>
+            <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground text-center mb-3">
+              How it works
+            </h2>
+            <p className="text-muted-foreground text-center mb-14 max-w-md mx-auto">
+              Three steps. No writing experience needed.
+            </p>
+          </Reveal>
+
+          <StaggerGroup stagger={0.1} className="grid grid-cols-1 md:grid-cols-3 gap-10">
             {HOW_IT_WORKS.map((step, i) => {
               const Icon = step.icon;
               return (
@@ -253,14 +251,17 @@ const Index = () => {
                 </div>
               );
             })}
-          </div>
+          </StaggerGroup>
         </div>
       </section>
 
+      {/* Gradient divider: How It Works → Features */}
+      <div className="h-16" style={{ background: "linear-gradient(to bottom, hsl(var(--card) / 0.4), hsl(var(--background)))" }} />
+
       {/* Features highlight strip */}
-      <section className="py-16 px-6 border-t border-border/50">
+      <section className="py-16 px-6">
         <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StaggerGroup stagger={0.1} className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { icon: GitBranch, title: "Branching choices", desc: "Four directions every turn" },
               { icon: Palette, title: "Genre & tone", desc: "Six genres, your voice" },
@@ -272,35 +273,40 @@ const Index = () => {
                 <button
                   key={i}
                   onClick={() => navigate("/features")}
-                  className="p-4 rounded-xl border border-border bg-card/60 hover:bg-card transition-colors text-left group"
+                  className="p-4 rounded-xl border border-border bg-card/60 hover:bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30 text-left group"
                 >
                   <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center text-primary mb-3 group-hover:bg-primary/10 transition-colors">
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-4 h-4 transition-transform duration-300 group-hover:rotate-[5deg]" />
                   </div>
                   <div className="text-sm font-medium text-foreground mb-0.5">{f.title}</div>
                   <div className="text-xs text-muted-foreground">{f.desc}</div>
                 </button>
               );
             })}
-          </div>
+          </StaggerGroup>
         </div>
       </section>
 
+      {/* Gradient divider: Features → CTA */}
+      <div className="h-16" style={{ background: "linear-gradient(to bottom, hsl(var(--background)), hsl(var(--card) / 0.4))" }} />
+
       {/* CTA */}
-      <section className="py-20 px-6">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground mb-4">
-            Ready to write your story?
-          </h2>
-          <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-            Free to start. No credit card needed.
-          </p>
-          <div className="flex items-center justify-center">
-            <Button size="lg" onClick={() => navigate("/story/new")}>
-              Try it free <ArrowRight className="w-4 h-4 ml-1.5" />
-            </Button>
+      <section className="py-20 px-6 bg-card/40">
+        <Reveal>
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground mb-4">
+              Ready to write your story?
+            </h2>
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+              Free to start. No credit card needed.
+            </p>
+            <div className="flex items-center justify-center">
+              <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate("/story/new")}>
+                Try it free <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Button>
+            </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       <Footer />
