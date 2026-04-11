@@ -113,8 +113,12 @@ export default function AuthPage() {
   const handleVerifyOtp = async (token: string) => {
     setOtpLoading(true);
     try {
+      // Try signup verification first, fall back to email/magiclink for existing users
       const { error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
-      if (error) throw error;
+      if (error) {
+        const { error: emailErr } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+        if (emailErr) throw emailErr;
+      }
       navigate("/dashboard");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Invalid code. Please try again.");
