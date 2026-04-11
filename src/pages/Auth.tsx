@@ -18,6 +18,8 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [otpLoading, setOtpLoading] = useState(false);
+  const [otpReady, setOtpReady] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(0);
   const [resendCooldown, setResendCooldown] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const navigate = useNavigate();
@@ -29,10 +31,19 @@ export default function AuthPage() {
   }, [resendCooldown]);
 
   useEffect(() => {
-    if (mode === "verify") {
-      setTimeout(() => otpRefs.current[0]?.focus(), 100);
-    }
-  }, [mode]);
+    if (otpCountdown <= 0) return;
+    const t = setInterval(() => {
+      setOtpCountdown((c) => {
+        if (c <= 1) {
+          setOtpReady(true);
+          setTimeout(() => otpRefs.current[0]?.focus(), 100);
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [otpCountdown > 0]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +79,8 @@ export default function AuthPage() {
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
+        setOtpReady(false);
+        setOtpCountdown(10);
         setMode("verify");
         setResendCooldown(60);
       } else {
@@ -112,7 +125,7 @@ export default function AuthPage() {
 
   const handleVerifyOtp = async (token: string) => {
     setOtpLoading(true);
-    try {
+    const attempt = async () => {
       const res = await fetch("/api/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,6 +133,16 @@ export default function AuthPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Verification failed");
+      return body;
+    };
+    try {
+      let body;
+      try {
+        body = await attempt();
+      } catch {
+        await new Promise((r) => setTimeout(r, 10000));
+        body = await attempt();
+      }
       await supabase.auth.setSession({
         access_token: body.access_token,
         refresh_token: body.refresh_token,
@@ -140,6 +163,9 @@ export default function AuthPage() {
       const { error } = await supabase.auth.resend({ type: "signup", email });
       if (error) throw error;
       toast.success("Code resent — check your email");
+      setOtpReady(false);
+      setOtpCountdown(10);
+      setOtpDigits(["", "", "", "", "", ""]);
       setResendCooldown(60);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to resend code");
@@ -185,7 +211,10 @@ export default function AuthPage() {
         {mode === "verify" && (
           <div className="animate-fade-up">
             <p className="text-center text-sm text-muted-foreground mb-6">
-              We sent a 6-digit code to <span className="text-foreground font-medium">{email}</span>
+              {!otpReady
+                ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Sending code ({otpCountdown}s)</span>
+                : <>Enter the 6-digit code sent to <span className="text-foreground font-medium">{email}</span></>
+              }
             </p>
             <div className="flex justify-center gap-2 mb-6">
               {otpDigits.map((digit, i) => (
@@ -197,9 +226,10 @@ export default function AuthPage() {
                   role="textbox"
                   maxLength={1}
                   value={digit}
+                  disabled={!otpReady || otpLoading}
                   onChange={(e) => handleOtpChange(i, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                  className="w-10 h-12 text-center text-lg border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-colors"
+                  className={`w-10 h-12 text-center text-lg border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background transition-all ${!otpReady ? "opacity-30 cursor-not-allowed" : ""}`}
                 />
               ))}
             </div>
@@ -218,7 +248,7 @@ export default function AuthPage() {
               </button>
               <div>
                 <button
-                  onClick={() => { setMode("signup"); setOtpDigits(["", "", "", "", "", ""]); }}
+                  onClick={() => { setMode("signup"); setOtpDigits(["", "", "", "", "", ""]); setOtpReady(false); setOtpCountdown(0); }}
                   className="text-primary hover:underline"
                 >
                   Use a different email

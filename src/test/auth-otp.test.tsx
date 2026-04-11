@@ -82,7 +82,7 @@ describe("Auth OTP verification", () => {
       expect(screen.getByText("Check your email")).toBeDefined();
     });
 
-    expect(screen.getByText(/we sent a 6-digit code/i)).toBeDefined();
+    expect(screen.getByText(/sending code/i)).toBeDefined();
   });
 
   it("renders 6 digit input boxes in verify mode", async () => {
@@ -149,6 +149,9 @@ describe("Auth OTP verification", () => {
       expect(screen.getByText("Check your email")).toBeDefined();
     });
 
+    // Advance past the 10s OTP countdown
+    await act(async () => { vi.advanceTimersByTime(11000); });
+
     const digitInputs = screen.getAllByRole("textbox") as HTMLInputElement[];
 
     // Type a digit into the first input — focus should advance to the second input
@@ -190,6 +193,9 @@ describe("Auth OTP verification", () => {
     await waitFor(() => {
       expect(screen.getByText("Check your email")).toBeDefined();
     });
+
+    // Advance past the 10s OTP countdown
+    await act(async () => { vi.advanceTimersByTime(11000); });
 
     const digitInputs = screen.getAllByRole("textbox") as HTMLInputElement[];
 
@@ -233,6 +239,9 @@ describe("Auth OTP verification", () => {
     await waitFor(() => {
       expect(screen.getByText("Check your email")).toBeDefined();
     });
+
+    // Advance past the 10s OTP countdown
+    await act(async () => { vi.advanceTimersByTime(11000); });
 
     const digitInputs = screen.getAllByRole("textbox") as HTMLInputElement[];
 
