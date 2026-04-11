@@ -112,15 +112,10 @@ export default function AuthPage() {
 
   const handleVerifyOtp = async (token: string) => {
     setOtpLoading(true);
-    const verify = () =>
-      Promise.race([
-        supabase.auth.verifyOtp({ email, token, type: "signup" }).then(({ error }) => {
-          if (error) throw error;
-        }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("timeout")), 10000)
-        ),
-      ]);
+    const verify = async () => {
+      const { error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
+      if (error) throw error;
+    };
     try {
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
@@ -129,13 +124,16 @@ export default function AuthPage() {
           return;
         } catch (err) {
           const msg = err instanceof Error ? err.message : "";
-          if (/network|fetch|timeout/i.test(msg) && attempt < 2) continue;
+          if (/network|fetch/i.test(msg) && attempt < 2) {
+            await new Promise((r) => setTimeout(r, 2000));
+            continue;
+          }
           throw err;
         }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "";
-      toast.error(/network|fetch|timeout/i.test(msg)
+      toast.error(/network|fetch/i.test(msg)
         ? "Connection issue — please try again."
         : msg || "Invalid code. Please try again.");
       setOtpDigits(["", "", "", "", "", ""]);
