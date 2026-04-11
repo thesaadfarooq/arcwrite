@@ -89,10 +89,11 @@ export function Navbar() {
               key={link.to}
               to={link.to}
               className={cn(
-                "text-sm transition-colors hover:text-foreground",
+                "relative text-sm transition-colors hover:text-foreground",
+                "after:absolute after:left-0 after:bottom-0 after:h-[1px] after:bg-primary after:transition-all after:duration-200",
                 isActive(link.to)
-                  ? "text-foreground font-medium"
-                  : "text-muted-foreground",
+                  ? "text-foreground font-medium after:w-full"
+                  : "text-muted-foreground after:w-0 hover:after:w-full",
               )}
             >
               {link.label}
