@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import type { LucideIcon } from "lucide-react";
 import { DemoStoryViewer } from "@/components/demo/DemoStoryViewer";
 import { DEMO_TREES } from "@/lib/demo-stories";
+import { Reveal, StaggerGroup } from "@/components/motion";
 
 interface GenreData {
   label: string;
@@ -161,93 +162,117 @@ export default function GenreLanding() {
       {/* Hero — heading + CTA up top */}
       <section className="pt-28 pb-20 px-6">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
-            <Icon className="w-7 h-7" />
-          </div>
-          <h1 className="font-story text-4xl md:text-5xl font-semibold text-foreground leading-tight tracking-tight text-balance mb-5">
-            {data.heroHeading}
-          </h1>
-          <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto mb-8">
-            {data.heroDescription}
-          </p>
-          <div className="flex items-center justify-center gap-4">
-            <Button size="lg" onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth")}>
-              Start writing <ArrowRight className="w-4 h-4 ml-1.5" />
-            </Button>
-            <a
-              href="#demo"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
-            >
-              See it in action <ChevronDown className="w-3.5 h-3.5" />
-            </a>
-          </div>
+          <Reveal delay={0}>
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
+              <Icon className="w-7 h-7" />
+            </div>
+          </Reveal>
+          <Reveal delay={0.15}>
+            <h1 className="font-story text-4xl md:text-5xl font-semibold text-foreground leading-tight tracking-tight text-balance mb-5">
+              {data.heroHeading}
+            </h1>
+          </Reveal>
+          <Reveal delay={0.3}>
+            <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto mb-8">
+              {data.heroDescription}
+            </p>
+          </Reveal>
+          <Reveal delay={0.4}>
+            <div className="flex items-center justify-center gap-4">
+              <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth")}>
+                Start writing <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Button>
+              <a
+                href="#demo"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+              >
+                See it in action <ChevronDown className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </Reveal>
         </div>
       </section>
 
       {/* Interactive demo */}
-      <section id="demo" className="py-16 px-6 border-t border-border/50 scroll-mt-20">
+      <div className="h-24" style={{ background: "linear-gradient(to bottom, hsl(var(--background)), hsl(var(--card) / 0.4))" }} />
+      <section id="demo" className="py-16 px-6 bg-card/40 scroll-mt-20">
         <div className="max-w-5xl mx-auto">
-          <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-3">
-            Try the experience
-          </h2>
-          <p className="text-muted-foreground text-center mb-10 max-w-md mx-auto">
-            Make choices in the editor, then switch to the tree to see your story's shape.
-          </p>
-          <DemoStoryViewer
-            nodes={DEMO_TREES[data.demoTreeKey].nodes}
-            title={DEMO_TREES[data.demoTreeKey].title}
-          />
+          <Reveal>
+            <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-3">
+              Try the experience
+            </h2>
+            <p className="text-muted-foreground text-center mb-10 max-w-md mx-auto">
+              Make choices in the editor, then switch to the tree to see your story's shape.
+            </p>
+          </Reveal>
+          <Reveal>
+            <DemoStoryViewer
+              nodes={DEMO_TREES[data.demoTreeKey].nodes}
+              title={DEMO_TREES[data.demoTreeKey].title}
+            />
+          </Reveal>
         </div>
       </section>
 
       {/* Genre conventions */}
-      <section className="py-16 px-6 border-t border-border/50">
+      <div className="h-24" style={{ background: "linear-gradient(to bottom, hsl(var(--card) / 0.4), hsl(var(--background)))" }} />
+      <section className="py-16 px-6">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="font-story text-2xl font-semibold text-foreground mb-4">
-            Built for {data.label.toLowerCase()}
-          </h2>
-          <p className="text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-            {data.conventions}
-          </p>
+          <Reveal>
+            <h2 className="font-story text-2xl font-semibold text-foreground mb-4">
+              Built for {data.label.toLowerCase()}
+            </h2>
+          </Reveal>
+          <Reveal duration={0.4}>
+            <p className="text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+              {data.conventions}
+            </p>
+          </Reveal>
         </div>
       </section>
 
       {/* Story starters — inspiration before the final push */}
-      <section className="py-16 px-6 border-t border-border/50">
+      <div className="h-24" style={{ background: "linear-gradient(to bottom, hsl(var(--background)), hsl(var(--card) / 0.4))" }} />
+      <section className="py-16 px-6 bg-card/40">
         <div className="max-w-4xl mx-auto">
-          <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-3">
-            Story starters
-          </h2>
-          <p className="text-muted-foreground text-center mb-10 max-w-md mx-auto">
-            Pick a premise or bring your own — the AI takes it from there.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Reveal>
+            <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-3">
+              Story starters
+            </h2>
+            <p className="text-muted-foreground text-center mb-10 max-w-md mx-auto">
+              Pick a premise or bring your own — the AI takes it from there.
+            </p>
+          </Reveal>
+          <StaggerGroup stagger={0.1} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {data.hooks.map((hook, i) => (
               <button
                 key={i}
                 onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth")}
-                className="p-5 rounded-2xl border border-border bg-card hover:bg-card/80 hover:border-primary/30 transition-colors text-left group"
+                className="p-5 rounded-2xl border border-border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30 text-left group"
               >
                 <p className="font-story text-sm leading-relaxed text-foreground/80 group-hover:text-foreground/90 transition-colors">{hook}</p>
               </button>
             ))}
-          </div>
+          </StaggerGroup>
         </div>
       </section>
 
       {/* Final CTA */}
+      <div className="h-24" style={{ background: "linear-gradient(to bottom, hsl(var(--card) / 0.4), hsl(var(--background)))" }} />
       <section className="py-20 px-6">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground mb-4">
-            Ready to write?
-          </h2>
-          <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-            Free to start. No credit card needed.
-          </p>
-          <Button size="lg" onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth")}>
-            Begin your {data.label.toLowerCase()} story <ArrowRight className="w-4 h-4 ml-1.5" />
-          </Button>
-        </div>
+        <Reveal>
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground mb-4">
+              Ready to write?
+            </h2>
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+              Free to start. No credit card needed.
+            </p>
+            <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth")}>
+              Begin your {data.label.toLowerCase()} story <ArrowRight className="w-4 h-4 ml-1.5" />
+            </Button>
+          </div>
+        </Reveal>
       </section>
 
       <Footer />
