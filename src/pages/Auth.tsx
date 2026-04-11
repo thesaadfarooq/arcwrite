@@ -8,7 +8,7 @@ import { BookOpen, Eye, EyeOff, Check, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Navbar } from "@/components/Navbar";
 import SEO from "@/components/SEO";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "signup" | "forgot" | "verify">("login");
@@ -24,6 +24,9 @@ export default function AuthPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const navigate = useNavigate();
+  const prefersReduced = useReducedMotion();
+
+  const noMotion = { initial: undefined, animate: undefined, exit: undefined, transition: undefined };
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -198,9 +201,11 @@ export default function AuthPage() {
       <div className="flex-1 flex items-center justify-center px-6 pt-20">
       <motion.div
         className="w-full max-w-sm"
-        initial={{ opacity: 0, y: 16, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        {...(prefersReduced ? noMotion : {
+          initial: { opacity: 0, y: 16, scale: 0.96 },
+          animate: { opacity: 1, y: 0, scale: 1 },
+          transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
+        })}
       >
         {/* Logo */}
         <div className="text-center mb-8">
@@ -215,7 +220,7 @@ export default function AuthPage() {
 
         <AnimatePresence mode="wait">
           {mode === "verify" ? (
-            <motion.div key="verify" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
+            <motion.div key="verify" {...(prefersReduced ? noMotion : { initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 }, transition: { duration: 0.25 } })}>
               <p className="text-center text-sm text-muted-foreground mb-6">
                 {!otpReady
                   ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Sending code ({otpCountdown}s)</span>
@@ -226,9 +231,11 @@ export default function AuthPage() {
                 {otpDigits.map((digit, i) => (
                   <motion.div
                     key={i}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05, duration: 0.3 }}
+                    {...(prefersReduced ? noMotion : {
+                      initial: { opacity: 0, y: 8 },
+                      animate: { opacity: 1, y: 0 },
+                      transition: { delay: i * 0.05, duration: 0.3 },
+                    })}
                   >
                     <input
                       ref={(el) => { otpRefs.current[i] = el; }}
@@ -269,7 +276,7 @@ export default function AuthPage() {
               </div>
             </motion.div>
           ) : (
-            <motion.div key={mode} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
+            <motion.div key={mode} {...(prefersReduced ? noMotion : { initial: { opacity: 0, x: 20 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -20 }, transition: { duration: 0.25 } })}>
               {/* Google */}
               {mode !== "forgot" && (
                 <>
@@ -303,9 +310,11 @@ export default function AuthPage() {
                       {mode === "signup" && password.length > 0 && (
                         <motion.div
                           className="mt-2.5 space-y-1.5"
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          transition={{ duration: 0.2 }}
+                          {...(prefersReduced ? noMotion : {
+                            initial: { opacity: 0, height: 0 },
+                            animate: { opacity: 1, height: "auto" },
+                            transition: { duration: 0.2 },
+                          })}
                         >
                           {[
                             { met: password.length >= 8, label: "At least 8 characters" },
@@ -316,8 +325,10 @@ export default function AuthPage() {
                             <div key={label} className="flex items-center gap-2">
                               <motion.div
                                 className={`flex items-center justify-center w-4 h-4 rounded-full transition-colors duration-200 ${met ? "bg-emerald-500/15 text-emerald-500" : "bg-destructive/10 text-destructive"}`}
-                                animate={met ? { scale: [1, 1.3, 1] } : { scale: 1 }}
-                                transition={{ duration: 0.3 }}
+                                {...(prefersReduced ? noMotion : {
+                                  animate: met ? { scale: [1, 1.3, 1] } : { scale: 1 },
+                                  transition: { duration: 0.3 },
+                                })}
                               >
                                 {met ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
                               </motion.div>

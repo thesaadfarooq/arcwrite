@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 type Direction = "up" | "down" | "left" | "right";
@@ -26,7 +25,6 @@ export function Reveal({
   className,
 }: RevealProps) {
   const prefersReduced = useReducedMotion();
-  const ref = useRef(null);
 
   if (prefersReduced) {
     return <div className={className}>{children}</div>;
@@ -38,7 +36,6 @@ export function Reveal({
 
   return (
     <motion.div
-      ref={ref}
       initial={{ opacity: 0, x: offset.x * scale, y: offset.y * scale }}
       whileInView={{ opacity: 1, x: 0, y: 0 }}
       viewport={{ once: true, amount: isMobile ? 0.1 : 0.2 }}
