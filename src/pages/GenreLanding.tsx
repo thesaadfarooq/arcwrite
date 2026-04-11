@@ -243,12 +243,12 @@ export default function GenreLanding() {
               Pick a premise or bring your own — the AI takes it from there.
             </p>
           </Reveal>
-          <StaggerGroup stagger={0.1} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <StaggerGroup stagger={0.1} className="grid grid-cols-1 md:grid-cols-2 gap-4 [&>*]:h-full">
             {data.hooks.map((hook, i) => (
               <button
                 key={i}
                 onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth?mode=signup")}
-                className="p-5 rounded-2xl border border-border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30 text-left group"
+                className="w-full h-full p-5 rounded-2xl border border-border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30 text-left group"
               >
                 <p className="font-story text-sm leading-relaxed text-foreground/80 group-hover:text-foreground/90 transition-colors">{hook}</p>
               </button>
