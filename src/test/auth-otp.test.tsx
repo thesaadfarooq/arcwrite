@@ -201,9 +201,11 @@ describe("Auth OTP verification", () => {
     expect(document.activeElement).toBe(digitInputs[0]);
   });
 
-  it("calls verifyOtp when all 6 digits are entered", async () => {
+  it("calls verify-otp proxy when all 6 digits are entered", async () => {
     mockSignUp.mockResolvedValueOnce({ error: null });
-    mockVerifyOtp.mockResolvedValueOnce({ error: null });
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ access_token: "at", refresh_token: "rt" }), { status: 200 })
+    );
 
     const { default: AuthPage } = await import("@/pages/Auth");
     const { fireEvent } = await import("@testing-library/react");
@@ -234,18 +236,18 @@ describe("Auth OTP verification", () => {
 
     const digitInputs = screen.getAllByRole("textbox") as HTMLInputElement[];
 
-    // Enter all 6 digits
     for (let i = 0; i < 6; i++) {
       fireEvent.change(digitInputs[i], { target: { value: String(i + 1) } });
     }
 
     await waitFor(() => {
-      expect(mockVerifyOtp).toHaveBeenCalledWith({
-        email: "test@example.com",
-        token: "123456",
-        type: "signup",
-      });
+      expect(fetchSpy).toHaveBeenCalledWith("/api/verify-otp", expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ email: "test@example.com", token: "123456" }),
+      }));
     });
+
+    fetchSpy.mockRestore();
   });
 
   it("shows resend link with cooldown timer", async () => {
