@@ -10,6 +10,7 @@ import { Navbar } from "@/components/Navbar";
 import SEO from "@/components/SEO";
 import Footer from "@/components/Footer";
 import { ACTIVE_PROMO } from "@/lib/promo";
+import { Reveal, StaggerGroup } from "@/components/motion";
 
 const tierOrder: TierKey[] = ["free", "plus", "pro"];
 
@@ -146,23 +147,25 @@ export default function Pricing() {
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-6 pt-28 pb-16">
-        {activePromo && (
-          <div className="mb-8 flex items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary/[0.04] px-5 py-2.5 mx-auto w-fit">
-            <Tag className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-foreground">{activePromo.label}</span>
+        <Reveal>
+          {activePromo && (
+            <div className="mb-8 flex items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary/[0.04] px-5 py-2.5 mx-auto w-fit">
+              <Tag className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">{activePromo.label}</span>
+            </div>
+          )}
+
+          <div className="text-center mb-12">
+            <h1 className="font-story text-3xl font-semibold text-foreground" style={{ lineHeight: "1.1" }}>
+              Choose your plan
+            </h1>
+            <p className="text-muted-foreground mt-3 max-w-md mx-auto">
+              Start free, upgrade when you need more stories, better AI, and full creative control.
+            </p>
           </div>
-        )}
+        </Reveal>
 
-        <div className="text-center mb-12">
-          <h1 className="font-story text-3xl font-semibold text-foreground" style={{ lineHeight: "1.1" }}>
-            Choose your plan
-          </h1>
-          <p className="text-muted-foreground mt-3 max-w-md mx-auto">
-            Start free, upgrade when you need more stories, better AI, and full creative control.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StaggerGroup stagger={0.15} className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {tierOrder.map((tierKey) => {
             const t = TIERS[tierKey];
             const isCurrent = !!user && currentTier === tierKey;
@@ -177,7 +180,7 @@ export default function Pricing() {
                     : isPopular
                     ? "border-primary/30 bg-card shadow-[0_2px_16px_-4px_hsl(var(--primary)/0.08)]"
                     : "border-border bg-card"
-                }`}
+                } hover:-translate-y-0.5 hover:shadow-md`}
               >
                 {isCurrent && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-full">
@@ -281,7 +284,7 @@ export default function Pricing() {
               </div>
             );
           })}
-        </div>
+        </StaggerGroup>
 
         {cancelAtPeriodEnd && (
           <div className="mt-8 p-4 rounded-xl border border-primary/20 bg-primary/[0.04] text-center">
@@ -317,17 +320,19 @@ export default function Pricing() {
 
         {/* FAQ */}
         <section className="mb-8">
-          <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-8">
-            Frequently asked questions
-          </h2>
-          <div className="max-w-2xl mx-auto divide-y divide-border">
+          <Reveal>
+            <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-8">
+              Frequently asked questions
+            </h2>
+          </Reveal>
+          <StaggerGroup stagger={0.05} className="max-w-2xl mx-auto divide-y divide-border">
             {FAQ_ITEMS.map((item) => (
               <div key={item.question} className="py-5 first:pt-0 last:pb-0">
                 <h3 className="font-medium text-foreground mb-1.5">{item.question}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{item.answer}</p>
               </div>
             ))}
-          </div>
+          </StaggerGroup>
         </section>
       </main>
 
