@@ -131,9 +131,9 @@ describe("Auth page handlers", () => {
     fireEvent.click(screen.getByRole("button", { name: /create account/i }));
 
     await waitFor(() => expect(signUpMock).toHaveBeenCalled());
-    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith(
-      "Check your email to verify your account"
-    ));
+    // After successful signup, the page now transitions to OTP verify mode
+    // instead of showing a toast
+    await waitFor(() => expect(screen.getByText(/check your email/i)).toBeDefined());
   });
 
   it("handles already registered error on signup", async () => {

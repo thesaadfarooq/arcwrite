@@ -32,11 +32,10 @@ describe("Index (landing) page", () => {
     expect(screen.getByText(/you direct the story/i)).toBeDefined();
   });
 
-  it("renders the start writing CTA", async () => {
+  it("renders the start your story CTA", async () => {
     const { default: Index } = await import("@/pages/Index");
     renderPage(Index);
-    const buttons = screen.getAllByRole("button", { name: /start writing/i });
-    expect(buttons.length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /start your story/i })).toBeDefined();
   });
 
   it("renders feature highlights", async () => {

@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, PenLine, GitBranch, Sparkles, ArrowRight, Shield, Flame, Heart, Zap } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { BookOpen, PenLine, GitBranch, Sparkles, ArrowRight, Shield, Flame, Heart, Zap, Network, Palette, Share2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import SEO from "@/components/SEO";
 import Footer from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
+import { HeroGraphSequence } from "@/components/demo/HeroGraphSequence";
 
 // ── Fake story data for the hero animation ──────────────────────────
 const DEMO_PARAGRAPHS = [
@@ -38,11 +39,13 @@ const HOW_IT_WORKS = [
 ];
 
 // ── Typewriter hook ─────────────────────────────────────────────────
-function useTypewriter(texts: string[], charDelay = 18, paragraphPause = 600) {
+function useTypewriter(texts: string[], charDelay = 18, paragraphPause = 600, cycle = 0) {
   const [displayed, setDisplayed] = useState<string[]>([]);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
+    setDisplayed([]);
+    setDone(false);
     let cancelled = false;
     async function run() {
       const result: string[] = [];
@@ -61,9 +64,9 @@ function useTypewriter(texts: string[], charDelay = 18, paragraphPause = 600) {
       if (!cancelled) setDone(true);
     }
     // Small initial delay so the page settles
-    const t = setTimeout(run, 800);
+    const t = setTimeout(run, 500);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [texts, charDelay, paragraphPause]);
+  }, [texts, charDelay, paragraphPause, cycle]);
 
   return { displayed, done };
 }
@@ -73,8 +76,10 @@ const Index = () => {
   const navigate = useNavigate();
   const howRef = useRef<HTMLDivElement>(null);
 
-  const { displayed, done: typingDone } = useTypewriter(DEMO_PARAGRAPHS, 16, 500);
+  const [cycle, setCycle] = useState(0);
+  const { displayed, done: typingDone } = useTypewriter(DEMO_PARAGRAPHS, 10, 300, cycle);
   const [showChoices, setShowChoices] = useState(false);
+  const [graphPhaseStarted, setGraphPhaseStarted] = useState(false);
 
   useEffect(() => {
     if (typingDone) {
@@ -82,6 +87,21 @@ const Index = () => {
       return () => clearTimeout(t);
     }
   }, [typingDone]);
+
+  useEffect(() => {
+    if (showChoices) {
+      const t = setTimeout(() => setGraphPhaseStarted(true), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [showChoices]);
+
+  const handleGraphComplete = useCallback(() => {
+    // Fade out, then reset everything for the next cycle
+    setGraphPhaseStarted(false);
+    setShowChoices(false);
+    const t = setTimeout(() => setCycle((c) => c + 1), 800);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -121,15 +141,16 @@ const Index = () => {
             <p className="text-muted-foreground text-lg leading-relaxed text-pretty max-w-lg mb-8">
               Shape plots, steer characters, and craft entire novels — without writing a single paragraph yourself.
             </p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Button size="lg" onClick={() => navigate("/story/new")}>
-                Start writing <ArrowRight className="w-4 h-4 ml-1.5" />
+                Start your story <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
+              <span className="text-xs text-muted-foreground">Free · No credit card needed</span>
             </div>
           </div>
 
           {/* Right — animated story demo */}
-          <div className="relative animate-fade-up" style={{ animationDelay: "200ms" }}>
+          <div className="relative animate-fade-up min-h-[420px]" style={{ animationDelay: "200ms" }}>
             {/* Fade edges */}
             <div className="absolute inset-0 z-10 pointer-events-none rounded-2xl"
               style={{
@@ -140,7 +161,8 @@ const Index = () => {
               }}
             />
 
-            <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm p-6 md:p-8 max-h-[420px] overflow-hidden">
+            {/* Editor chrome — fades out when graph phase starts */}
+            <div className={`absolute inset-0 rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm p-6 md:p-8 overflow-hidden transition-opacity duration-700 ${graphPhaseStarted ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
               {/* Fake editor chrome */}
               <div className="flex items-center gap-2 mb-5 pb-4 border-b border-border/50">
                 <BookOpen className="w-4 h-4 text-primary" />
@@ -192,6 +214,13 @@ const Index = () => {
                 </div>
               )}
             </div>
+
+            {/* Graph overlay — fades in when graph phase starts, z-[5] so vignette overlay softens its edges */}
+            {showChoices && (
+              <div className={`absolute inset-0 z-[5] transition-opacity duration-700 ${graphPhaseStarted ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+                <HeroGraphSequence triggered={graphPhaseStarted} onComplete={handleGraphComplete} />
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -206,20 +235,51 @@ const Index = () => {
             Three steps. No writing experience needed.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             {HOW_IT_WORKS.map((step, i) => {
               const Icon = step.icon;
               return (
-                <div key={i} className="text-center md:text-left">
-                  <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center text-primary mb-4 mx-auto md:mx-0">
-                    <Icon className="w-5 h-5" />
+                <div key={i} className="text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-5">
+                    <Icon className="w-6 h-6" />
                   </div>
                   <div className="text-xs font-medium text-primary mb-2 uppercase tracking-wider">
                     Step {i + 1}
                   </div>
-                  <h3 className="font-medium text-foreground mb-1.5">{step.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
+                  <h3 className="font-medium text-foreground mb-2">{step.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed max-w-[260px] mx-auto">
+                    {step.description}
+                  </p>
                 </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Features highlight strip */}
+      <section className="py-16 px-6 border-t border-border/50">
+        <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { icon: GitBranch, title: "Branching choices", desc: "Four directions every turn" },
+              { icon: Palette, title: "Genre & tone", desc: "Six genres, your voice" },
+              { icon: Network, title: "Story tree", desc: "Visualize every path" },
+              { icon: Share2, title: "Export & share", desc: "PDF, public links" },
+            ].map((f, i) => {
+              const Icon = f.icon;
+              return (
+                <button
+                  key={i}
+                  onClick={() => navigate("/features")}
+                  className="p-4 rounded-xl border border-border bg-card/60 hover:bg-card transition-colors text-left group"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center text-primary mb-3 group-hover:bg-primary/10 transition-colors">
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div className="text-sm font-medium text-foreground mb-0.5">{f.title}</div>
+                  <div className="text-xs text-muted-foreground">{f.desc}</div>
+                </button>
               );
             })}
           </div>
@@ -233,11 +293,11 @@ const Index = () => {
             Ready to write your story?
           </h2>
           <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-            Start for free. No credit card required.
+            Free to start. No credit card needed.
           </p>
           <div className="flex items-center justify-center">
             <Button size="lg" onClick={() => navigate("/story/new")}>
-              Get started <ArrowRight className="w-4 h-4 ml-1.5" />
+              Try it free <ArrowRight className="w-4 h-4 ml-1.5" />
             </Button>
           </div>
         </div>

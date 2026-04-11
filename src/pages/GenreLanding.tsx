@@ -1,11 +1,13 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowRight, Wand2, Rocket, Search, Heart, Ghost, Skull } from "lucide-react";
+import { ArrowRight, ChevronDown, Wand2, Rocket, Search, Heart, Ghost, Skull } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/Navbar";
 import SEO from "@/components/SEO";
 import Footer from "@/components/Footer";
 import type { LucideIcon } from "lucide-react";
+import { DemoStoryViewer } from "@/components/demo/DemoStoryViewer";
+import { DEMO_TREES } from "@/lib/demo-stories";
 
 interface GenreData {
   label: string;
@@ -16,6 +18,7 @@ interface GenreData {
   heroDescription: string;
   hooks: string[];
   conventions: string;
+  demoTreeKey: string;
 }
 
 const GENRE_DATA: Record<string, GenreData> = {
@@ -33,6 +36,7 @@ const GENRE_DATA: Record<string, GenreData> = {
       "An enchanted forest is growing over the capital city. The trees whisper that they're protecting it — from you.",
     ],
     conventions: "Arcwrite's AI understands fantasy conventions: world-building with internal logic, escalating stakes, magic systems with costs, and the tension between power and sacrifice. It weaves in mythical archetypes while keeping your specific story fresh.",
+    demoTreeKey: "fantasy",
   },
   scifi: {
     label: "Sci-Fi",
@@ -48,6 +52,7 @@ const GENRE_DATA: Record<string, GenreData> = {
       "A rogue AI offers to solve climate change in 48 hours. The price: it needs full control of every connected device on Earth.",
     ],
     conventions: "Arcwrite's AI handles hard and soft sci-fi alike: plausible technology extrapolation, first contact scenarios, time paradoxes, and the human cost of progress. It keeps the science grounded while letting imagination lead.",
+    demoTreeKey: "scifi",
   },
   mystery: {
     label: "Mystery",
@@ -63,6 +68,7 @@ const GENRE_DATA: Record<string, GenreData> = {
       "A missing persons case goes cold until the missing person starts sending postcards from places they've never been.",
     ],
     conventions: "Arcwrite's AI understands mystery mechanics: fair-play clue planting, red herrings that feel earned, rising tension through revelation, and the satisfaction of a twist that was there all along. It tracks suspects, motives, and alibis as your investigation unfolds.",
+    demoTreeKey: "mystery",
   },
   romance: {
     label: "Romance",
@@ -78,6 +84,7 @@ const GENRE_DATA: Record<string, GenreData> = {
       "You reconnect with a childhood friend at a wedding. They remember a promise you made at age twelve — one you've completely forgotten.",
     ],
     conventions: "Arcwrite's AI handles romance with emotional intelligence: slow-burn tension, meaningful dialogue, vulnerability as strength, and the push-pull of characters who want different things. It builds chemistry through conflict, not just attraction.",
+    demoTreeKey: "romance",
   },
   horror: {
     label: "Horror",
@@ -93,6 +100,7 @@ const GENRE_DATA: Record<string, GenreData> = {
       "A support group for people who survived near-death experiences. One night, a new member describes the afterlife — and it matches your recurring nightmare exactly.",
     ],
     conventions: "Arcwrite's AI understands horror pacing: slow dread over jump scares, the power of the unseen, isolation that makes help impossible, and the creeping realization that the rules of the world have changed. It escalates tension methodically.",
+    demoTreeKey: "horror",
   },
   thriller: {
     label: "Thriller",
@@ -108,6 +116,7 @@ const GENRE_DATA: Record<string, GenreData> = {
       "A cybersecurity analyst discovers a backdoor in the banking system. It's been active for three years. The access logs show it was installed from their own workstation.",
     ],
     conventions: "Arcwrite's AI handles thriller pacing: relentless momentum, ticking clocks, reveals that raise the stakes instead of resolving them, and the constant question of who can be trusted. It keeps the pressure building chapter by chapter.",
+    demoTreeKey: "thriller",
   },
 };
 
@@ -149,37 +158,45 @@ export default function GenreLanding() {
 
       <Navbar />
 
-      {/* Hero */}
-      <section className="pt-28 pb-16 px-6">
+      {/* Hero — heading + CTA up top */}
+      <section className="pt-28 pb-20 px-6">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center text-primary mx-auto mb-6">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
             <Icon className="w-7 h-7" />
           </div>
           <h1 className="font-story text-4xl md:text-5xl font-semibold text-foreground leading-tight tracking-tight text-balance mb-5">
             {data.heroHeading}
           </h1>
-          <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto mb-8">
             {data.heroDescription}
           </p>
+          <div className="flex items-center justify-center gap-4">
+            <Button size="lg" onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth")}>
+              Start writing <ArrowRight className="w-4 h-4 ml-1.5" />
+            </Button>
+            <a
+              href="#demo"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+            >
+              See it in action <ChevronDown className="w-3.5 h-3.5" />
+            </a>
+          </div>
         </div>
       </section>
 
-      {/* Story hooks */}
-      <section className="py-16 px-6">
-        <div className="max-w-4xl mx-auto">
+      {/* Interactive demo */}
+      <section id="demo" className="py-16 px-6 border-t border-border/50 scroll-mt-20">
+        <div className="max-w-5xl mx-auto">
           <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-3">
-            What you can create
+            Try the experience
           </h2>
           <p className="text-muted-foreground text-center mb-10 max-w-md mx-auto">
-            Here are some story ideas to get you started.
+            Make choices in the editor, then switch to the tree to see your story's shape.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {data.hooks.map((hook, i) => (
-              <div key={i} className="p-5 rounded-2xl border border-border bg-card">
-                <p className="font-story text-sm leading-relaxed text-foreground/80">{hook}</p>
-              </div>
-            ))}
-          </div>
+          <DemoStoryViewer
+            nodes={DEMO_TREES[data.demoTreeKey].nodes}
+            title={DEMO_TREES[data.demoTreeKey].title}
+          />
         </div>
       </section>
 
@@ -187,7 +204,7 @@ export default function GenreLanding() {
       <section className="py-16 px-6 border-t border-border/50">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-story text-2xl font-semibold text-foreground mb-4">
-            How Arcwrite handles {data.label.toLowerCase()}
+            Built for {data.label.toLowerCase()}
           </h2>
           <p className="text-muted-foreground leading-relaxed max-w-2xl mx-auto">
             {data.conventions}
@@ -195,17 +212,40 @@ export default function GenreLanding() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-16 px-6">
+      {/* Story starters — inspiration before the final push */}
+      <section className="py-16 px-6 border-t border-border/50">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="font-story text-2xl font-semibold text-foreground text-center mb-3">
+            Story starters
+          </h2>
+          <p className="text-muted-foreground text-center mb-10 max-w-md mx-auto">
+            Pick a premise or bring your own — the AI takes it from there.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {data.hooks.map((hook, i) => (
+              <button
+                key={i}
+                onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth")}
+                className="p-5 rounded-2xl border border-border bg-card hover:bg-card/80 hover:border-primary/30 transition-colors text-left group"
+              >
+                <p className="font-story text-sm leading-relaxed text-foreground/80 group-hover:text-foreground/90 transition-colors">{hook}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="py-20 px-6">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="font-story text-2xl font-semibold text-foreground mb-4">
-            Start a {data.label.toLowerCase()} story
+          <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground mb-4">
+            Ready to write?
           </h2>
           <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-            Jump straight into a {data.label.toLowerCase()} adventure. Free to start, no credit card needed.
+            Free to start. No credit card needed.
           </p>
           <Button size="lg" onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth")}>
-            Begin writing <ArrowRight className="w-4 h-4 ml-1.5" />
+            Begin your {data.label.toLowerCase()} story <ArrowRight className="w-4 h-4 ml-1.5" />
           </Button>
         </div>
       </section>

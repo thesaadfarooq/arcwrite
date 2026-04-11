@@ -102,6 +102,10 @@ export default {
           "0%, 100%": { opacity: "0.4" },
           "50%": { opacity: "0.8" },
         },
+        "morph-shrink": {
+          from: { opacity: "1", transform: "scale(1)" },
+          to: { opacity: "0", transform: "scale(0.9) translateY(-8px)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -110,6 +114,7 @@ export default {
         "fade-in": "fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "slide-up": "slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "pulse-gentle": "pulse-gentle 2s ease-in-out infinite",
+        "morph-shrink": "morph-shrink 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards",
       },
     },
   },

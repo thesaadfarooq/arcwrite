@@ -28,7 +28,7 @@ describe("GenreLanding page", () => {
     const { default: GenreLanding } = await import("@/pages/GenreLanding");
     renderGenre("fantasy", GenreLanding);
     expect(screen.getByText(/write your own fantasy adventure/i)).toBeDefined();
-    expect(screen.getByText("What you can create")).toBeDefined();
+    expect(screen.getByText("Story starters")).toBeDefined();
   });
 
   it("renders the scifi genre page", async () => {
@@ -53,6 +53,6 @@ describe("GenreLanding page", () => {
   it("renders the CTA button for a valid genre", async () => {
     const { default: GenreLanding } = await import("@/pages/GenreLanding");
     renderGenre("horror", GenreLanding);
-    expect(screen.getByRole("button", { name: /begin writing/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /start writing/i })).toBeDefined();
   });
 });
