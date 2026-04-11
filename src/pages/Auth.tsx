@@ -80,7 +80,7 @@ export default function AuthPage() {
         });
         if (error) throw error;
         setOtpReady(false);
-        setOtpCountdown(10);
+        setOtpCountdown(15);
         setMode("verify");
         setResendCooldown(60);
       } else {
@@ -164,7 +164,7 @@ export default function AuthPage() {
       if (error) throw error;
       toast.success("Code resent — check your email");
       setOtpReady(false);
-      setOtpCountdown(10);
+      setOtpCountdown(15);
       setOtpDigits(["", "", "", "", "", ""]);
       setResendCooldown(60);
     } catch (err: unknown) {

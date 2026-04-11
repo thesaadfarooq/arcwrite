@@ -150,7 +150,7 @@ describe("Auth OTP verification", () => {
     });
 
     // Advance past the 10s OTP countdown
-    await act(async () => { vi.advanceTimersByTime(11000); });
+    await act(async () => { vi.advanceTimersByTime(16000); });
 
     const digitInputs = screen.getAllByRole("textbox") as HTMLInputElement[];
 
@@ -195,7 +195,7 @@ describe("Auth OTP verification", () => {
     });
 
     // Advance past the 10s OTP countdown
-    await act(async () => { vi.advanceTimersByTime(11000); });
+    await act(async () => { vi.advanceTimersByTime(16000); });
 
     const digitInputs = screen.getAllByRole("textbox") as HTMLInputElement[];
 
@@ -241,7 +241,7 @@ describe("Auth OTP verification", () => {
     });
 
     // Advance past the 10s OTP countdown
-    await act(async () => { vi.advanceTimersByTime(11000); });
+    await act(async () => { vi.advanceTimersByTime(16000); });
 
     const digitInputs = screen.getAllByRole("textbox") as HTMLInputElement[];
 
