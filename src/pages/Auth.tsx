@@ -113,15 +113,16 @@ export default function AuthPage() {
   const handleVerifyOtp = async (token: string) => {
     setOtpLoading(true);
     try {
-      // Try signup verification first, fall back to email/magiclink for existing users
       const { error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
-      if (error) {
-        const { error: emailErr } = await supabase.auth.verifyOtp({ email, token, type: "email" });
-        if (emailErr) throw emailErr;
-      }
+      if (error) throw error;
       navigate("/dashboard");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Invalid code. Please try again.");
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("NetworkError") || msg.includes("fetch")) {
+        toast.error("Connection issue — please try again.");
+      } else {
+        toast.error(msg || "Invalid code. Please try again.");
+      }
       setOtpDigits(["", "", "", "", "", ""]);
       setTimeout(() => otpRefs.current[0]?.focus(), 50);
     } finally {
