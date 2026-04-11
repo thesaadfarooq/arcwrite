@@ -179,7 +179,7 @@ export default function GenreLanding() {
           </Reveal>
           <Reveal delay={0.4}>
             <div className="flex items-center justify-center gap-4">
-              <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth")}>
+              <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth?mode=signup")}>
                 Start writing <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
               <a
@@ -247,7 +247,7 @@ export default function GenreLanding() {
             {data.hooks.map((hook, i) => (
               <button
                 key={i}
-                onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth")}
+                onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth?mode=signup")}
                 className="p-5 rounded-2xl border border-border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30 text-left group"
               >
                 <p className="font-story text-sm leading-relaxed text-foreground/80 group-hover:text-foreground/90 transition-colors">{hook}</p>
@@ -268,7 +268,7 @@ export default function GenreLanding() {
             <p className="text-muted-foreground mb-8 max-w-md mx-auto">
               Free to start. No credit card needed.
             </p>
-            <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth")}>
+            <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate(user ? `/story/new?mode=genre&genre=${genre}` : "/auth?mode=signup")}>
               Begin your {data.label.toLowerCase()} story <ArrowRight className="w-4 h-4 ml-1.5" />
             </Button>
           </div>

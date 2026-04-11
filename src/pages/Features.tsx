@@ -181,7 +181,7 @@ export default function Features() {
             <p className="text-muted-foreground mb-8 max-w-md mx-auto">
               Create your first interactive story in minutes. No credit card required.
             </p>
-            <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate(user ? "/story/new" : "/auth")}>
+            <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate(user ? "/story/new" : "/auth?mode=signup")}>
               Get started <ArrowRight className="w-4 h-4 ml-1.5" />
             </Button>
           </div>

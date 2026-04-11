@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,14 @@ import SEO from "@/components/SEO";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 export default function AuthPage() {
-  const [mode, setMode] = useState<"login" | "signup" | "forgot" | "verify">("login");
+  const [searchParams] = useSearchParams();
+  const paramMode = searchParams.get("mode");
+  const urlMode = paramMode === "signup" ? "signup" : "login";
+  const [mode, setMode] = useState<"login" | "signup" | "forgot" | "verify">(urlMode);
+
+  useEffect(() => {
+    if (mode !== "verify") setMode(urlMode);
+  }, [paramMode]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

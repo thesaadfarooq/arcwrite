@@ -50,7 +50,7 @@ export function Navbar() {
     </Button>
   ) : (
     <Button size="sm" variant="outline" asChild>
-      <Link to="/auth">
+      <Link to="/auth?mode=login">
         <LogIn className="w-3.5 h-3.5 mr-1" /> Sign in
       </Link>
     </Button>

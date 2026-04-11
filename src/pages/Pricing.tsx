@@ -79,7 +79,7 @@ export default function Pricing() {
   const handleCheckout = async (tierKey: TierKey) => {
     if (tierKey === "free") return;
     if (!user) {
-      navigate("/auth");
+      navigate("/auth?mode=signup");
       return;
     }
 
@@ -325,9 +325,9 @@ export default function Pricing() {
               Frequently asked questions
             </h2>
           </Reveal>
-          <StaggerGroup stagger={0.05} className="max-w-2xl mx-auto divide-y divide-border">
+          <StaggerGroup stagger={0.05} className="max-w-2xl mx-auto space-y-6">
             {FAQ_ITEMS.map((item) => (
-              <div key={item.question} className="py-5 first:pt-0 last:pb-0">
+              <div key={item.question}>
                 <h3 className="font-medium text-foreground mb-1.5">{item.question}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{item.answer}</p>
               </div>

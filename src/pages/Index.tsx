@@ -132,7 +132,7 @@ const Index = () => {
             </Reveal>
             <Reveal delay={0.3}>
               <div className="flex flex-wrap items-center gap-3">
-                <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate("/story/new")}>
+                <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate("/auth?mode=signup")}>
                   Start your story <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
                 <span className="text-xs text-muted-foreground">Free · No credit card needed</span>
@@ -263,8 +263,8 @@ const Index = () => {
         <div className="max-w-4xl mx-auto">
           <StaggerGroup stagger={0.1} className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { icon: GitBranch, title: "Branching choices", desc: "Four directions every turn" },
-              { icon: Palette, title: "Genre & tone", desc: "Six genres, your voice" },
+              { icon: GitBranch, title: "Branching choices", desc: "Different directions every turn" },
+              { icon: Palette, title: "Genre & tone", desc: "Multiple genres, your voice" },
               { icon: Network, title: "Story tree", desc: "Visualize every path" },
               { icon: Share2, title: "Export & share", desc: "PDF, public links" },
             ].map((f, i) => {
@@ -273,9 +273,9 @@ const Index = () => {
                 <button
                   key={i}
                   onClick={() => navigate("/features")}
-                  className="p-4 rounded-xl border border-border bg-card/60 hover:bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30 text-left group"
+                  className="w-full h-full p-4 rounded-xl border border-border bg-card/60 hover:bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30 text-center group"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center text-primary mb-3 group-hover:bg-primary/10 transition-colors">
+                  <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center text-primary mb-3 mx-auto group-hover:bg-primary/10 transition-colors">
                     <Icon className="w-4 h-4 transition-transform duration-300 group-hover:rotate-[5deg]" />
                   </div>
                   <div className="text-sm font-medium text-foreground mb-0.5">{f.title}</div>
@@ -301,7 +301,7 @@ const Index = () => {
               Free to start. No credit card needed.
             </p>
             <div className="flex items-center justify-center">
-              <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate("/story/new")}>
+              <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate("/auth?mode=signup")}>
                 Try it free <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </div>
