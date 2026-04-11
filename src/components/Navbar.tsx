@@ -11,6 +11,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useNavbarScroll } from "@/components/motion";
 
 const navLinks = [
   { to: "/features", label: "Features" },
@@ -24,6 +25,7 @@ export function Navbar() {
   const { user } = useAuth();
   const location = useLocation();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const { isScrolled, isVisible } = useNavbarScroll();
 
   const isActive = (to: string) =>
     location.pathname === to || location.pathname.startsWith(to + "/");
@@ -55,7 +57,18 @@ export function Navbar() {
   );
 
   return (
-    <nav className="fixed left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-background/80 backdrop-blur-sm border-b border-border/50" style={{ top: "var(--promo-banner-h, 0px)" }}>
+    <nav
+      className={cn(
+        "fixed left-0 right-0 z-50 flex items-center justify-between px-6 py-4 transition-all duration-300",
+        isScrolled
+          ? "bg-background/80 backdrop-blur-sm border-b border-border/50"
+          : "bg-transparent border-b border-transparent",
+      )}
+      style={{
+        top: "var(--promo-banner-h, 0px)",
+        transform: isVisible ? "translateY(0)" : "translateY(-100%)",
+      }}
+    >
       {/* Left: Logo + desktop nav links */}
       <div className="flex items-center gap-6">
         <Link
