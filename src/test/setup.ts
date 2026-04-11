@@ -1,4 +1,14 @@
 import "@testing-library/jest-dom";
+import { vi } from "vitest";
+
+// Mock framer-motion so AnimatePresence mode="wait" doesn't block child mounting in jsdom
+vi.mock("framer-motion", async () => {
+  const actual = await vi.importActual<typeof import("framer-motion")>("framer-motion");
+  return {
+    ...actual,
+    AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,

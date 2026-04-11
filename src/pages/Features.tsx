@@ -7,6 +7,7 @@ import SEO from "@/components/SEO";
 import Footer from "@/components/Footer";
 import { DemoStoryViewer } from "@/components/demo/DemoStoryViewer";
 import { DEMO_TREES } from "@/lib/demo-stories";
+import { Reveal, StaggerGroup } from "@/components/motion";
 
 const FEATURES = [
   {
@@ -79,56 +80,77 @@ export default function Features() {
       {/* Hero */}
       <section className="pt-28 pb-16 px-6">
         <div className="max-w-3xl mx-auto text-center">
-          <h1 className="font-story text-4xl md:text-5xl font-semibold text-foreground leading-tight tracking-tight text-balance mb-5">
-            Everything you need to write interactive fiction
-          </h1>
-          <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto">
-            Arcwrite combines AI prose generation with branching narrative design. You direct the plot — the AI handles the writing.
-          </p>
+          <Reveal>
+            <h1 className="font-story text-4xl md:text-5xl font-semibold text-foreground leading-tight tracking-tight text-balance mb-5">
+              Everything you need to write interactive fiction
+            </h1>
+          </Reveal>
+          <Reveal delay={0.15}>
+            <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl mx-auto">
+              Arcwrite combines AI prose generation with branching narrative design. You direct the plot — the AI handles the writing.
+            </p>
+          </Reveal>
         </div>
       </section>
 
+      {/* Gradient divider: Hero → Demo */}
+      <div className="h-16" style={{ background: "linear-gradient(to bottom, hsl(var(--background)), hsl(var(--card) / 0.4))" }} />
+
       {/* Interactive demo */}
-      <section className="py-16 px-6 border-t border-border/50">
+      <section className="py-16 px-6 bg-card/40">
         <div className="max-w-5xl mx-auto">
-          <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground text-center mb-3">
-            Explore a story
-          </h2>
-          <p className="text-muted-foreground text-center mb-10 max-w-md mx-auto">
-            Click any node in the tree to read that part of the story and see the path that led there.
-          </p>
-          <DemoStoryViewer nodes={DEMO_TREES.features.nodes} title={DEMO_TREES.features.title} />
+          <Reveal>
+            <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground text-center mb-3">
+              Explore a story
+            </h2>
+            <p className="text-muted-foreground text-center mb-10 max-w-md mx-auto">
+              Click any node in the tree to read that part of the story and see the path that led there.
+            </p>
+          </Reveal>
+          <Reveal>
+            <DemoStoryViewer nodes={DEMO_TREES.features.nodes} title={DEMO_TREES.features.title} />
+          </Reveal>
         </div>
       </section>
+
+      {/* Gradient divider: Demo → Features */}
+      <div className="h-16" style={{ background: "linear-gradient(to bottom, hsl(var(--card) / 0.4), hsl(var(--background)))" }} />
 
       {/* Features grid */}
       <section className="py-16 px-6">
-        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {FEATURES.map((feature) => {
-            const Icon = feature.icon;
-            return (
-              <div key={feature.title} className="p-6 rounded-2xl border border-border bg-card">
-                <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-primary mb-4">
-                  <Icon className="w-5 h-5" />
+        <div className="max-w-5xl mx-auto">
+          <StaggerGroup stagger={0.1} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {FEATURES.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <div key={feature.title} className="group p-6 rounded-2xl border border-border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30">
+                  <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-primary mb-4">
+                    <Icon className="w-5 h-5 transition-transform duration-300 group-hover:rotate-[5deg]" />
+                  </div>
+                  <h3 className="font-medium text-foreground mb-2">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
                 </div>
-                <h3 className="font-medium text-foreground mb-2">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
-              </div>
-            );
-          })}
+              );
+            })}
+          </StaggerGroup>
         </div>
       </section>
 
+      {/* Gradient divider: Features → How It Works */}
+      <div className="h-16" style={{ background: "linear-gradient(to bottom, hsl(var(--background)), hsl(var(--card) / 0.4))" }} />
+
       {/* How it works */}
-      <section className="py-16 px-6 border-t border-border/50">
+      <section className="py-16 px-6 bg-card/40">
         <div className="max-w-4xl mx-auto">
-          <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground text-center mb-3">
-            How it works
-          </h2>
-          <p className="text-muted-foreground text-center mb-14 max-w-md mx-auto">
-            From idea to interactive story in three steps.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <Reveal>
+            <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground text-center mb-3">
+              How it works
+            </h2>
+            <p className="text-muted-foreground text-center mb-14 max-w-md mx-auto">
+              From idea to interactive story in three steps.
+            </p>
+          </Reveal>
+          <StaggerGroup stagger={0.1} className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {HOW_IT_WORKS.map((item) => {
               const Icon = item.icon;
               return (
@@ -142,23 +164,28 @@ export default function Features() {
                 </div>
               );
             })}
-          </div>
+          </StaggerGroup>
         </div>
       </section>
 
+      {/* Gradient divider: How It Works → CTA */}
+      <div className="h-16" style={{ background: "linear-gradient(to bottom, hsl(var(--card) / 0.4), hsl(var(--background)))" }} />
+
       {/* CTA */}
       <section className="py-16 px-6">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground mb-4">
-            Start writing for free
-          </h2>
-          <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-            Create your first interactive story in minutes. No credit card required.
-          </p>
-          <Button size="lg" onClick={() => navigate(user ? "/story/new" : "/auth")}>
-            Get started <ArrowRight className="w-4 h-4 ml-1.5" />
-          </Button>
-        </div>
+        <Reveal>
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground mb-4">
+              Start writing for free
+            </h2>
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+              Create your first interactive story in minutes. No credit card required.
+            </p>
+            <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate(user ? "/story/new" : "/auth")}>
+              Get started <ArrowRight className="w-4 h-4 ml-1.5" />
+            </Button>
+          </div>
+        </Reveal>
       </section>
 
       <Footer />
