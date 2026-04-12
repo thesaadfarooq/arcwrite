@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import { UserButton } from "@clerk/clerk-react";
 import { useTheme } from "@/lib/theme";
 import { getTierLimits } from "@/lib/subscription";
 import { QUICK_START_OPTIONS } from "@/lib/story-starters";
@@ -8,7 +9,7 @@ import { apiClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
-  BookOpen, Plus, Sun, Moon, LogOut, LayoutGrid, List, Crown, Lock, Loader2,
+  BookOpen, Plus, Sun, Moon, LayoutGrid, List, Crown, Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { StoryGridCard, StoryListCard } from "@/components/dashboard/EditableStoryCard";
@@ -25,13 +26,12 @@ interface Story {
 }
 
 export default function Dashboard() {
-  const { user, profile, tier, subscriptionEnd, cancelAtPeriodEnd, signOut, refreshSubscription } = useAuth();
+  const { tier, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [loggingOut, setLoggingOut] = useState(false);
   const limits = getTierLimits(tier);
   const storyCount = stories.length;
   const atStoryLimit = limits.stories !== Infinity && storyCount >= limits.stories;
@@ -124,28 +124,14 @@ export default function Dashboard() {
           <Button variant="ghost" size="sm" onClick={() => navigate("/pricing")} className="text-muted-foreground">
             <Crown className="w-4 h-4 mr-1" /> Upgrade
           </Button>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} className="w-6 h-6 rounded-full" alt="" />
-            ) : (
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
-                {(profile?.display_name || user?.email || "U")[0].toUpperCase()}
-              </div>
-            )}
-            <span className="hidden sm:inline">{profile?.display_name || user?.email}</span>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={loggingOut}
-            onClick={async () => {
-              setLoggingOut(true);
-              await signOut();
+          <UserButton
+            afterSignOutUrl="/auth"
+            appearance={{
+              elements: {
+                avatarBox: "w-7 h-7",
+              },
             }}
-            className="text-muted-foreground"
-          >
-            {loggingOut ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-          </Button>
+          />
         </div>
       </nav>
 
