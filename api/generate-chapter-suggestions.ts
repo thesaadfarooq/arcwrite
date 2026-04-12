@@ -1,6 +1,6 @@
 import { getAuthenticatedUser, unauthorizedResponse } from "./_lib/auth.js";
 
-export const config = { runtime: "edge" };
+export const config = { runtime: "nodejs", maxDuration: 60 };
 
 type Beat = {
   phase?: string;

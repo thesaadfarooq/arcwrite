@@ -1,7 +1,7 @@
 import { getAuthenticatedUser, unauthorizedResponse } from "./_lib/auth.js";
 import { getToneDirective } from "../src/lib/tone-profiles.js";
 
-export const config = { runtime: "edge" };
+export const config = { runtime: "nodejs", maxDuration: 60 };
 
 type StoryArcMode = "normal" | "concluding" | "post_ending" | "resumed_extension";
 type StoryMoveFamily =
