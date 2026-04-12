@@ -1,5 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
-import type { Json } from "@/integrations/supabase/types";
+import type { Json } from "@/lib/types";
+import { getAuthToken } from "@/lib/api-client";
 import type { StoryChoice } from "@/components/story/ChoiceCards";
 import { apiClient } from "@/lib/api-client";
 import type { ChapterSuggestion } from "@/lib/chapter-review";
@@ -26,9 +26,9 @@ type ChapterReviewNode = {
 };
 
 async function getAccessToken(): Promise<string> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) throw new Error("Not authenticated");
-  return session.access_token;
+  const token = await getAuthToken();
+  if (!token) throw new Error("Not authenticated");
+  return token;
 }
 
 export async function streamSection({

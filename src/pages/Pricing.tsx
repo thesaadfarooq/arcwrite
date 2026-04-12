@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { TIERS, type TierKey } from "@/lib/subscription";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Check, Minus, Loader2, Crown, Tag } from "lucide-react";
 import { toast } from "sonner";
@@ -70,7 +69,7 @@ const tierDescriptions: Record<TierKey, string> = {
 
 
 export default function Pricing() {
-  const { user, tier: currentTier, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription } = useAuth();
+  const { user, tier: currentTier, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription, getToken } = useAuth();
   const navigate = useNavigate();
   const [loadingTier, setLoadingTier] = useState<TierKey | null>(null);
 
@@ -88,8 +87,7 @@ export default function Pricing() {
 
     setLoadingTier(tierKey);
     try {
-      const session = await supabase.auth.getSession();
-      const accessToken = session.data.session?.access_token;
+      const accessToken = await getToken();
       const resp = await fetch("/api/create-checkout", {
         method: "POST",
         headers: {
@@ -115,8 +113,7 @@ export default function Pricing() {
 
   const handleManage = async () => {
     try {
-      const session = await supabase.auth.getSession();
-      const accessToken = session.data.session?.access_token;
+      const accessToken = await getToken();
       const resp = await fetch("/api/customer-portal", {
         method: "POST",
         headers: {

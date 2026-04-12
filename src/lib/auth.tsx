@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { useUser, useAuth as useClerkAuth } from "@clerk/react";
 import { getTierByProductId, type TierKey } from "@/lib/subscription";
+import { setTokenGetter } from "@/lib/api-client";
 
 interface ClerkUser {
   id: string;
@@ -95,6 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(refreshSubscription, 60_000);
     return () => clearInterval(interval);
   }, [isSignedIn, refreshSubscription]);
+
+  // Wire up the centralized token getter for api-client.ts
+  useEffect(() => {
+    setTokenGetter(getToken);
+  }, [getToken]);
 
   const signOut = useCallback(async () => {
     await clerkSignOut();
