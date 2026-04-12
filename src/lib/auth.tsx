@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const token = await getToken();
       if (!token) return;
-      const resp = await fetch("/api/check-subscription", {
+      const resp = await fetch("/api/stripe?action=check", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) {

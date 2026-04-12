@@ -117,7 +117,7 @@ export const apiClient = {
       user_id: string;
       tier: string;
       tier_override: string | null;
-    }>("/api/db/profile");
+    }>("/api/db/stories?resource=profile");
   },
 
   getStories() {
@@ -202,20 +202,20 @@ export const apiClient = {
   },
 
   getSharedStory(token: string) {
-    return request<SharedStoryResponse>(`/api/db/shared/${token}`, {
+    return request<SharedStoryResponse>(`/api/shared-story?token=${encodeURIComponent(token)}`, {
       requireAuth: false,
     });
   },
 
   generateChapterSuggestions(payload: Record<string, unknown>) {
-    return request<{ suggestions: ChapterSuggestion[] }>("/api/generate-chapter-suggestions", {
+    return request<{ suggestions: ChapterSuggestion[] }>("/api/generate-chapter?action=suggestions", {
       method: "POST",
       body: payload,
     });
   },
 
   generateChapterTitle(payload: Record<string, unknown>) {
-    return request<{ title: string }>("/api/generate-chapter-title", {
+    return request<{ title: string }>("/api/generate-chapter?action=title", {
       method: "POST",
       body: payload,
     });

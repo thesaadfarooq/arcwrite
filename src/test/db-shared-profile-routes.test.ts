@@ -5,6 +5,7 @@ const getAuthenticatedUserMock = vi.fn();
 const ensureProfileMock = vi.fn();
 const queryMock = vi.fn();
 const queryOneMock = vi.fn();
+const queryCountMock = vi.fn();
 
 vi.mock("../../api/_lib/auth", () => ({
   getAuthenticatedUser: getAuthenticatedUserMock,
@@ -17,6 +18,7 @@ vi.mock("../../api/_auth", () => ({
 vi.mock("../../api/_db", () => ({
   query: queryMock,
   queryOne: queryOneMock,
+  queryCount: queryCountMock,
 }));
 
 function createResponse() {
@@ -34,20 +36,21 @@ function createResponse() {
   };
 }
 
-describe("db shared and profile routes", () => {
+describe("profile via db/stories?resource=profile", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("returns 401 when requesting the profile without authentication", async () => {
     getAuthenticatedUserMock.mockResolvedValue(null);
-    const handler = (await import("../../api/db/profile")).default;
+    const handler = (await import("../../api/db/stories")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "GET",
         headers: {},
+        query: { resource: "profile" },
       } as unknown as VercelRequest,
       res as unknown as VercelResponse
     );
@@ -64,13 +67,14 @@ describe("db shared and profile routes", () => {
       tier: "free",
       tier_override: null,
     });
-    const handler = (await import("../../api/db/profile")).default;
+    const handler = (await import("../../api/db/stories")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "GET",
         headers: { authorization: "Bearer token" },
+        query: { resource: "profile" },
       } as unknown as VercelRequest,
       res as unknown as VercelResponse
     );
@@ -89,6 +93,30 @@ describe("db shared and profile routes", () => {
     });
   });
 
+  it("returns 500 when profile row is null after creation", async () => {
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-3" });
+    ensureProfileMock.mockResolvedValue("user-3");
+    queryOneMock.mockResolvedValue(null);
+    const handler = (await import("../../api/db/stories")).default;
+    const res = createResponse();
+    await handler(
+      {
+        method: "GET",
+        headers: { authorization: "Bearer t" },
+        query: { resource: "profile" },
+      } as unknown as VercelRequest,
+      res as unknown as VercelResponse
+    );
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toEqual({ error: "Failed to create profile" });
+  });
+});
+
+describe("shared story via shared-story route", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("returns the shared story and active nodes ordered by creation time", async () => {
     queryOneMock.mockResolvedValue({
       id: "story-1",
@@ -100,13 +128,14 @@ describe("db shared and profile routes", () => {
       { id: "node-1", text: "First", created_at: "2026-03-26T10:00:00Z" },
       { id: "node-2", text: "Second", created_at: "2026-03-26T11:00:00Z" },
     ]);
-    const handler = (await import("../../api/db/shared/[token]")).default;
+    const handler = (await import("../../api/shared-story")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "GET",
         query: { token: "share-token" },
+        headers: {},
       } as unknown as VercelRequest,
       res as unknown as VercelResponse
     );
@@ -137,13 +166,14 @@ describe("db shared and profile routes", () => {
 
   it("returns 404 when the shared token does not match a story", async () => {
     queryOneMock.mockResolvedValue(null);
-    const handler = (await import("../../api/db/shared/[token]")).default;
+    const handler = (await import("../../api/shared-story")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "GET",
         query: { token: "missing-token" },
+        headers: {},
       } as unknown as VercelRequest,
       res as unknown as VercelResponse
     );
@@ -152,62 +182,25 @@ describe("db shared and profile routes", () => {
     expect(res.body).toEqual({ error: "Not found" });
   });
 
-  it("returns 405 for non-GET on profile route", async () => {
-    const handler = (await import("../../api/db/profile")).default;
-    const res = createResponse();
-    await handler({ method: "POST", headers: {} } as unknown as VercelRequest, res as unknown as VercelResponse);
-    expect(res.statusCode).toBe(405);
-  });
-
-  it("returns 500 when profile row is null after creation", async () => {
-    getAuthenticatedUserMock.mockResolvedValue({ id: "user-3" });
-    ensureProfileMock.mockResolvedValue("user-3");
-    queryOneMock.mockResolvedValue(null);
-    const handler = (await import("../../api/db/profile")).default;
-    const res = createResponse();
-    await handler({ method: "GET", headers: { authorization: "Bearer t" } } as unknown as VercelRequest, res as unknown as VercelResponse);
-    expect(res.statusCode).toBe(500);
-    expect(res.body).toEqual({ error: "Failed to create profile" });
-  });
-
   it("returns 405 for non-GET on shared story route", async () => {
-    const handler = (await import("../../api/db/shared/[token]")).default;
+    const handler = (await import("../../api/shared-story")).default;
     const res = createResponse();
-    await handler({ method: "POST", query: { token: "abc" } } as unknown as VercelRequest, res as unknown as VercelResponse);
+    await handler({ method: "POST", query: { token: "abc" }, headers: {} } as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(405);
   });
 
-  it("returns 400 for invalid token type on shared route", async () => {
-    const handler = (await import("../../api/db/shared/[token]")).default;
+  it("returns 400 when token is missing", async () => {
+    const handler = (await import("../../api/shared-story")).default;
     const res = createResponse();
-    await handler({ method: "GET", query: { token: ["a", "b"] } } as unknown as VercelRequest, res as unknown as VercelResponse);
+    await handler({ method: "GET", query: {}, headers: {} } as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(400);
   });
 
   it("returns 500 on shared route database error", async () => {
     queryOneMock.mockRejectedValue(new Error("db error"));
-    const handler = (await import("../../api/db/shared/[token]")).default;
+    const handler = (await import("../../api/shared-story")).default;
     const res = createResponse();
-    await handler({ method: "GET", query: { token: "abc" } } as unknown as VercelRequest, res as unknown as VercelResponse);
-    expect(res.statusCode).toBe(500);
-    expect(res.body).toEqual({ error: "Internal server error" });
-  });
-
-  it("returns a generic 500 when the profile route fails", async () => {
-    getAuthenticatedUserMock.mockResolvedValue({ id: "user-2" });
-    ensureProfileMock.mockResolvedValue("user-2");
-    queryOneMock.mockRejectedValue(new Error("db exploded"));
-    const handler = (await import("../../api/db/profile")).default;
-    const res = createResponse();
-
-    await handler(
-      {
-        method: "GET",
-        headers: { authorization: "Bearer token" },
-      } as unknown as VercelRequest,
-      res as unknown as VercelResponse
-    );
-
+    await handler({ method: "GET", query: { token: "abc" }, headers: {} } as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(500);
     expect(res.body).toEqual({ error: "Internal server error" });
   });

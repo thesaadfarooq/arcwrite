@@ -54,13 +54,14 @@ describe("check-subscription route", () => {
 
   it("returns 401 without an authenticated user", async () => {
     getAuthenticatedUserMock.mockResolvedValue(null);
-    const handler = (await import("../../api/check-subscription")).default;
+    const handler = (await import("../../api/stripe")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "GET",
         headers: {},
+        query: { action: "check" },
       } as unknown as VercelRequest,
       res as unknown as VercelResponse
     );
@@ -73,13 +74,14 @@ describe("check-subscription route", () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
     getUserEmailMock.mockResolvedValue("user@example.com");
     queryOneMock.mockResolvedValue({ tier_override: "pro" });
-    const handler = (await import("../../api/check-subscription")).default;
+    const handler = (await import("../../api/stripe")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "GET",
         headers: { authorization: "Bearer token" },
+        query: { action: "check" },
       } as unknown as VercelRequest,
       res as unknown as VercelResponse
     );
@@ -108,13 +110,14 @@ describe("check-subscription route", () => {
     getUserEmailMock.mockResolvedValue("free@example.com");
     queryOneMock.mockResolvedValue(null);
     customersListMock.mockResolvedValue({ data: [] });
-    const handler = (await import("../../api/check-subscription")).default;
+    const handler = (await import("../../api/stripe")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "GET",
         headers: { authorization: "Bearer token" },
+        query: { action: "check" },
       } as unknown as VercelRequest,
       res as unknown as VercelResponse
     );
@@ -147,13 +150,14 @@ describe("check-subscription route", () => {
         },
       ],
     });
-    const handler = (await import("../../api/check-subscription")).default;
+    const handler = (await import("../../api/stripe")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "GET",
         headers: { authorization: "Bearer token" },
+        query: { action: "check" },
       } as unknown as VercelRequest,
       res as unknown as VercelResponse
     );
@@ -174,18 +178,19 @@ describe("check-subscription route", () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-4" });
     getUserEmailMock.mockResolvedValue("boom@example.com");
     queryOneMock.mockRejectedValue(new Error("db blew up"));
-    const handler = (await import("../../api/check-subscription")).default;
+    const handler = (await import("../../api/stripe")).default;
     const res = createResponse();
 
     await handler(
       {
         method: "GET",
         headers: { authorization: "Bearer token" },
+        query: { action: "check" },
       } as unknown as VercelRequest,
       res as unknown as VercelResponse
     );
 
     expect(res.statusCode).toBe(500);
-    expect(res.body).toEqual({ error: "Internal server error" });
+    expect(res.body).toEqual({ error: "db blew up" });
   });
 });

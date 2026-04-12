@@ -22,6 +22,7 @@ function createReqRes(overrides: Record<string, unknown> = {}) {
   const req = {
     method: "POST",
     headers: { authorization: "Bearer tok", origin: "http://localhost:8080" },
+    query: { action: "portal" },
     ...overrides,
   };
   const res = {
@@ -42,7 +43,7 @@ describe("customer-portal route", () => {
   });
 
   it("returns 204 for OPTIONS", async () => {
-    const handler = (await import("../../api/customer-portal")).default;
+    const handler = (await import("../../api/stripe")).default;
     const { req, res } = createReqRes({ method: "OPTIONS" });
     await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(204);
@@ -50,7 +51,7 @@ describe("customer-portal route", () => {
 
   it("returns 500 when no STRIPE_SECRET_KEY", async () => {
     delete process.env.STRIPE_SECRET_KEY;
-    const handler = (await import("../../api/customer-portal")).default;
+    const handler = (await import("../../api/stripe")).default;
     const { req, res } = createReqRes();
     await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(500);
@@ -58,7 +59,7 @@ describe("customer-portal route", () => {
 
   it("returns 500 when auth fails", async () => {
     getAuthenticatedUserMock.mockResolvedValue(null);
-    const handler = (await import("../../api/customer-portal")).default;
+    const handler = (await import("../../api/stripe")).default;
     const { req, res } = createReqRes();
     await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(500);
@@ -68,7 +69,7 @@ describe("customer-portal route", () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
     getUserEmailMock.mockResolvedValue("test@example.com");
     customersListMock.mockResolvedValue({ data: [] });
-    const handler = (await import("../../api/customer-portal")).default;
+    const handler = (await import("../../api/stripe")).default;
     const { req, res } = createReqRes();
     await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(500);
@@ -80,7 +81,7 @@ describe("customer-portal route", () => {
     getUserEmailMock.mockResolvedValue("test@example.com");
     customersListMock.mockResolvedValue({ data: [{ id: "cus_abc" }] });
     portalSessionsCreateMock.mockResolvedValue({ url: "https://billing.stripe.com/portal" });
-    const handler = (await import("../../api/customer-portal")).default;
+    const handler = (await import("../../api/stripe")).default;
     const { req, res } = createReqRes();
     await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(200);

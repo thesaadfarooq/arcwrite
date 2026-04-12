@@ -88,7 +88,7 @@ export default function Pricing() {
     setLoadingTier(tierKey);
     try {
       const accessToken = await getToken();
-      const resp = await fetch("/api/create-checkout", {
+      const resp = await fetch("/api/stripe?action=checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -114,7 +114,7 @@ export default function Pricing() {
   const handleManage = async () => {
     try {
       const accessToken = await getToken();
-      const resp = await fetch("/api/customer-portal", {
+      const resp = await fetch("/api/stripe?action=portal", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,

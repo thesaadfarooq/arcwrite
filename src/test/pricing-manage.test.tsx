@@ -69,7 +69,7 @@ describe("Pricing manage subscription", () => {
     fireEvent.click(screen.getByText("Manage subscription"));
 
     await waitFor(() => expect(mockFetch).toHaveBeenCalledWith(
-      "/api/customer-portal",
+      "/api/stripe?action=portal",
       expect.objectContaining({ method: "POST" })
     ));
     await waitFor(() => expect(window.open).toHaveBeenCalledWith("https://billing.stripe.com/portal", "_blank"));

@@ -31,6 +31,10 @@ function createResponse() {
       this.body = payload;
       return this;
     },
+    json(payload: unknown) {
+      this.body = payload;
+      return this;
+    },
     redirect(code: number, location: string) {
       this.statusCode = code;
       this.headers.Location = location;
@@ -46,12 +50,13 @@ describe("og-shared-story route", () => {
 
   it("serves the SPA html to non-crawler requests", async () => {
     readFileSyncMock.mockReturnValue("<html>SPA</html>");
-    const handler = (await import("../../api/og-shared-story")).default;
+    const handler = (await import("../../api/shared-story")).default;
     const res = createResponse();
 
     await handler(
       {
-        query: { token: "share-token" },
+        method: "GET",
+        query: { token: "share-token", og: "true" },
         headers: { "user-agent": "Mozilla/5.0" },
       } as unknown as VercelRequest,
       res as unknown as VercelResponse
@@ -68,12 +73,13 @@ describe("og-shared-story route", () => {
       genre: "Fantasy",
       premise: "A lone courier uncovers a sealed fortress beneath the city.",
     });
-    const handler = (await import("../../api/og-shared-story")).default;
+    const handler = (await import("../../api/shared-story")).default;
     const res = createResponse();
 
     await handler(
       {
-        query: { token: "share-token" },
+        method: "GET",
+        query: { token: "share-token", og: "true" },
         headers: { "user-agent": "Twitterbot/1.0" },
       } as unknown as VercelRequest,
       res as unknown as VercelResponse
@@ -90,12 +96,13 @@ describe("og-shared-story route", () => {
 
   it("falls back to the generic OG metadata when no story is found", async () => {
     queryOneMock.mockResolvedValue(null);
-    const handler = (await import("../../api/og-shared-story")).default;
+    const handler = (await import("../../api/shared-story")).default;
     const res = createResponse();
 
     await handler(
       {
-        query: { token: "missing-token" },
+        method: "GET",
+        query: { token: "missing-token", og: "true" },
         headers: { "user-agent": "Slackbot 1.0" },
       } as unknown as VercelRequest,
       res as unknown as VercelResponse

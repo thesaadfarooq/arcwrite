@@ -73,7 +73,7 @@ describe("api-client", () => {
 
     await apiClient.getSharedStory("share-token");
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/db/shared/share-token", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/shared-story?token=share-token", {
       method: "GET",
       headers: {},
     });
@@ -93,7 +93,7 @@ describe("api-client", () => {
       beat: { phase: "rising", progress: 0.4 },
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/generate-chapter-suggestions", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/generate-chapter?action=suggestions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -120,7 +120,7 @@ describe("api-client", () => {
       beat: { phase: "falling", progress: 0.74 },
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/generate-chapter-title", {
+    expect(fetchMock).toHaveBeenCalledWith("/api/generate-chapter?action=title", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -47,9 +47,9 @@ describe("generate-chapter-suggestions", () => {
     unauthorizedResponseMock.mockReturnValue(unauthorizedResponse);
     getAuthenticatedUserMock.mockResolvedValue(null);
 
-    const handler = (await import("../../api/generate-chapter-suggestions")).default;
+    const handler = (await import("../../api/generate-chapter")).default;
     const response = await handler(
-      new Request("http://localhost/api/generate-chapter-suggestions", {
+      new Request("http://localhost/api/generate-chapter?action=suggestions", {
         method: "POST",
         headers: { authorization: "Bearer token", "Content-Type": "application/json" },
         body: JSON.stringify({ recentNodes: [] }),
@@ -84,9 +84,9 @@ describe("generate-chapter-suggestions", () => {
       })
     );
 
-    const handler = (await import("../../api/generate-chapter-suggestions")).default;
+    const handler = (await import("../../api/generate-chapter")).default;
     const response = await handler(
-      new Request("http://localhost/api/generate-chapter-suggestions", {
+      new Request("http://localhost/api/generate-chapter?action=suggestions", {
         method: "POST",
         headers: { authorization: "Bearer token", "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -146,9 +146,9 @@ describe("generate-chapter-suggestions", () => {
       })
     );
 
-    const handler = (await import("../../api/generate-chapter-suggestions")).default;
+    const handler = (await import("../../api/generate-chapter")).default;
     const response = await handler(
-      new Request("http://localhost/api/generate-chapter-suggestions", {
+      new Request("http://localhost/api/generate-chapter?action=suggestions", {
         method: "POST",
         headers: { authorization: "Bearer token", "Content-Type": "application/json" },
         body: JSON.stringify({

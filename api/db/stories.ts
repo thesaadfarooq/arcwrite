@@ -27,6 +27,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const id = typeof req.query.id === "string" ? req.query.id : null;
 
     if (req.method === "GET") {
+      // GET /api/db/stories?resource=profile → user profile
+      if (req.query.resource === "profile") {
+        const profile = await queryOne(
+          "SELECT user_id, tier, tier_override FROM profiles WHERE user_id = $1",
+          [user.id]
+        );
+        if (!profile) return res.status(500).json({ error: "Failed to create profile" });
+        return res.json(profile);
+      }
+
       // GET /api/db/stories?count=true → story count
       if (req.query.count === "true") {
         const count = await queryCount(

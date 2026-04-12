@@ -43,9 +43,9 @@ describe("generate-chapter-title", () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
     vi.mocked(fetch).mockResolvedValue(openAIStreamResponse({ title: "Ashes Under Glass" }));
 
-    const handler = (await import("../../api/generate-chapter-title")).default;
+    const handler = (await import("../../api/generate-chapter")).default;
     const response = await handler(
-      new Request("http://localhost/api/generate-chapter-title", {
+      new Request("http://localhost/api/generate-chapter?action=title", {
         method: "POST",
         headers: { authorization: "Bearer token", "Content-Type": "application/json" },
         body: JSON.stringify({

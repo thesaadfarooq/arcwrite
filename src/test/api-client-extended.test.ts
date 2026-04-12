@@ -15,7 +15,7 @@ describe("apiClient extended coverage", () => {
     }));
     const result = await apiClient.getProfile();
     expect(result.user_id).toBe("u1");
-    expect(fetch).toHaveBeenCalledWith("/api/db/profile", expect.objectContaining({ method: "GET" }));
+    expect(fetch).toHaveBeenCalledWith("/api/db/stories?resource=profile", expect.objectContaining({ method: "GET" }));
     vi.unstubAllGlobals();
   });
 

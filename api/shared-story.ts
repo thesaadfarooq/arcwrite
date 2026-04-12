@@ -1,13 +1,15 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { queryOne } from "./_db.js";
+import { query, queryOne } from "./_db.js";
 
 export const config = {
   runtime: "nodejs",
-  maxDuration: 5,
+  maxDuration: 10,
   includeFiles: ["dist/index.html"],
 };
+
+// --- OG meta for crawlers ---
 
 const CRAWLERS = [
   "Twitterbot",
@@ -45,11 +47,7 @@ function truncate(str: string, max: number): string {
   return str.slice(0, max - 1) + "\u2026";
 }
 
-function buildOgHtml(opts: {
-  title: string;
-  description: string;
-  url: string;
-}): string {
+function buildOgHtml(opts: { title: string; description: string; url: string }): string {
   const { title, description, url } = opts;
   const t = escapeHtml(title);
   const d = escapeHtml(description);
@@ -76,10 +74,7 @@ function buildOgHtml(opts: {
 </html>`;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const token = (req.query.token as string) || "";
-  const ua = req.headers["user-agent"] || "";
-
+async function handleOg(token: string, ua: string, res: VercelResponse) {
   // Browsers: serve the SPA index.html so React Router handles the route
   if (!isCrawler(ua)) {
     try {
@@ -87,7 +82,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       return res.status(200).send(html);
     } catch {
-      // Fallback: redirect to root and let SPA handle it
       return res.redirect(302, `/s/${encodeURIComponent(token)}`);
     }
   }
@@ -126,11 +120,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const html = buildOgHtml({ title, description, url });
-
   res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.setHeader(
-    "Cache-Control",
-    "s-maxage=300, stale-while-revalidate=600"
-  );
+  res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=600");
   return res.status(200).send(html);
+}
+
+// --- JSON data for frontend ---
+
+async function handleData(token: string, res: VercelResponse) {
+  const story = await queryOne<{
+    id: string;
+    title: string;
+    genre: string | null;
+    premise: string | null;
+  }>(
+    "SELECT id, title, genre, premise FROM stories WHERE share_token = $1",
+    [token]
+  );
+
+  if (!story) {
+    return res.status(404).json({ error: "Not found" });
+  }
+
+  const nodes = await query(
+    "SELECT * FROM story_nodes WHERE story_id = $1 AND is_active = true ORDER BY created_at ASC",
+    [story.id]
+  );
+
+  return res.json({ story, nodes });
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  try {
+    if (req.method !== "GET") {
+      return res.status(405).json({ error: "Method not allowed" });
+    }
+
+    const token = typeof req.query.token === "string" ? req.query.token : "";
+    if (!token) {
+      return res.status(400).json({ error: "token required" });
+    }
+
+    // OG mode: serve HTML for crawlers/browsers (used by vercel.json rewrite)
+    if (req.query.og === "true") {
+      const ua = (req.headers["user-agent"] as string) || "";
+      return await handleOg(token, ua, res);
+    }
+
+    // Default: return JSON data for frontend
+    return await handleData(token, res);
+  } catch {
+    return res.status(500).json({ error: "Internal server error" });
+  }
 }

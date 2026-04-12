@@ -27,7 +27,7 @@ describe("vercel.json configuration", () => {
       (r: { source: string; destination: string }) => r.source === "/s/:token"
     );
     expect(ogRewrite).toBeDefined();
-    expect(ogRewrite.destination).toContain("/api/og-shared-story");
+    expect(ogRewrite.destination).toContain("/api/shared-story");
 
     const ogIndex = vercelConfig.rewrites.indexOf(ogRewrite);
     const catchAllIndex = vercelConfig.rewrites.findIndex(

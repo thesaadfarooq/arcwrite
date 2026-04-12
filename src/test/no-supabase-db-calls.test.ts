@@ -11,9 +11,9 @@ describe("Supabase DB migration audit", () => {
       "src/pages/Dashboard.tsx",
       "src/pages/StoryNew.tsx",
       "src/pages/SharedStory.tsx",
-      "api/check-subscription.ts",
+      "api/stripe.ts",
       "api/export-story.ts",
-      "api/og-shared-story.ts",
+      "api/shared-story.ts",
     ];
 
     const offenders = files.filter((file) =>

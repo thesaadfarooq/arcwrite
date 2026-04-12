@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/s/:token",
-      "destination": "/api/og-shared-story?token=:token"
+      "destination": "/api/shared-story?token=:token&og=true"
     },
     {
       "source": "/((?!api/|@vite|@react-refresh|src/|node_modules/|@fs/).*)",

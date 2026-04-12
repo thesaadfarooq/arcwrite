@@ -157,7 +157,7 @@ describe("AuthProvider", () => {
     // The useEffect triggers refreshSubscription when isSignedIn
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith(
-        "/api/check-subscription",
+        "/api/stripe?action=check",
         expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer clerk-token-123" }) }),
       );
     });
@@ -218,7 +218,7 @@ describe("AuthProvider", () => {
     });
     // fetch should NOT have been called (no token)
     const fetchCalls = vi.mocked(globalThis.fetch).mock.calls.filter(
-      (c) => c[0] === "/api/check-subscription"
+      (c) => c[0] === "/api/stripe?action=check"
     );
     expect(fetchCalls.length).toBe(0);
   });
