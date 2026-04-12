@@ -32,7 +32,6 @@ const {
   toastErrorMock,
   toastSuccessMock,
   toastInfoMock,
-  supabaseGetSessionMock,
   fetchMock,
 } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
@@ -63,7 +62,6 @@ const {
   toastErrorMock: vi.fn(),
   toastSuccessMock: vi.fn(),
   toastInfoMock: vi.fn(),
-  supabaseGetSessionMock: vi.fn(),
   fetchMock: vi.fn(),
 }));
 
@@ -77,7 +75,7 @@ vi.mock("@/lib/theme", () => ({
 }));
 
 vi.mock("@/lib/auth", () => ({
-  useAuth: () => ({ tier: "pro" }),
+  useAuth: () => ({ tier: "pro", getToken: () => Promise.resolve("tok") }),
 }));
 
 vi.mock("@/lib/subscription", () => ({
@@ -122,11 +120,6 @@ vi.mock("@/lib/api-client", () => ({
   },
 }));
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: { getSession: supabaseGetSessionMock },
-  },
-}));
 
 vi.mock("sonner", () => ({
   toast: {
@@ -361,7 +354,6 @@ describe("StoryWrite handlers", () => {
     splitNodeAtPositionMock.mockResolvedValue({ id: "node-2b" });
     apiUpdateStoryMock.mockResolvedValue({});
     apiUpdateNodeMock.mockResolvedValue({});
-    supabaseGetSessionMock.mockResolvedValue({ data: { session: { access_token: "tok" } } });
     fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
     vi.stubGlobal("fetch", fetchMock);
 

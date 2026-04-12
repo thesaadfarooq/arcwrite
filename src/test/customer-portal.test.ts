@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-const getUserMock = vi.fn();
+const getAuthenticatedUserMock = vi.fn();
+const getUserEmailMock = vi.fn();
 const customersListMock = vi.fn();
 const portalSessionsCreateMock = vi.fn();
 
-vi.mock("@supabase/supabase-js", () => ({
-  createClient: () => ({
-    auth: { getUser: getUserMock },
-  }),
+vi.mock("../../api/_lib/auth", () => ({
+  getAuthenticatedUser: getAuthenticatedUserMock,
+  getUserEmail: getUserEmailMock,
 }));
 
 vi.mock("stripe", () => ({
@@ -39,8 +39,6 @@ describe("customer-portal route", () => {
     vi.resetModules();
     vi.clearAllMocks();
     process.env.STRIPE_SECRET_KEY = "sk_test";
-    process.env.SUPABASE_URL = "http://localhost";
-    process.env.SUPABASE_PUBLISHABLE_KEY = "pub_key";
   });
 
   it("returns 204 for OPTIONS", async () => {
@@ -59,7 +57,7 @@ describe("customer-portal route", () => {
   });
 
   it("returns 500 when auth fails", async () => {
-    getUserMock.mockResolvedValue({ data: { user: null }, error: { message: "bad" } });
+    getAuthenticatedUserMock.mockResolvedValue(null);
     const handler = (await import("../../api/customer-portal")).default;
     const { req, res } = createReqRes();
     await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
@@ -67,7 +65,8 @@ describe("customer-portal route", () => {
   });
 
   it("returns 500 when no Stripe customer found", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { email: "test@example.com" } }, error: null });
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
+    getUserEmailMock.mockResolvedValue("test@example.com");
     customersListMock.mockResolvedValue({ data: [] });
     const handler = (await import("../../api/customer-portal")).default;
     const { req, res } = createReqRes();
@@ -77,7 +76,8 @@ describe("customer-portal route", () => {
   });
 
   it("creates a portal session and returns the URL", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { email: "test@example.com" } }, error: null });
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
+    getUserEmailMock.mockResolvedValue("test@example.com");
     customersListMock.mockResolvedValue({ data: [{ id: "cus_abc" }] });
     portalSessionsCreateMock.mockResolvedValue({ url: "https://billing.stripe.com/portal" });
     const handler = (await import("../../api/customer-portal")).default;

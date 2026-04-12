@@ -13,19 +13,12 @@ const mockApiClient = {
 
 vi.mock("@/lib/api-client", () => ({
   apiClient: mockApiClient,
-}));
-
-const mockGetSession = vi.fn();
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: { getSession: mockGetSession },
-  },
+  getAuthToken: vi.fn().mockResolvedValue("tok"),
 }));
 
 describe("story-api delegation functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetSession.mockResolvedValue({ data: { session: { access_token: "tok" } } });
   });
 
   it("getStory delegates to apiClient", async () => {

@@ -1,4 +1,4 @@
-import { verifyToken } from "@clerk/backend";
+import { verifyToken, createClerkClient } from "@clerk/backend";
 
 export type TierKey = "free" | "plus" | "pro";
 
@@ -21,6 +21,16 @@ export async function getAuthenticatedUser(authHeader: string | null) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Get the primary email address for a Clerk user.
+ * Requires the user's Clerk ID.
+ */
+export async function getUserEmail(userId: string): Promise<string | null> {
+  const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
+  const user = await clerk.users.getUser(userId);
+  return user.emailAddresses?.[0]?.emailAddress ?? null;
 }
 
 /** Standard 401 response for Edge runtime handlers */

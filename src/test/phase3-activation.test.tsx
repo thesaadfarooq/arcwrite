@@ -48,22 +48,10 @@ vi.mock("@/lib/api-client", () => ({
   apiClient: apiClientMock,
 }));
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: {
-      getSession: vi.fn(async () => ({
-        data: {
-          session: mockUser
-            ? {
-                access_token: "test-token",
-                user: mockUser,
-              }
-            : null,
-        },
-      })),
-    },
-  },
+vi.mock("@clerk/react", () => ({
+  UserButton: () => null,
 }));
+
 
 describe("phase 3 activation polish", () => {
   beforeEach(() => {

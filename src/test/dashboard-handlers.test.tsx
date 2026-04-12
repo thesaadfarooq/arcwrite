@@ -13,12 +13,10 @@ const refreshSubscriptionMock = vi.fn();
 
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({
-    user: { id: "u1", email: "test@test.com" },
-    profile: { display_name: "Tester" },
+    user: { id: "u1" },
     tier: "free",
     subscriptionEnd: null,
     cancelAtPeriodEnd: false,
-    signOut: vi.fn(),
     refreshSubscription: refreshSubscriptionMock,
     loading: false,
   }),
@@ -26,6 +24,10 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ theme: "dark", toggleTheme: vi.fn() }),
+}));
+
+vi.mock("@clerk/react", () => ({
+  UserButton: () => null,
 }));
 
 vi.mock("@/lib/api-client", () => ({
@@ -104,11 +106,6 @@ describe("Dashboard handlers", () => {
   it("renders story count", async () => {
     await renderDashboard();
     expect(screen.getAllByText(/2 stories/).length).toBeGreaterThan(0);
-  });
-
-  it("renders user name", async () => {
-    await renderDashboard();
-    expect(screen.getByText("Tester")).toBeDefined();
   });
 
   it("shows checkout success toast when URL param present", async () => {
