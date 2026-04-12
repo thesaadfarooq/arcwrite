@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useSignIn, useSignUp } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +31,8 @@ export default function AuthPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const navigate = useNavigate();
+  const { signIn } = useSignIn();
+  const { signUp } = useSignUp();
   const prefersReduced = useReducedMotion();
 
   const noMotion = { initial: undefined, animate: undefined, exit: undefined, transition: undefined };
@@ -58,15 +60,16 @@ export default function AuthPage() {
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!signIn || !signUp) return;
     setLoading(true);
 
     try {
       if (mode === "forgot") {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
-        });
-        if (error) throw error;
-        toast.success("Check your email for reset instructions");
+        const { error: createErr } = await signIn.create({ identifier: email });
+        if (createErr) throw createErr;
+        const { error: sendErr } = await signIn.resetPasswordEmailCode.sendCode();
+        if (sendErr) throw sendErr;
+        toast.success("Check your email for a reset code");
         setMode("login");
       } else if (mode === "signup") {
         if (password !== confirmPassword) {
@@ -84,26 +87,31 @@ export default function AuthPage() {
           setLoading(false);
           return;
         }
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
+        const { error: pwErr } = await signUp.password({ emailAddress: email, password });
+        if (pwErr) throw pwErr;
+        const { error: sendErr } = await signUp.verifications.sendEmailCode();
+        if (sendErr) throw sendErr;
         setOtpReady(false);
         setOtpCountdown(15);
         setMode("verify");
         setResendCooldown(60);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate("/dashboard");
+        // Login
+        const { error: pwErr } = await signIn.password({ emailAddress: email, password });
+        if (pwErr) throw pwErr;
+        if (signIn.status === "complete") {
+          await signIn.finalize({
+            navigate: ({ decorateUrl }) => {
+              navigate(decorateUrl("/dashboard"));
+            },
+          });
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message.toLowerCase() : "";
-      if (mode === "signup" && msg.includes("already registered")) {
+      if (mode === "signup" && (msg.includes("already") || msg.includes("taken"))) {
         toast.error("An account with this email already exists. Try signing in instead.");
-      } else if (mode === "login" && msg.includes("invalid login credentials")) {
+      } else if (mode === "login" && (msg.includes("invalid") || msg.includes("credentials") || msg.includes("password"))) {
         toast.error("Incorrect email or password. Please try again.");
       } else {
         toast.error(err instanceof Error ? err.message : "Authentication failed");
@@ -135,30 +143,18 @@ export default function AuthPage() {
   };
 
   const handleVerifyOtp = async (token: string) => {
+    if (!signUp) return;
     setOtpLoading(true);
-    const attempt = async () => {
-      const res = await fetch("/api/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, token }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error || "Verification failed");
-      return body;
-    };
     try {
-      let body;
-      try {
-        body = await attempt();
-      } catch {
-        await new Promise((r) => setTimeout(r, 10000));
-        body = await attempt();
+      const { error } = await signUp.verifications.verifyEmailCode({ code: token });
+      if (error) throw error;
+      if (signUp.status === "complete") {
+        await signUp.finalize({
+          navigate: ({ decorateUrl }) => {
+            navigate(decorateUrl("/dashboard"));
+          },
+        });
       }
-      await supabase.auth.setSession({
-        access_token: body.access_token,
-        refresh_token: body.refresh_token,
-      });
-      navigate("/dashboard");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Invalid code. Please try again.");
       setOtpDigits(["", "", "", "", "", ""]);
@@ -169,9 +165,9 @@ export default function AuthPage() {
   };
 
   const handleResend = async () => {
-    if (resendCooldown > 0) return;
+    if (resendCooldown > 0 || !signUp) return;
     try {
-      const { error } = await supabase.auth.resend({ type: "signup", email });
+      const { error } = await signUp.verifications.sendEmailCode();
       if (error) throw error;
       toast.success("Code resent — check your email");
       setOtpReady(false);
@@ -184,15 +180,17 @@ export default function AuthPage() {
   };
 
   const handleGoogleAuth = async () => {
+    if (!signIn) return;
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: window.location.origin },
+      const { error } = await signIn.sso({
+        strategy: "oauth_google",
+        redirectUrl: "/sso-callback",
+        redirectCallbackUrl: "/dashboard",
       });
       if (error) throw error;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message.toLowerCase() : "";
-      if (msg.includes("already registered") || msg.includes("account exists")) {
+      if (msg.includes("already") || msg.includes("account exists")) {
         toast.error("An account with this email already exists. Try a different sign-in method.");
       } else {
         toast.error(err instanceof Error ? err.message : "Google sign-in failed");

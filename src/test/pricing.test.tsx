@@ -18,12 +18,6 @@ vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ theme: "dark", toggleTheme: vi.fn() }),
 }));
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: { getSession: vi.fn().mockResolvedValue({ data: { session: null } }) },
-  },
-}));
-
 function renderPage(Page: React.ComponentType) {
   render(
     <HelmetProvider>

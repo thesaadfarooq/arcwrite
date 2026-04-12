@@ -10,19 +10,21 @@ const updateStoryMock = vi.fn();
 
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({
-    user: { email: "test@example.com" },
+    user: { id: "u1" },
     loading: false,
     tier: "free",
-    profile: { display_name: "Tester", avatar_url: null },
     subscriptionEnd: null,
     cancelAtPeriodEnd: false,
-    signOut: vi.fn(),
     refreshSubscription: vi.fn(),
   }),
 }));
 
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ theme: "dark", toggleTheme: vi.fn() }),
+}));
+
+vi.mock("@/components/UserMenu", () => ({
+  UserMenu: () => null,
 }));
 
 vi.mock("@/lib/api-client", () => ({
@@ -70,12 +72,6 @@ describe("Dashboard page", () => {
     renderDashboard(Dashboard);
     await waitFor(() => expect(screen.getByText("Adventure")).toBeDefined());
     expect(screen.getByText(/1 story/)).toBeDefined();
-  });
-
-  it("shows the user display name", async () => {
-    const { default: Dashboard } = await import("@/pages/Dashboard");
-    renderDashboard(Dashboard);
-    await waitFor(() => expect(screen.getByText("Tester")).toBeDefined());
   });
 
   it("shows New Story button", async () => {

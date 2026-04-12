@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { getTierLimits } from "@/lib/subscription";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { apiClient, type StoryNodeRow } from "@/lib/api-client";
-import type { Json } from "@/integrations/supabase/types";
+import type { Json } from "@/lib/types";
 import { StoryCanvas, type StoryParagraph } from "@/components/story/StoryCanvas";
 import { ChoiceCards, type StoryChoice } from "@/components/story/ChoiceCards";
 import { ChapterSidebar, type Chapter } from "@/components/story/ChapterSidebar";
@@ -24,7 +24,6 @@ import { StoryStructureSheet } from "@/components/story/StoryStructureSheet";
 import { StoryToolsSheet } from "@/components/story/StoryToolsSheet";
 import { TonePanel } from "@/components/story/TonePanel";
 import { StoryComplete } from "@/components/story/StoryComplete";
-import { supabase } from "@/integrations/supabase/client";
 import {
   streamSection, generateChoices, summarizeStory,
   getStory, getStoryNodes, getAllStoryNodes, createStoryNode,
@@ -182,7 +181,7 @@ export default function StoryWrite() {
   const { id: storyId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const { tier } = useAuth();
+  const { tier, getToken } = useAuth();
   const limits = getTierLimits(tier);
   const isMobile = useIsMobile();
 
@@ -1196,8 +1195,7 @@ export default function StoryWrite() {
     }
     setIsExporting(true);
     try {
-      const session = await supabase.auth.getSession();
-      const accessToken = session.data.session?.access_token;
+      const accessToken = await getToken();
       const resp = await fetch("/api/export-story", {
         method: "POST",
         headers: {

@@ -1,26 +1,18 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-
-const getSessionMock = vi.fn();
-
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: { getSession: getSessionMock },
-  },
-}));
+import { apiClient, setTokenGetter } from "@/lib/api-client";
 
 describe("apiClient extended coverage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getSessionMock.mockResolvedValue({ data: { session: { access_token: "tok" } } });
+    setTokenGetter(() => Promise.resolve("tok"));
   });
 
   it("getProfile calls the correct endpoint", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
       headers: new Headers({ "Content-Type": "application/json" }),
-      json: () => Promise.resolve({ user_id: "u1", display_name: "Test", avatar_url: null, tier: "free" }),
+      json: () => Promise.resolve({ user_id: "u1", tier: "free", tier_override: null }),
     }));
-    const { apiClient } = await import("@/lib/api-client");
     const result = await apiClient.getProfile();
     expect(result.user_id).toBe("u1");
     expect(fetch).toHaveBeenCalledWith("/api/db/profile", expect.objectContaining({ method: "GET" }));
@@ -33,7 +25,6 @@ describe("apiClient extended coverage", () => {
       headers: new Headers({ "Content-Type": "application/json" }),
       json: () => Promise.resolve({ id: "new-s1" }),
     }));
-    const { apiClient } = await import("@/lib/api-client");
     const result = await apiClient.createStory({ title: "New Story", genre: "fantasy" });
     expect(result.id).toBe("new-s1");
     expect(fetch).toHaveBeenCalledWith("/api/db/stories", expect.objectContaining({
@@ -49,7 +40,6 @@ describe("apiClient extended coverage", () => {
       headers: new Headers({ "Content-Type": "application/json" }),
       json: () => Promise.resolve({ id: "s1", title: "Updated" }),
     }));
-    const { apiClient } = await import("@/lib/api-client");
     await apiClient.updateStory("s1", { title: "Updated" });
     expect(fetch).toHaveBeenCalledWith("/api/db/stories?id=s1", expect.objectContaining({ method: "PATCH" }));
     vi.unstubAllGlobals();
@@ -61,7 +51,6 @@ describe("apiClient extended coverage", () => {
       headers: new Headers({ "Content-Type": "application/json" }),
       json: () => Promise.resolve({ success: true }),
     }));
-    const { apiClient } = await import("@/lib/api-client");
     await apiClient.deleteStory("s1");
     expect(fetch).toHaveBeenCalledWith("/api/db/stories?id=s1", expect.objectContaining({ method: "DELETE" }));
     vi.unstubAllGlobals();
@@ -73,7 +62,6 @@ describe("apiClient extended coverage", () => {
       headers: new Headers({ "Content-Type": "application/json" }),
       json: () => Promise.resolve({ count: 5 }),
     }));
-    const { apiClient } = await import("@/lib/api-client");
     const count = await apiClient.getStoryCount();
     expect(count).toBe(5);
     vi.unstubAllGlobals();
@@ -85,7 +73,6 @@ describe("apiClient extended coverage", () => {
       headers: new Headers({ "Content-Type": "application/json" }),
       json: () => Promise.resolve([]),
     }));
-    const { apiClient } = await import("@/lib/api-client");
     await apiClient.getNodes("s1", { active: false });
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining("active=all"),
@@ -100,7 +87,6 @@ describe("apiClient extended coverage", () => {
       headers: new Headers({ "Content-Type": "application/json" }),
       json: () => Promise.resolve({ id: "n1" }),
     }));
-    const { apiClient } = await import("@/lib/api-client");
     await apiClient.createNode({ story_id: "s1", text: "Hello" });
     expect(fetch).toHaveBeenCalledWith("/api/db/nodes", expect.objectContaining({ method: "POST" }));
     vi.unstubAllGlobals();
@@ -112,7 +98,6 @@ describe("apiClient extended coverage", () => {
       headers: new Headers({ "Content-Type": "application/json" }),
       json: () => Promise.resolve({ success: true }),
     }));
-    const { apiClient } = await import("@/lib/api-client");
 
     await apiClient.jumpToNode("n1");
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining("action=jump"), expect.anything());
@@ -131,7 +116,6 @@ describe("apiClient extended coverage", () => {
       headers: new Headers({ "Content-Type": "application/json" }),
       json: () => Promise.resolve({ success: true, parentId: "n0" }),
     }));
-    const { apiClient } = await import("@/lib/api-client");
     await apiClient.deleteNodeSubtree("n1");
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining("action=subtree"), expect.objectContaining({ method: "DELETE" }));
     vi.unstubAllGlobals();
@@ -143,7 +127,6 @@ describe("apiClient extended coverage", () => {
       headers: new Headers({ "Content-Type": "application/json" }),
       json: () => Promise.resolve({ story: {}, nodes: [] }),
     }));
-    const { apiClient } = await import("@/lib/api-client");
     await apiClient.getSharedStory("abc123");
     const fetchCall = vi.mocked(fetch).mock.calls[0];
     // Should NOT have Authorization header
@@ -157,15 +140,13 @@ describe("apiClient extended coverage", () => {
       headers: new Headers({ "Content-Type": "application/json" }),
       json: () => Promise.resolve({ error: "Not found" }),
     }));
-    const { apiClient } = await import("@/lib/api-client");
     await expect(apiClient.getStory("missing")).rejects.toThrow("Not found");
     vi.unstubAllGlobals();
   });
 
   it("throws when not authenticated", async () => {
-    getSessionMock.mockResolvedValue({ data: { session: null } });
+    setTokenGetter(() => Promise.resolve(null));
     vi.stubGlobal("fetch", vi.fn());
-    const { apiClient } = await import("@/lib/api-client");
     await expect(apiClient.getStories()).rejects.toThrow("Not authenticated");
     vi.unstubAllGlobals();
   });
@@ -176,7 +157,6 @@ describe("apiClient extended coverage", () => {
       headers: new Headers({ "Content-Type": "application/json" }),
       json: () => Promise.resolve({ suggestions: [], title: "Chapter One" }),
     }));
-    const { apiClient } = await import("@/lib/api-client");
     await apiClient.generateChapterSuggestions({ storyId: "s1" });
     await apiClient.generateChapterTitle({ storyId: "s1" });
     expect(fetch).toHaveBeenCalledTimes(2);
@@ -189,7 +169,6 @@ describe("apiClient extended coverage", () => {
       headers: new Headers({ "Content-Type": "application/json" }),
       json: () => Promise.resolve({ success: true }),
     }));
-    const { apiClient } = await import("@/lib/api-client");
     await apiClient.getBranches("s1");
     await apiClient.createBranch({ story_id: "s1", fork_node_id: "n1" });
     await apiClient.promoteBranch("b1");

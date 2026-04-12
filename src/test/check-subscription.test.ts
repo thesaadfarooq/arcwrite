@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const getAuthenticatedUserMock = vi.fn();
+const getUserEmailMock = vi.fn();
 const queryMock = vi.fn();
 const queryOneMock = vi.fn();
 const customersListMock = vi.fn();
@@ -9,6 +10,7 @@ const subscriptionsListMock = vi.fn();
 
 vi.mock("../../api/_lib/auth", () => ({
   getAuthenticatedUser: getAuthenticatedUserMock,
+  getUserEmail: getUserEmailMock,
 }));
 
 vi.mock("../../api/_db", () => ({
@@ -68,7 +70,8 @@ describe("check-subscription route", () => {
   });
 
   it("returns the override tier and syncs it into profiles", async () => {
-    getAuthenticatedUserMock.mockResolvedValue({ id: "user-1", email: "user@example.com" });
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
+    getUserEmailMock.mockResolvedValue("user@example.com");
     queryOneMock.mockResolvedValue({ tier_override: "pro" });
     const handler = (await import("../../api/check-subscription")).default;
     const res = createResponse();
@@ -101,7 +104,8 @@ describe("check-subscription route", () => {
   });
 
   it("syncs free tier when no active customer exists", async () => {
-    getAuthenticatedUserMock.mockResolvedValue({ id: "user-2", email: "free@example.com" });
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-2" });
+    getUserEmailMock.mockResolvedValue("free@example.com");
     queryOneMock.mockResolvedValue(null);
     customersListMock.mockResolvedValue({ data: [] });
     const handler = (await import("../../api/check-subscription")).default;
@@ -124,7 +128,8 @@ describe("check-subscription route", () => {
   });
 
   it("maps an active stripe subscription back to the resolved tier", async () => {
-    getAuthenticatedUserMock.mockResolvedValue({ id: "user-3", email: "plus@example.com" });
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-3" });
+    getUserEmailMock.mockResolvedValue("plus@example.com");
     queryOneMock.mockResolvedValue(null);
     customersListMock.mockResolvedValue({ data: [{ id: "cus_123" }] });
     subscriptionsListMock.mockResolvedValue({
@@ -166,7 +171,8 @@ describe("check-subscription route", () => {
   });
 
   it("returns a generic 500 when the route fails", async () => {
-    getAuthenticatedUserMock.mockResolvedValue({ id: "user-4", email: "boom@example.com" });
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-4" });
+    getUserEmailMock.mockResolvedValue("boom@example.com");
     queryOneMock.mockRejectedValue(new Error("db blew up"));
     const handler = (await import("../../api/check-subscription")).default;
     const res = createResponse();

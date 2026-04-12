@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 
-const mockGetSession = vi.fn();
+const mockGetToken = vi.fn();
 const mockFetch = vi.fn();
 const toastErrorMock = vi.fn();
 const navigateMock = vi.fn();
@@ -17,17 +17,12 @@ vi.mock("@/lib/auth", () => ({
     cancelAtPeriodEnd: false,
     refreshSubscription: refreshSubscriptionMock,
     loading: false,
+    getToken: (...args: unknown[]) => mockGetToken(...args),
   }),
 }));
 
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ theme: "dark", toggleTheme: vi.fn() }),
-}));
-
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: { getSession: (...args: unknown[]) => mockGetSession(...args) },
-  },
 }));
 
 vi.mock("sonner", () => ({
@@ -69,7 +64,7 @@ describe("Pricing page handlers", () => {
   });
 
   it("handles successful checkout", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: { access_token: "tok" } } });
+    mockGetToken.mockResolvedValue("tok");
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ url: "https://checkout.stripe.com/session" }),
@@ -85,7 +80,7 @@ describe("Pricing page handlers", () => {
   });
 
   it("handles checkout error", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: { access_token: "tok" } } });
+    mockGetToken.mockResolvedValue("tok");
     mockFetch.mockResolvedValue({
       ok: false,
       json: () => Promise.resolve({ error: "Checkout failed" }),
@@ -99,7 +94,7 @@ describe("Pricing page handlers", () => {
   });
 
   it("handles checkout with JSON parse failure", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: { access_token: "tok" } } });
+    mockGetToken.mockResolvedValue("tok");
     mockFetch.mockResolvedValue({
       ok: false,
       json: () => Promise.reject(new Error("bad json")),

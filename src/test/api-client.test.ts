@@ -1,26 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const getSessionMock = vi.fn();
-
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: {
-      getSession: getSessionMock,
-    },
-  },
-}));
+import { apiClient, setTokenGetter } from "@/lib/api-client";
 
 describe("api-client", () => {
   beforeEach(() => {
-    vi.resetModules();
     vi.clearAllMocks();
-    getSessionMock.mockResolvedValue({
-      data: {
-        session: {
-          access_token: "session-token",
-        },
-      },
-    });
+    setTokenGetter(() => Promise.resolve("session-token"));
     vi.stubGlobal("fetch", vi.fn());
   });
 
@@ -33,7 +17,6 @@ describe("api-client", () => {
       })
     );
 
-    const { apiClient } = await import("@/lib/api-client");
     const stories = await apiClient.getStories();
 
     expect(fetchMock).toHaveBeenCalledWith("/api/db/stories", {
@@ -54,7 +37,6 @@ describe("api-client", () => {
       })
     );
 
-    const { apiClient } = await import("@/lib/api-client");
     await apiClient.createStory({ title: "New Story", premise: "Idea" });
 
     expect(fetchMock).toHaveBeenCalledWith("/api/db/stories", {
@@ -76,13 +58,11 @@ describe("api-client", () => {
       })
     );
 
-    const { apiClient } = await import("@/lib/api-client");
-
     await expect(apiClient.getStoryCount()).resolves.toBe(4);
   });
 
   it("allows public shared-story requests without a session token", async () => {
-    getSessionMock.mockResolvedValue({ data: { session: null } });
+    setTokenGetter(() => Promise.resolve(null));
     const fetchMock = vi.mocked(fetch);
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ story: { id: "story-3" }, nodes: [] }), {
@@ -91,7 +71,6 @@ describe("api-client", () => {
       })
     );
 
-    const { apiClient } = await import("@/lib/api-client");
     await apiClient.getSharedStory("share-token");
 
     expect(fetchMock).toHaveBeenCalledWith("/api/db/shared/share-token", {
@@ -109,7 +88,6 @@ describe("api-client", () => {
       })
     );
 
-    const { apiClient } = await import("@/lib/api-client");
     await apiClient.generateChapterSuggestions({
       recentNodes: [{ id: "node-1", text: "Text", startsChapter: true, chapterTitle: "Arrival" }],
       beat: { phase: "rising", progress: 0.4 },
@@ -137,7 +115,6 @@ describe("api-client", () => {
       })
     );
 
-    const { apiClient } = await import("@/lib/api-client");
     await apiClient.generateChapterTitle({
       recentNodes: [{ id: "node-1", text: "Text", startsChapter: true, chapterTitle: "Arrival" }],
       beat: { phase: "falling", progress: 0.74 },
@@ -164,8 +141,6 @@ describe("api-client", () => {
         headers: { "Content-Type": "application/json" },
       })
     );
-
-    const { apiClient } = await import("@/lib/api-client");
 
     await expect(apiClient.getStories()).rejects.toThrow("Unauthorized");
   });

@@ -1,15 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-const getSessionMock = vi.fn();
-const getUserMock = vi.fn();
+const getAuthenticatedUserMock = vi.fn();
+const getUserEmailMock = vi.fn();
 const customersListMock = vi.fn();
 const checkoutSessionsCreateMock = vi.fn();
 
-vi.mock("@supabase/supabase-js", () => ({
-  createClient: () => ({
-    auth: { getUser: getUserMock },
-  }),
+vi.mock("../../api/_lib/auth", () => ({
+  getAuthenticatedUser: getAuthenticatedUserMock,
+  getUserEmail: getUserEmailMock,
 }));
 
 vi.mock("stripe", () => ({
@@ -41,8 +40,6 @@ describe("create-checkout route", () => {
     vi.resetModules();
     vi.clearAllMocks();
     process.env.STRIPE_SECRET_KEY = "sk_test";
-    process.env.SUPABASE_URL = "http://localhost";
-    process.env.SUPABASE_PUBLISHABLE_KEY = "pub_key";
   });
 
   it("returns 204 for OPTIONS", async () => {
@@ -70,15 +67,17 @@ describe("create-checkout route", () => {
   });
 
   it("returns 500 when user is not authenticated", async () => {
-    getUserMock.mockResolvedValue({ data: { user: null }, error: { message: "bad" } });
+    getAuthenticatedUserMock.mockResolvedValue(null);
     const handler = (await import("../../api/create-checkout")).default;
     const { req, res } = createReqRes();
     await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
     expect(res.statusCode).toBe(500);
+    expect(res.body).toEqual({ error: "User not authenticated or email not available" });
   });
 
   it("returns 500 when priceId is missing", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { email: "test@example.com" } }, error: null });
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
+    getUserEmailMock.mockResolvedValue("test@example.com");
     const handler = (await import("../../api/create-checkout")).default;
     const { req, res } = createReqRes({ body: {} });
     await handler(req as unknown as VercelRequest, res as unknown as VercelResponse);
@@ -87,7 +86,8 @@ describe("create-checkout route", () => {
   });
 
   it("creates a checkout session for an existing customer", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { email: "test@example.com" } }, error: null });
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
+    getUserEmailMock.mockResolvedValue("test@example.com");
     customersListMock.mockResolvedValue({ data: [{ id: "cus_123" }] });
     checkoutSessionsCreateMock.mockResolvedValue({ url: "https://checkout.stripe.com/session" });
     const handler = (await import("../../api/create-checkout")).default;
@@ -101,7 +101,8 @@ describe("create-checkout route", () => {
   });
 
   it("creates a checkout session for a new customer", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { email: "new@example.com" } }, error: null });
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
+    getUserEmailMock.mockResolvedValue("new@example.com");
     customersListMock.mockResolvedValue({ data: [] });
     checkoutSessionsCreateMock.mockResolvedValue({ url: "https://checkout.stripe.com/new" });
     const handler = (await import("../../api/create-checkout")).default;
@@ -113,7 +114,8 @@ describe("create-checkout route", () => {
   });
 
   it("passes coupon when provided", async () => {
-    getUserMock.mockResolvedValue({ data: { user: { email: "test@example.com" } }, error: null });
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
+    getUserEmailMock.mockResolvedValue("test@example.com");
     customersListMock.mockResolvedValue({ data: [] });
     checkoutSessionsCreateMock.mockResolvedValue({ url: "https://checkout.stripe.com/coupon" });
     const handler = (await import("../../api/create-checkout")).default;

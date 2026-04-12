@@ -17,14 +17,7 @@ const apiClientMock = {
 
 vi.mock("@/lib/api-client", () => ({
   apiClient: apiClientMock,
-}));
-
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: {
-      getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: "token" } } }),
-    },
-  },
+  getAuthToken: vi.fn().mockResolvedValue("token"),
 }));
 
 describe("story-api Postgres migration wrappers", () => {

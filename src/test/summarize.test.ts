@@ -1,17 +1,44 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const getAuthenticatedUserMock = vi.fn();
 const getUserTierMock = vi.fn();
 
 vi.mock("../../api/_lib/auth.js", () => ({
   getAuthenticatedUser: getAuthenticatedUserMock,
-  getUserTier: getUserTierMock,
-  unauthorizedResponse: () =>
-    new Response(JSON.stringify({ error: "Authentication required" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    }),
 }));
+
+vi.mock("../../api/_lib/tier.js", () => ({
+  getUserTier: getUserTierMock,
+}));
+
+function createReq(overrides: Partial<VercelRequest> = {}) {
+  return {
+    method: "POST",
+    headers: { authorization: "Bearer tok", "content-type": "application/json" },
+    body: {},
+    ...overrides,
+  } as unknown as VercelRequest;
+}
+
+function createRes() {
+  return {
+    statusCode: 200,
+    _headers: {} as Record<string, string>,
+    _body: undefined as unknown,
+    _ended: false,
+    status(code: number) { this.statusCode = code; return this; },
+    json(payload: unknown) { this._body = payload; return this; },
+    end() { this._ended = true; return this; },
+    setHeader(k: string, v: string) { this._headers[k] = v; },
+    write() {},
+  } as unknown as VercelResponse & {
+    statusCode: number;
+    _headers: Record<string, string>;
+    _body: unknown;
+    _ended: boolean;
+  };
+}
 
 describe("summarize route", () => {
   beforeEach(() => {
@@ -22,21 +49,18 @@ describe("summarize route", () => {
 
   it("returns 204 for OPTIONS", async () => {
     const handler = (await import("../../api/summarize")).default;
-    const req = new Request("http://localhost/api/summarize", { method: "OPTIONS" });
-    const resp = await handler(req);
-    expect(resp.status).toBe(204);
+    const res = createRes();
+    await handler(createReq({ method: "OPTIONS" }), res);
+    expect(res.statusCode).toBe(204);
+    expect(res._ended).toBe(true);
   });
 
   it("returns 401 when not authenticated", async () => {
     getAuthenticatedUserMock.mockResolvedValue(null);
     const handler = (await import("../../api/summarize")).default;
-    const req = new Request("http://localhost/api/summarize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fullText: "test" }),
-    });
-    const resp = await handler(req);
-    expect(resp.status).toBe(401);
+    const res = createRes();
+    await handler(createReq({ headers: {} }), res);
+    expect(res.statusCode).toBe(401);
   });
 
   it("returns 500 when OPENAI_API_KEY is missing", async () => {
@@ -44,15 +68,13 @@ describe("summarize route", () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "u1" });
     getUserTierMock.mockResolvedValue("free");
     const handler = (await import("../../api/summarize")).default;
-    const req = new Request("http://localhost/api/summarize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer tok" },
-      body: JSON.stringify({ fullText: "Once upon a time" }),
-    });
-    const resp = await handler(req);
-    expect(resp.status).toBe(500);
-    const body = await resp.json();
-    expect(body.error).toContain("OPENAI_API_KEY");
+    const res = createRes();
+    await handler(
+      createReq({ body: { fullText: "Once upon a time" } }),
+      res
+    );
+    expect(res.statusCode).toBe(500);
+    expect(res._body).toEqual({ error: "OPENAI_API_KEY is not configured" });
   });
 
   it("returns 500 when OpenAI returns an error", async () => {
@@ -64,13 +86,12 @@ describe("summarize route", () => {
       text: () => Promise.resolve("Bad request"),
     }));
     const handler = (await import("../../api/summarize")).default;
-    const req = new Request("http://localhost/api/summarize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer tok" },
-      body: JSON.stringify({ fullText: "Once upon a time" }),
-    });
-    const resp = await handler(req);
-    expect(resp.status).toBe(500);
+    const res = createRes();
+    await handler(
+      createReq({ body: { fullText: "Once upon a time" } }),
+      res
+    );
+    expect(res.statusCode).toBe(500);
     vi.unstubAllGlobals();
   });
 
@@ -94,15 +115,13 @@ describe("summarize route", () => {
 
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, body: stream }));
     const handler = (await import("../../api/summarize")).default;
-    const req = new Request("http://localhost/api/summarize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer tok" },
-      body: JSON.stringify({ fullText: "Once upon a time", previousSummary: "prev", storyState: {} }),
-    });
-    const resp = await handler(req);
-    expect(resp.status).toBe(200);
-    const body = await resp.json();
-    expect(body.summary).toBe("A short story");
+    const res = createRes();
+    await handler(
+      createReq({ body: { fullText: "Once upon a time", previousSummary: "prev", storyState: {} } }),
+      res
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res._body).toEqual({ summary: "A short story", story_state: {} });
     vi.unstubAllGlobals();
   });
 });

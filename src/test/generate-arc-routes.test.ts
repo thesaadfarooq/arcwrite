@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const getAuthenticatedUserMock = vi.fn();
 const getUserTierMock = vi.fn();
@@ -6,8 +7,11 @@ const unauthorizedResponseMock = vi.fn();
 
 vi.mock("../../api/_lib/auth", () => ({
   getAuthenticatedUser: getAuthenticatedUserMock,
-  getUserTier: getUserTierMock,
   unauthorizedResponse: unauthorizedResponseMock,
+}));
+
+vi.mock("../../api/_lib/tier", () => ({
+  getUserTier: getUserTierMock,
 }));
 
 function openAIStreamResponse(argumentsJson: unknown) {
@@ -33,6 +37,45 @@ function openAIStreamResponse(argumentsJson: unknown) {
   });
 }
 
+/* ── helpers for generate-section (Node.js runtime) ── */
+
+function createReq(overrides: Partial<VercelRequest> = {}) {
+  return {
+    method: "POST",
+    headers: { authorization: "Bearer token", "content-type": "application/json" },
+    body: {},
+    ...overrides,
+  } as unknown as VercelRequest;
+}
+
+function createRes() {
+  return {
+    statusCode: 200,
+    _headers: {} as Record<string, string>,
+    _body: undefined as unknown,
+    _chunks: [] as unknown[],
+    _ended: false,
+    status(code: number) { this.statusCode = code; return this; },
+    json(payload: unknown) { this._body = payload; return this; },
+    end() { this._ended = true; return this; },
+    setHeader(k: string, v: string) { this._headers[k] = v; },
+    write(chunk: unknown) { this._chunks.push(chunk); },
+  } as unknown as VercelResponse & {
+    statusCode: number;
+    _headers: Record<string, string>;
+    _body: unknown;
+    _chunks: unknown[];
+    _ended: boolean;
+  };
+}
+
+function streamBody(text: string) {
+  const encoder = new TextEncoder();
+  return new ReadableStream({
+    start(c) { c.enqueue(encoder.encode(text)); c.close(); },
+  });
+}
+
 describe("story generation arc routes", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -44,19 +87,16 @@ describe("story generation arc routes", () => {
 
   it("uses beat-aware final-turn pacing in generate-section", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
-    vi.mocked(fetch).mockResolvedValue(
-      new Response("data: {\"choices\":[{\"delta\":{\"content\":\"Done\"}}]}\n\n", {
-        status: 200,
-        headers: { "Content-Type": "text/event-stream" },
-      })
-    );
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      body: streamBody("data: {\"choices\":[{\"delta\":{\"content\":\"Done\"}}]}\n\n"),
+    } as unknown as globalThis.Response);
 
     const handler = (await import("../../api/generate-section")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-section", {
-        method: "POST",
-        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({
+    const res = createRes();
+    await handler(
+      createReq({
+        body: {
           tone: "grim",
           premise: "A city under siege",
           length: "medium",
@@ -68,11 +108,12 @@ describe("story generation arc routes", () => {
             isNearEnd: true,
             isFinalSection: true,
           },
-        }),
-      })
+        },
+      }),
+      res
     );
 
-    expect(response.status).toBe(200);
+    expect(res.statusCode).toBe(200);
 
     const [url, init] = vi.mocked(fetch).mock.calls[0];
     expect(url).toBe("https://api.openai.com/v1/chat/completions");
@@ -83,19 +124,16 @@ describe("story generation arc routes", () => {
 
   it("uses resumed-extension pacing instructions in generate-section", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
-    vi.mocked(fetch).mockResolvedValue(
-      new Response("data: {\"choices\":[{\"delta\":{\"content\":\"Done\"}}]}\n\n", {
-        status: 200,
-        headers: { "Content-Type": "text/event-stream" },
-      })
-    );
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      body: streamBody("data: {\"choices\":[{\"delta\":{\"content\":\"Done\"}}]}\n\n"),
+    } as unknown as globalThis.Response);
 
     const handler = (await import("../../api/generate-section")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-section", {
-        method: "POST",
-        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({
+    const res = createRes();
+    await handler(
+      createReq({
+        body: {
           tone: "hopeful",
           premise: "The kingdom survived the war, but peace is unsettled.",
           length: "medium",
@@ -108,11 +146,12 @@ describe("story generation arc routes", () => {
             isNearEnd: false,
             isFinalSection: false,
           },
-        }),
-      })
+        },
+      }),
+      res
     );
 
-    expect(response.status).toBe(200);
+    expect(res.statusCode).toBe(200);
 
     const [, init] = vi.mocked(fetch).mock.calls[0];
     const payload = JSON.parse(init?.body as string);
@@ -290,43 +329,41 @@ describe("story generation arc routes", () => {
   it("returns 429 when OpenAI rate-limits generate-section", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-6" });
     getUserTierMock.mockResolvedValue("free");
-    vi.mocked(fetch).mockResolvedValue(
-      new Response("Too Many Requests", { status: 429 })
-    );
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 429,
+      text: () => Promise.resolve("Too Many Requests"),
+    } as unknown as globalThis.Response);
 
     const handler = (await import("../../api/generate-section")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-section", {
-        method: "POST",
-        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({ tone: "dark", length: "short" }),
-      })
+    const res = createRes();
+    await handler(
+      createReq({ body: { tone: "dark", length: "short" } }),
+      res
     );
 
-    expect(response.status).toBe(429);
-    const body = await response.json();
-    expect(body.error).toContain("Rate limited");
+    expect(res.statusCode).toBe(429);
+    expect(res._body).toEqual({ error: "Rate limited by OpenAI. Please wait a moment." });
   });
 
   it("returns 500 when OpenAI returns a non-429 error for generate-section", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-7" });
     getUserTierMock.mockResolvedValue("free");
-    vi.mocked(fetch).mockResolvedValue(
-      new Response("Server Error", { status: 500 })
-    );
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: () => Promise.resolve("Server Error"),
+    } as unknown as globalThis.Response);
 
     const handler = (await import("../../api/generate-section")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-section", {
-        method: "POST",
-        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({ tone: "dark", length: "medium" }),
-      })
+    const res = createRes();
+    await handler(
+      createReq({ body: { tone: "dark", length: "medium" } }),
+      res
     );
 
-    expect(response.status).toBe(500);
-    const body = await response.json();
-    expect(body.error).toBe("AI generation failed");
+    expect(res.statusCode).toBe(500);
+    expect(res._body).toEqual({ error: "AI generation failed" });
   });
 
   it("returns 500 when generate-section throws (missing API key)", async () => {
@@ -335,40 +372,35 @@ describe("story generation arc routes", () => {
     delete process.env.OPENAI_API_KEY;
 
     const handler = (await import("../../api/generate-section")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-section", {
-        method: "POST",
-        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({ tone: "dark", length: "medium" }),
-      })
+    const res = createRes();
+    await handler(
+      createReq({ body: { tone: "dark", length: "medium" } }),
+      res
     );
 
-    expect(response.status).toBe(500);
-    const body = await response.json();
-    expect(body.error).toBe("OPENAI_API_KEY is not configured");
+    expect(res.statusCode).toBe(500);
+    expect(res._body).toEqual({ error: "OPENAI_API_KEY is not configured" });
   });
 
   it("includes storyState in the system prompt for generate-section", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-9" });
     getUserTierMock.mockResolvedValue("pro");
-    vi.mocked(fetch).mockResolvedValue(
-      new Response("data: {\"choices\":[{\"delta\":{\"content\":\"Text\"}}]}\n\n", {
-        status: 200,
-        headers: { "Content-Type": "text/event-stream" },
-      })
-    );
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      body: streamBody("data: {\"choices\":[{\"delta\":{\"content\":\"Text\"}}]}\n\n"),
+    } as unknown as globalThis.Response);
 
     const handler = (await import("../../api/generate-section")).default;
+    const res = createRes();
     await handler(
-      new Request("http://localhost/api/generate-section", {
-        method: "POST",
-        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({
+      createReq({
+        body: {
           tone: "dark",
           length: "medium",
           storyState: { tension: "high", location: "castle" },
-        }),
-      })
+        },
+      }),
+      res
     );
 
     const [, init] = vi.mocked(fetch).mock.calls[0];
@@ -379,9 +411,9 @@ describe("story generation arc routes", () => {
 
   it("returns 204 for OPTIONS on generate-section", async () => {
     const handler = (await import("../../api/generate-section")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-section", { method: "OPTIONS" })
-    );
-    expect(response.status).toBe(204);
+    const res = createRes();
+    await handler(createReq({ method: "OPTIONS" }), res);
+    expect(res.statusCode).toBe(204);
+    expect(res._ended).toBe(true);
   });
 });

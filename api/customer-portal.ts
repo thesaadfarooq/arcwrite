@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedUser, getUserEmail } from "./_lib/auth.js";
 
 export const config = { runtime: "nodejs", maxDuration: 10 };
 
@@ -11,20 +11,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_PUBLISHABLE_KEY!
-    );
-
     const authHeader = req.headers.authorization || "";
     if (!authHeader) throw new Error("No authorization header provided");
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !userData.user?.email) throw new Error("Authentication failed");
+    const user = await getAuthenticatedUser(authHeader);
+    if (!user) throw new Error("Authentication failed");
+
+    const email = await getUserEmail(user.id);
+    if (!email) throw new Error("Authentication failed");
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as Stripe.LatestApiVersion });
-    const customers = await stripe.customers.list({ email: userData.user.email, limit: 1 });
+    const customers = await stripe.customers.list({ email, limit: 1 });
     if (customers.data.length === 0) throw new Error("No Stripe customer found for this user");
 
     const origin = (req.headers.origin as string) || "http://localhost:8080";

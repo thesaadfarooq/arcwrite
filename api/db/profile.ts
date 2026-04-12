@@ -24,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await ensureProfile(user.id);
 
     const profile = await queryOne(
-      "SELECT user_id, display_name, avatar_url, tier, tier_override FROM profiles WHERE user_id = $1",
+      "SELECT user_id, tier, tier_override FROM profiles WHERE user_id = $1",
       [user.id]
     );
 

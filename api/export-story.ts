@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import type Stripe from "stripe";
 import { query, queryOne } from "./_db.js";
-import { getAuthenticatedUser } from "./_lib/auth.js";
+import { getAuthenticatedUser, getUserEmail } from "./_lib/auth.js";
 
 interface StoryRow {
   title: string | null;
@@ -31,7 +31,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const user = await getAuthenticatedUser(getAuthorizationHeader(req));
     if (!user) return res.status(401).json({ error: "Unauthorized" });
-    if (!user.email) throw new Error("User email not available");
+
+    const userEmail = await getUserEmail(user.id);
+    if (!userEmail) throw new Error("User email not available");
 
     // Server-side tier check: export requires Plus or Pro
     const profile = await queryOne<{ tier_override: string | null }>(
@@ -44,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Check Stripe for actual subscription
       const Stripe = (await import("stripe")).default;
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-08-27.basil" as Stripe.LatestApiVersion });
-      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+      const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
       if (customers.data.length === 0) {
         return res.status(403).json({ error: "PDF export requires a Plus or Pro plan" });
       }

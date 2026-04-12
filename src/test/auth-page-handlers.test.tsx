@@ -2,12 +2,13 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
-import userEvent from "@testing-library/user-event";
 
-const signInMock = vi.fn();
-const signUpMock = vi.fn();
-const resetPasswordMock = vi.fn();
-const signInOAuthMock = vi.fn();
+const passwordMock = vi.fn();
+const ssoMock = vi.fn();
+const signInCreateMock = vi.fn();
+const sendResetCodeMock = vi.fn();
+const signUpPasswordMock = vi.fn();
+const sendEmailCodeMock = vi.fn();
 const toastErrorMock = vi.fn();
 const toastSuccessMock = vi.fn();
 
@@ -19,15 +20,25 @@ vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ theme: "dark", toggleTheme: vi.fn() }),
 }));
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: {
-      signInWithPassword: signInMock,
-      signUp: signUpMock,
-      resetPasswordForEmail: resetPasswordMock,
-      signInWithOAuth: signInOAuthMock,
+vi.mock("@clerk/react", () => ({
+  useSignIn: () => ({
+    signIn: {
+      password: passwordMock,
+      sso: ssoMock,
+      create: signInCreateMock,
+      resetPasswordEmailCode: { sendCode: sendResetCodeMock },
+      status: "complete",
+      finalize: vi.fn(),
     },
-  },
+  }),
+  useSignUp: () => ({
+    signUp: {
+      password: signUpPasswordMock,
+      verifications: { sendEmailCode: sendEmailCodeMock, verifyEmailCode: vi.fn() },
+      status: "missing_requirements",
+      finalize: vi.fn(),
+    },
+  }),
 }));
 
 vi.mock("sonner", () => ({
@@ -54,21 +65,21 @@ describe("Auth page handlers", () => {
   });
 
   it("handles successful login", async () => {
-    signInMock.mockResolvedValue({ error: null });
+    passwordMock.mockResolvedValue({ error: null });
     await renderAuth();
 
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@example.com" } });
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } });
     fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
 
-    await waitFor(() => expect(signInMock).toHaveBeenCalledWith({
-      email: "test@example.com",
+    await waitFor(() => expect(passwordMock).toHaveBeenCalledWith({
+      emailAddress: "test@example.com",
       password: "password123",
     }));
   });
 
   it("shows error for invalid login credentials", async () => {
-    signInMock.mockResolvedValue({ error: new Error("Invalid login credentials") });
+    passwordMock.mockRejectedValue(new Error("Invalid credentials"));
     await renderAuth();
 
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@example.com" } });
@@ -121,7 +132,8 @@ describe("Auth page handlers", () => {
   });
 
   it("handles successful signup", async () => {
-    signUpMock.mockResolvedValue({ error: null });
+    signUpPasswordMock.mockResolvedValue({ error: null });
+    sendEmailCodeMock.mockResolvedValue({ error: null });
     await renderAuth();
     fireEvent.click(screen.getByText("Sign up"));
 
@@ -130,14 +142,12 @@ describe("Auth page handlers", () => {
     fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "GoodPass1" } });
     fireEvent.click(screen.getByRole("button", { name: /create account/i }));
 
-    await waitFor(() => expect(signUpMock).toHaveBeenCalled());
-    // After successful signup, the page now transitions to OTP verify mode
-    // instead of showing a toast
+    await waitFor(() => expect(signUpPasswordMock).toHaveBeenCalled());
     await waitFor(() => expect(screen.getByText(/check your email/i)).toBeDefined());
   });
 
   it("handles already registered error on signup", async () => {
-    signUpMock.mockResolvedValue({ error: new Error("User already registered") });
+    signUpPasswordMock.mockRejectedValue(new Error("Email already taken"));
     await renderAuth();
     fireEvent.click(screen.getByText("Sign up"));
 
@@ -152,31 +162,33 @@ describe("Auth page handlers", () => {
   });
 
   it("handles forgot password flow", async () => {
-    resetPasswordMock.mockResolvedValue({ error: null });
+    signInCreateMock.mockResolvedValue({ error: null });
+    sendResetCodeMock.mockResolvedValue({ error: null });
     await renderAuth();
     fireEvent.click(screen.getByText("Forgot password?"));
 
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "forgot@example.com" } });
     fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
 
-    await waitFor(() => expect(resetPasswordMock).toHaveBeenCalled());
+    await waitFor(() => expect(signInCreateMock).toHaveBeenCalledWith({ identifier: "forgot@example.com" }));
+    await waitFor(() => expect(sendResetCodeMock).toHaveBeenCalled());
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith(
-      "Check your email for reset instructions"
+      "Check your email for a reset code"
     ));
   });
 
   it("handles Google OAuth", async () => {
-    signInOAuthMock.mockResolvedValue({ error: null });
+    ssoMock.mockResolvedValue({ error: null });
     await renderAuth();
     fireEvent.click(screen.getByRole("button", { name: /continue with google/i }));
 
-    await waitFor(() => expect(signInOAuthMock).toHaveBeenCalledWith(
-      expect.objectContaining({ provider: "google" })
+    await waitFor(() => expect(ssoMock).toHaveBeenCalledWith(
+      expect.objectContaining({ strategy: "oauth_google" })
     ));
   });
 
   it("handles Google OAuth error", async () => {
-    signInOAuthMock.mockResolvedValue({ error: new Error("OAuth failed") });
+    ssoMock.mockRejectedValue(new Error("OAuth failed"));
     await renderAuth();
     fireEvent.click(screen.getByRole("button", { name: /continue with google/i }));
 

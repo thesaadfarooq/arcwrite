@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 
-const updateUserMock = vi.fn();
+const updatePasswordMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
 
@@ -15,10 +15,8 @@ vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ theme: "dark", toggleTheme: vi.fn() }),
 }));
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: { updateUser: updateUserMock },
-  },
+vi.mock("@clerk/react", () => ({
+  useUser: () => ({ user: { updatePassword: updatePasswordMock } }),
 }));
 
 vi.mock("sonner", () => ({
@@ -34,7 +32,7 @@ describe("ResetPassword form handler", () => {
   });
 
   it("handles successful password reset", async () => {
-    updateUserMock.mockResolvedValue({ error: null });
+    updatePasswordMock.mockResolvedValue({});
     const { default: ResetPassword } = await import("@/pages/ResetPassword");
     render(
       <HelmetProvider>
@@ -47,12 +45,12 @@ describe("ResetPassword form handler", () => {
     fireEvent.change(screen.getByLabelText("New Password"), { target: { value: "newpassword123" } });
     fireEvent.click(screen.getByRole("button", { name: /update password/i }));
 
-    await waitFor(() => expect(updateUserMock).toHaveBeenCalledWith({ password: "newpassword123" }));
+    await waitFor(() => expect(updatePasswordMock).toHaveBeenCalledWith({ newPassword: "newpassword123" }));
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledWith("Password updated successfully"));
   });
 
   it("handles password reset error", async () => {
-    updateUserMock.mockResolvedValue({ error: new Error("Token expired") });
+    updatePasswordMock.mockRejectedValue(new Error("Token expired"));
     const { default: ResetPassword } = await import("@/pages/ResetPassword");
     render(
       <HelmetProvider>

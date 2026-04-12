@@ -23,14 +23,12 @@ vi.mock("@vercel/speed-insights/react", () => ({
   SpeedInsights: () => null,
 }));
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: {
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: vi.fn() } } }),
-      getSession: () => Promise.resolve({ data: { session: null } }),
-      refreshSession: () => Promise.resolve({ data: { session: null } }),
-    },
-  },
+vi.mock("@clerk/react", () => ({
+  ClerkProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useUser: () => ({ isLoaded: true, isSignedIn: false, user: null }),
+  useAuth: () => ({ isLoaded: true, getToken: () => Promise.resolve(null), signOut: vi.fn() }),
+  UserButton: () => null,
+  AuthenticateWithRedirectCallback: () => null,
 }));
 
 describe("App", () => {

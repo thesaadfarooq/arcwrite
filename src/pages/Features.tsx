@@ -123,12 +123,12 @@ export default function Features() {
             {FEATURES.map((feature) => {
               const Icon = feature.icon;
               return (
-                <div key={feature.title} className="group p-6 rounded-2xl border border-border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30">
+                <div key={feature.title} className="group h-full flex flex-col p-6 rounded-2xl border border-border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30">
                   <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center text-primary mb-4">
                     <Icon className="w-5 h-5 transition-transform duration-300 group-hover:rotate-[5deg]" />
                   </div>
                   <h3 className="font-medium text-foreground mb-2">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed flex-1">{feature.description}</p>
                 </div>
               );
             })}

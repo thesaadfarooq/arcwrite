@@ -56,7 +56,7 @@ vi.mock("@/lib/theme", () => ({
 }));
 
 vi.mock("@/lib/auth", () => ({
-  useAuth: () => ({ tier: "pro" }),
+  useAuth: () => ({ tier: "pro", getToken: () => Promise.resolve("tok") }),
 }));
 
 vi.mock("@/lib/subscription", () => ({
@@ -94,14 +94,6 @@ vi.mock("@/lib/api-client", () => ({
   apiClient: {
     updateStory: apiUpdateStoryMock,
     updateNode: apiUpdateNodeMock,
-  },
-}));
-
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: {
-      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
-    },
   },
 }));
 

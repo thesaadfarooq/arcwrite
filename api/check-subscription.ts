@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Stripe from "stripe";
 import { query, queryOne } from "./_db.js";
-import { getAuthenticatedUser } from "./_lib/auth.js";
+import { getAuthenticatedUser, getUserEmail } from "./_lib/auth.js";
 
 // Map tier names to Stripe product IDs — MUST be set via env vars per environment
 const STRIPE_PLUS_PRODUCT_ID = process.env.STRIPE_PLUS_PRODUCT_ID;
@@ -36,7 +36,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const user = await getAuthenticatedUser(getAuthorizationHeader(req));
     if (!user) return res.status(401).json({ error: "Unauthorized" });
-    if (!user.email) throw new Error("User email not available");
+
+    const userEmail = await getUserEmail(user.id);
+    if (!userEmail) throw new Error("User email not available");
 
     // Check for tier override in profiles (for testing/manual assignment)
     const profile = await queryOne<{ tier_override: string | null }>(
@@ -58,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as Stripe.LatestApiVersion });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
 
     if (customers.data.length === 0) {
       // Sync tier as free

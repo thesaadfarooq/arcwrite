@@ -1,5 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
-import type { Json } from "@/integrations/supabase/types";
+import type { Json } from "@/lib/types";
 
 type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
@@ -64,12 +63,15 @@ type RequestOptions = {
   requireAuth?: boolean;
 };
 
-async function getAuthToken(): Promise<string | null> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+let _getToken: (() => Promise<string | null>) | null = null;
 
-  return session?.access_token ?? null;
+export function setTokenGetter(fn: () => Promise<string | null>) {
+  _getToken = fn;
+}
+
+export async function getAuthToken(): Promise<string | null> {
+  if (!_getToken) return null;
+  return _getToken();
 }
 
 async function request<T>(
@@ -113,8 +115,6 @@ export const apiClient = {
   getProfile() {
     return request<{
       user_id: string;
-      display_name: string | null;
-      avatar_url: string | null;
       tier: string;
       tier_override: string | null;
     }>("/api/db/profile");

@@ -61,8 +61,6 @@ describe("db shared and profile routes", () => {
     ensureProfileMock.mockResolvedValue("user-1");
     queryOneMock.mockResolvedValue({
       user_id: "user-1",
-      display_name: "Ari",
-      avatar_url: null,
       tier: "free",
       tier_override: null,
     });
@@ -80,14 +78,12 @@ describe("db shared and profile routes", () => {
     expect(getAuthenticatedUserMock).toHaveBeenCalledWith("Bearer token");
     expect(ensureProfileMock).toHaveBeenCalledWith("user-1");
     expect(queryOneMock).toHaveBeenCalledWith(
-      expect.stringContaining("SELECT user_id, display_name, avatar_url, tier, tier_override FROM profiles WHERE user_id = $1"),
+      expect.stringContaining("SELECT user_id, tier, tier_override FROM profiles WHERE user_id = $1"),
       ["user-1"]
     );
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({
       user_id: "user-1",
-      display_name: "Ari",
-      avatar_url: null,
       tier: "free",
       tier_override: null,
     });
