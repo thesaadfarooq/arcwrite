@@ -29,7 +29,7 @@ export function StaggerGroup({
       viewport={{ once: true, amount: 0.1 }}
     >
       {React.Children.map(children, (child, index) => (
-        <Reveal direction={direction} delay={index * effectiveStagger}>
+        <Reveal direction={direction} delay={index * effectiveStagger} className="h-full">
           {child}
         </Reveal>
       ))}

@@ -125,3 +125,26 @@
     text-wrap: pretty;
   }
 }
+
+/* Clerk dark-mode overrides for device/session UI */
+.dark .cl-badge {
+  background-color: hsl(220, 12%, 22%);
+  color: hsl(35, 15%, 80%);
+  border: 1px solid hsl(220, 12%, 28%);
+}
+
+.dark .cl-activeDevice {
+  color: hsl(35, 15%, 80%);
+}
+
+.dark .cl-activeDeviceIcon {
+  background-color: transparent;
+  border: none;
+  color: hsl(35, 15%, 75%);
+  overflow: hidden;
+}
+
+.dark .cl-activeDeviceIcon img,
+.dark .cl-activeDeviceIcon svg {
+  filter: invert(0.85) sepia(0.1) saturate(0.3) hue-rotate(180deg);
+}
