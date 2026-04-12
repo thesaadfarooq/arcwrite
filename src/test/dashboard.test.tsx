@@ -23,8 +23,8 @@ vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ theme: "dark", toggleTheme: vi.fn() }),
 }));
 
-vi.mock("@clerk/react", () => ({
-  UserButton: () => null,
+vi.mock("@/components/UserMenu", () => ({
+  UserMenu: () => null,
 }));
 
 vi.mock("@/lib/api-client", () => ({

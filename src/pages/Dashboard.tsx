@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { UserButton } from "@clerk/react";
+import { UserMenu } from "@/components/UserMenu";
 import { useTheme } from "@/lib/theme";
 import { getTierLimits } from "@/lib/subscription";
 import { QUICK_START_OPTIONS } from "@/lib/story-starters";
@@ -124,14 +124,7 @@ export default function Dashboard() {
           <Button variant="ghost" size="sm" onClick={() => navigate("/pricing")} className="text-muted-foreground">
             <Crown className="w-4 h-4 mr-1" /> Upgrade
           </Button>
-          <UserButton
-            afterSignOutUrl="/auth"
-            appearance={{
-              elements: {
-                avatarBox: "w-7 h-7",
-              },
-            }}
-          />
+          <UserMenu />
         </div>
       </nav>
 

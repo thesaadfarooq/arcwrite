@@ -48,8 +48,8 @@ vi.mock("@/lib/api-client", () => ({
   apiClient: apiClientMock,
 }));
 
-vi.mock("@clerk/react", () => ({
-  UserButton: () => null,
+vi.mock("@/components/UserMenu", () => ({
+  UserMenu: () => null,
 }));
 
 
