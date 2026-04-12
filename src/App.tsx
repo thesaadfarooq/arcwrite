@@ -7,6 +7,7 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ClerkProvider } from "@clerk/react";
 import { ThemeProvider } from "@/lib/theme";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import Index from "./pages/Index.tsx";
@@ -22,8 +23,11 @@ import About from "./pages/About.tsx";
 import Contact from "./pages/Contact.tsx";
 import SharedStory from "./pages/SharedStory.tsx";
 import StoryExplore from "@/pages/StoryExplore";
+import SSOCallback from "./pages/SSOCallback.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import { PromoBanner } from "@/components/PromoBanner";
+
+const CLERK_PUB_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 const queryClient = new QueryClient();
 
@@ -51,6 +55,7 @@ const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<Index />} />
     <Route path="/auth" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
+    <Route path="/sso-callback" element={<SSOCallback />} />
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
     <Route path="/story/new" element={<ProtectedRoute><StoryNew /></ProtectedRoute>} />
@@ -70,19 +75,21 @@ const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <ScrollToTop />
-              <PromoBanner />
-              <AppRoutes />
-            </BrowserRouter>
-            <Analytics />
-            <SpeedInsights />
-          </TooltipProvider>
-        </AuthProvider>
+        <ClerkProvider publishableKey={CLERK_PUB_KEY} afterSignOutUrl="/auth">
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <ScrollToTop />
+                <PromoBanner />
+                <AppRoutes />
+              </BrowserRouter>
+              <Analytics />
+              <SpeedInsights />
+            </TooltipProvider>
+          </AuthProvider>
+        </ClerkProvider>
       </ThemeProvider>
     </QueryClientProvider>
   </HelmetProvider>
