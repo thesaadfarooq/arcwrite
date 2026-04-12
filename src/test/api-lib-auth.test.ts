@@ -1,21 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const getUserMock = vi.fn();
-const fromMock = vi.fn();
-
-vi.mock("@supabase/supabase-js", () => ({
-  createClient: () => ({
-    auth: { getUser: getUserMock },
-    from: fromMock,
-  }),
+const verifyTokenMock = vi.fn();
+vi.mock("@clerk/backend", () => ({
+  verifyToken: (...args: unknown[]) => verifyTokenMock(...args),
 }));
 
 describe("api/_lib/auth", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    process.env.SUPABASE_URL = "http://localhost";
-    process.env.SUPABASE_PUBLISHABLE_KEY = "pub_key";
+    process.env.CLERK_SECRET_KEY = "sk_test_xxx";
   });
 
   describe("getAuthenticatedUser", () => {
@@ -29,51 +23,27 @@ describe("api/_lib/auth", () => {
       expect(await getAuthenticatedUser("InvalidHeader")).toBeNull();
     });
 
-    it("returns null when supabase returns an error", async () => {
-      getUserMock.mockResolvedValue({ data: { user: null }, error: { message: "bad" } });
+    it("returns null when verifyToken throws", async () => {
+      verifyTokenMock.mockRejectedValue(new Error("invalid token"));
       const { getAuthenticatedUser } = await import("../../api/_lib/auth");
-      expect(await getAuthenticatedUser("Bearer validtoken")).toBeNull();
+      expect(await getAuthenticatedUser("Bearer badtoken")).toBeNull();
     });
 
-    it("returns the user on success", async () => {
-      const fakeUser = { id: "u1", email: "test@example.com" };
-      getUserMock.mockResolvedValue({ data: { user: fakeUser }, error: null });
+    it("returns { id } from the sub claim on success", async () => {
+      verifyTokenMock.mockResolvedValue({ sub: "user_abc123" });
       const { getAuthenticatedUser } = await import("../../api/_lib/auth");
-      expect(await getAuthenticatedUser("Bearer validtoken")).toEqual(fakeUser);
-    });
-  });
-
-  describe("getUserTier", () => {
-    it("returns 'free' when no profile row", async () => {
-      fromMock.mockReturnValue({
-        select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null }) }) }),
+      expect(await getAuthenticatedUser("Bearer validtoken")).toEqual({
+        id: "user_abc123",
       });
-      const { getUserTier } = await import("../../api/_lib/auth");
-      expect(await getUserTier("u1")).toBe("free");
     });
 
-    it("returns 'plus' when profile tier is plus", async () => {
-      fromMock.mockReturnValue({
-        select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { tier: "plus" } }) }) }),
+    it("calls verifyToken with the token and secretKey", async () => {
+      verifyTokenMock.mockResolvedValue({ sub: "user_abc123" });
+      const { getAuthenticatedUser } = await import("../../api/_lib/auth");
+      await getAuthenticatedUser("Bearer mytoken");
+      expect(verifyTokenMock).toHaveBeenCalledWith("mytoken", {
+        secretKey: "sk_test_xxx",
       });
-      const { getUserTier } = await import("../../api/_lib/auth");
-      expect(await getUserTier("u1")).toBe("plus");
-    });
-
-    it("returns 'pro' when profile tier is pro", async () => {
-      fromMock.mockReturnValue({
-        select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { tier: "pro" } }) }) }),
-      });
-      const { getUserTier } = await import("../../api/_lib/auth");
-      expect(await getUserTier("u1")).toBe("pro");
-    });
-
-    it("returns 'free' for unknown tier values", async () => {
-      fromMock.mockReturnValue({
-        select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { tier: "unknown" } }) }) }),
-      });
-      const { getUserTier } = await import("../../api/_lib/auth");
-      expect(await getUserTier("u1")).toBe("free");
     });
   });
 

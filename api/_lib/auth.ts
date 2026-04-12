@@ -1,10 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
-
-// Module-level singleton — avoids creating a new client on every request
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_PUBLISHABLE_KEY!
-);
+import { verifyToken } from "@clerk/backend";
 
 export type TierKey = "free" | "plus" | "pro";
 
@@ -19,25 +13,14 @@ export async function getAuthenticatedUser(authHeader: string | null) {
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
   if (!token) return null;
 
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) return null;
-
-  return data.user;
-}
-
-/**
- * Look up a user's subscription tier from the profiles table.
- * Falls back to "free" if no row exists or query fails.
- */
-export async function getUserTier(userId: string): Promise<TierKey> {
-  const { data } = await supabase
-    .from("profiles")
-    .select("tier")
-    .eq("user_id", userId)
-    .single();
-  const tier = data?.tier;
-  if (tier === "plus" || tier === "pro") return tier;
-  return "free";
+  try {
+    const payload = await verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY!,
+    });
+    return { id: payload.sub };
+  } catch {
+    return null;
+  }
 }
 
 /** Standard 401 response for Edge runtime handlers */
