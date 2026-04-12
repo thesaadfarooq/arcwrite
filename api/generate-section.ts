@@ -4,7 +4,7 @@ import { getUserTier } from "./_lib/tier.js";
 import { PROSE_CRAFT_RULES } from "./_lib/prose-rules.js";
 import { getToneDirective, getNamingGuidance } from "../src/lib/tone-profiles.js";
 
-export const config = { runtime: "nodejs", maxDuration: 60 };
+export const config = { runtime: "nodejs", maxDuration: 300 };
 
 const LENGTH_PRESETS: Record<string, { paragraphs: string; maxTokens: number }> = {
   brief:  { paragraphs: "1 short paragraph (~50 words)", maxTokens: 250 },

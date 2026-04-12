@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { getAuthenticatedUser } from "./_lib/auth.js";
 import { getUserTier } from "./_lib/tier.js";
 
-export const config = { runtime: "nodejs", maxDuration: 30 };
+export const config = { runtime: "nodejs", maxDuration: 120 };
 
 function getAuthHeader(req: VercelRequest): string | null {
   const h = req.headers.authorization;

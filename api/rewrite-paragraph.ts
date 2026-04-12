@@ -4,7 +4,7 @@ import { getUserTier } from "./_lib/tier.js";
 import { getToneDirective } from "../src/lib/tone-profiles.js";
 import { PROSE_CRAFT_RULES } from "./_lib/prose-rules.js";
 
-export const config = { runtime: "nodejs", maxDuration: 30 };
+export const config = { runtime: "nodejs", maxDuration: 120 };
 
 function getAuthHeader(req: VercelRequest): string | null {
   const h = req.headers.authorization;
