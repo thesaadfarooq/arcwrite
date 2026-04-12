@@ -180,14 +180,16 @@ export default function AuthPage() {
   };
 
   const handleGoogleAuth = async () => {
-    if (!signIn) return;
+    if (!signIn) {
+      toast.error("Sign-in not ready yet. Please wait a moment and try again.");
+      return;
+    }
     try {
-      const { error } = await signIn.sso({
+      await signIn.sso({
         strategy: "oauth_google",
         redirectUrl: "/sso-callback",
-        redirectCallbackUrl: "/dashboard",
+        redirectUrlComplete: "/dashboard",
       });
-      if (error) throw error;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message.toLowerCase() : "";
       if (msg.includes("already") || msg.includes("account exists")) {
