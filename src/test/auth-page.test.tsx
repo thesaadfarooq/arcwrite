@@ -11,15 +11,9 @@ vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ theme: "dark", toggleTheme: vi.fn() }),
 }));
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: {
-      signInWithPassword: vi.fn(),
-      signUp: vi.fn(),
-      signInWithOAuth: vi.fn(),
-      resetPasswordForEmail: vi.fn(),
-    },
-  },
+vi.mock("@clerk/react", () => ({
+  useSignIn: () => ({ signIn: null, errors: null, fetchStatus: "idle" }),
+  useSignUp: () => ({ signUp: null, errors: null, fetchStatus: "idle" }),
 }));
 
 function renderPage(Page: React.ComponentType) {
