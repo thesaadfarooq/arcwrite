@@ -1,8 +1,10 @@
-import { getAuthenticatedUser, getUserTier, unauthorizedResponse } from "./_lib/auth.js";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { getAuthenticatedUser } from "./_lib/auth.js";
+import { getUserTier } from "./_lib/tier.js";
 import { PROSE_CRAFT_RULES } from "./_lib/prose-rules.js";
 import { getToneDirective, getNamingGuidance } from "../src/lib/tone-profiles.js";
 
-export const config = { runtime: "edge" };
+export const config = { runtime: "nodejs", maxDuration: 60 };
 
 const LENGTH_PRESETS: Record<string, { paragraphs: string; maxTokens: number }> = {
   brief:  { paragraphs: "1 short paragraph (~50 words)", maxTokens: 250 },
@@ -57,17 +59,19 @@ function getPacingInstruction(beat?: Beat, arcMode: StoryArcMode = "normal") {
   }
 }
 
-export default async function handler(req: Request) {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204 });
-  }
+function getAuthHeader(req: VercelRequest): string | null {
+  const h = req.headers.authorization;
+  return typeof h === "string" ? h : null;
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === "OPTIONS") return res.status(204).end();
 
   try {
-    const user = await getAuthenticatedUser(req.headers.get("authorization"));
-    if (!user) return unauthorizedResponse();
+    const user = await getAuthenticatedUser(getAuthHeader(req));
+    if (!user) return res.status(401).json({ error: "Authentication required" });
 
-    const body = await req.json();
-    const { tone, storyState, summary, recentText, direction, premise, genre, length, arcMode, beat } = body;
+    const { tone, storyState, summary, recentText, direction, premise, genre, length, arcMode, beat } = req.body;
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
@@ -115,26 +119,29 @@ export default async function handler(req: Request) {
       const errText = await response.text();
       console.error("OpenAI error:", response.status, errText);
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited by OpenAI. Please wait a moment." }), {
-          status: 429,
-          headers: { "Content-Type": "application/json" },
-        });
+        return res.status(429).json({ error: "Rate limited by OpenAI. Please wait a moment." });
       }
-      return new Response(JSON.stringify({ error: "AI generation failed" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+      return res.status(500).json({ error: "AI generation failed" });
     }
 
-    return new Response(response.body, {
-      headers: { "Content-Type": "text/event-stream" },
-    });
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    const reader = response.body!.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    return res.end();
   } catch (e) {
     console.error("generate-section error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    return res.status(500).json({ error: e instanceof Error ? e.message : "Unknown error" });
   }
 }
 

@@ -1,26 +1,27 @@
-import { getAuthenticatedUser, getUserTier, unauthorizedResponse } from "./_lib/auth.js";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { getAuthenticatedUser } from "./_lib/auth.js";
+import { getUserTier } from "./_lib/tier.js";
 import { getToneDirective } from "../src/lib/tone-profiles.js";
 import { PROSE_CRAFT_RULES } from "./_lib/prose-rules.js";
 
-export const config = { runtime: "edge" };
+export const config = { runtime: "nodejs", maxDuration: 30 };
 
-export default async function handler(req: Request) {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204 });
-  }
+function getAuthHeader(req: VercelRequest): string | null {
+  const h = req.headers.authorization;
+  return typeof h === "string" ? h : null;
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === "OPTIONS") return res.status(204).end();
 
   try {
-    const user = await getAuthenticatedUser(req.headers.get("authorization"));
-    if (!user) return unauthorizedResponse();
+    const user = await getAuthenticatedUser(getAuthHeader(req));
+    if (!user) return res.status(401).json({ error: "Authentication required" });
 
-    const body = await req.json();
-    const { paragraphText, instruction, tone, genre, premise, surroundingContext } = body;
+    const { paragraphText, instruction, tone, genre, premise, surroundingContext } = req.body;
 
     if (!paragraphText || !instruction) {
-      return new Response(
-        JSON.stringify({ error: "paragraphText and instruction are required" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+      return res.status(400).json({ error: "paragraphText and instruction are required" });
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
@@ -54,26 +55,29 @@ export default async function handler(req: Request) {
       const errText = await response.text();
       console.error("OpenAI error:", response.status, errText);
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited. Please wait a moment." }), {
-          status: 429,
-          headers: { "Content-Type": "application/json" },
-        });
+        return res.status(429).json({ error: "Rate limited. Please wait a moment." });
       }
-      return new Response(JSON.stringify({ error: "AI rewrite failed" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+      return res.status(500).json({ error: "AI rewrite failed" });
     }
 
-    return new Response(response.body, {
-      headers: { "Content-Type": "text/event-stream" },
-    });
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    const reader = response.body!.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    return res.end();
   } catch (e) {
     console.error("rewrite-paragraph error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    return res.status(500).json({ error: e instanceof Error ? e.message : "Unknown error" });
   }
 }
 

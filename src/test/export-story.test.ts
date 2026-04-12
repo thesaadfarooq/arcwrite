@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const getAuthenticatedUserMock = vi.fn();
+const getUserEmailMock = vi.fn();
 const queryMock = vi.fn();
 const queryOneMock = vi.fn();
 const customersListMock = vi.fn();
@@ -9,6 +10,7 @@ const subscriptionsListMock = vi.fn();
 
 vi.mock("../../api/_lib/auth", () => ({
   getAuthenticatedUser: getAuthenticatedUserMock,
+  getUserEmail: getUserEmailMock,
 }));
 
 vi.mock("../../api/_db", () => ({
@@ -67,7 +69,8 @@ describe("export-story route", () => {
   });
 
   it("returns exported story data for a user with an override tier", async () => {
-    getAuthenticatedUserMock.mockResolvedValue({ id: "user-1", email: "user@example.com" });
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-1" });
+    getUserEmailMock.mockResolvedValue("user@example.com");
     queryOneMock
       .mockResolvedValueOnce({ tier_override: "plus" })
       .mockResolvedValueOnce({
@@ -136,7 +139,8 @@ describe("export-story route", () => {
   });
 
   it("returns 403 when the user does not have export access", async () => {
-    getAuthenticatedUserMock.mockResolvedValue({ id: "user-2", email: "free@example.com" });
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-2" });
+    getUserEmailMock.mockResolvedValue("free@example.com");
     queryOneMock.mockResolvedValue({ tier_override: null });
     customersListMock.mockResolvedValue({ data: [] });
     const handler = (await import("../../api/export-story")).default;
@@ -156,7 +160,8 @@ describe("export-story route", () => {
   });
 
   it("returns a generic 500 when the route fails", async () => {
-    getAuthenticatedUserMock.mockResolvedValue({ id: "user-3", email: "boom@example.com" });
+    getAuthenticatedUserMock.mockResolvedValue({ id: "user-3" });
+    getUserEmailMock.mockResolvedValue("boom@example.com");
     queryOneMock.mockRejectedValue(new Error("db exploded"));
     const handler = (await import("../../api/export-story")).default;
     const res = createResponse();

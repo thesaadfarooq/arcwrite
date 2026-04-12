@@ -1,17 +1,22 @@
-import { getAuthenticatedUser, getUserTier, unauthorizedResponse } from "./_lib/auth.js";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { getAuthenticatedUser } from "./_lib/auth.js";
+import { getUserTier } from "./_lib/tier.js";
 
-export const config = { runtime: "edge" };
+export const config = { runtime: "nodejs", maxDuration: 30 };
 
-export default async function handler(req: Request) {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204 });
-  }
+function getAuthHeader(req: VercelRequest): string | null {
+  const h = req.headers.authorization;
+  return typeof h === "string" ? h : null;
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === "OPTIONS") return res.status(204).end();
 
   try {
-    const user = await getAuthenticatedUser(req.headers.get("authorization"));
-    if (!user) return unauthorizedResponse();
+    const user = await getAuthenticatedUser(getAuthHeader(req));
+    if (!user) return res.status(401).json({ error: "Authentication required" });
 
-    const { fullText, previousSummary, storyState } = await req.json();
+    const { fullText, previousSummary, storyState } = req.body;
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OPENAI_API_KEY is not configured");
@@ -84,10 +89,7 @@ Return your analysis using the provided tool.`;
     if (!response.ok) {
       const errText = await response.text();
       console.error("OpenAI error:", response.status, errText);
-      return new Response(JSON.stringify({ error: "Summarization failed" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+      return res.status(500).json({ error: "Summarization failed" });
     }
 
     // Stream tool call chunks, assemble, return final JSON
@@ -120,15 +122,10 @@ Return your analysis using the provided tool.`;
     }
 
     const result = JSON.parse(argsBuffer);
-    return new Response(JSON.stringify(result), {
-      headers: { "Content-Type": "application/json" },
-    });
+    return res.json(result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     console.error("summarize error:", msg);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return res.status(500).json({ error: msg });
   }
 }
