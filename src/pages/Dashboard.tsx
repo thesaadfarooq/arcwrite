@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { UserButton } from "@clerk/clerk-react";
+import { UserButton } from "@clerk/react";
 import { useTheme } from "@/lib/theme";
 import { getTierLimits } from "@/lib/subscription";
 import { QUICK_START_OPTIONS } from "@/lib/story-starters";
