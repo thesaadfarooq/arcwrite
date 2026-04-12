@@ -115,8 +115,6 @@ export const apiClient = {
   getProfile() {
     return request<{
       user_id: string;
-      display_name: string | null;
-      avatar_url: string | null;
       tier: string;
       tier_override: string | null;
     }>("/api/db/profile");
