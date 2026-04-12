@@ -1,33 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
 
-// Store the callback so we can trigger it
-let authCallback: ((event: string, session: unknown) => void) | null = null;
+const mockGetToken = vi.fn();
+const mockSignOut = vi.fn();
 
-const getSessionMock = vi.fn();
-const refreshSessionMock = vi.fn();
-const onAuthStateChangeMock = vi.fn().mockImplementation((cb: (event: string, session: unknown) => void) => {
-  authCallback = cb;
-  return { data: { subscription: { unsubscribe: vi.fn() } } };
-});
+const mockUseUser = vi.fn();
+const mockUseClerkAuth = vi.fn();
 
-const getProfileMock = vi.fn();
-
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: {
-      onAuthStateChange: (...args: unknown[]) => onAuthStateChangeMock(...args),
-      getSession: (...args: unknown[]) => getSessionMock(...args),
-      refreshSession: (...args: unknown[]) => refreshSessionMock(...args),
-      signOut: vi.fn().mockResolvedValue({}),
-    },
-  },
-}));
-
-vi.mock("@/lib/api-client", () => ({
-  apiClient: {
-    getProfile: (...args: unknown[]) => getProfileMock(...args),
-  },
+vi.mock("@clerk/react", () => ({
+  useUser: () => mockUseUser(),
+  useAuth: () => mockUseClerkAuth(),
 }));
 
 // Mock fetch for subscription check
@@ -39,13 +21,24 @@ vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
 describe("AuthProvider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authCallback = null;
-    getSessionMock.mockResolvedValue({ data: { session: null } });
-    refreshSessionMock.mockResolvedValue({ data: { session: null } });
-    getProfileMock.mockResolvedValue({ display_name: "Tester", avatar_url: null });
+    // Default: not signed in, loaded
+    mockUseUser.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: false,
+      user: null,
+    });
+    mockUseClerkAuth.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: false,
+      userId: null,
+      getToken: mockGetToken,
+      signOut: mockSignOut,
+    });
+    mockGetToken.mockResolvedValue(null);
+    mockSignOut.mockResolvedValue(undefined);
   });
 
-  it("provides default context when no session", async () => {
+  it("provides default context when no user", async () => {
     const { AuthProvider, useAuth } = await import("@/lib/auth");
     function Consumer() {
       const { user, tier, loading } = useAuth();
@@ -62,56 +55,56 @@ describe("AuthProvider", () => {
         <Consumer />
       </AuthProvider>
     );
-    // After initial load, user should be null
-    await waitFor(() => expect(screen.getByTestId("user").textContent).toBe("no"));
+    await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("no"));
+    expect(screen.getByTestId("user").textContent).toBe("no");
     expect(screen.getByTestId("tier").textContent).toBe("free");
   });
 
-  it("sets user on auth state change", async () => {
-    const mockUser = { id: "u1", email: "test@example.com" };
-    const mockSession = { user: mockUser, access_token: "tok" };
-    getSessionMock.mockResolvedValue({ data: { session: mockSession } });
+  it("provides user when signed in", async () => {
+    mockUseUser.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      user: {
+        id: "user_123",
+        primaryEmailAddress: { emailAddress: "test@example.com" },
+        firstName: "Test",
+        lastName: "User",
+        imageUrl: "https://img.clerk.com/avatar.png",
+      },
+    });
+    mockUseClerkAuth.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      userId: "user_123",
+      getToken: mockGetToken,
+      signOut: mockSignOut,
+    });
+    mockGetToken.mockResolvedValue("clerk-token-123");
 
     const { AuthProvider, useAuth } = await import("@/lib/auth");
     function Consumer() {
-      const { user } = useAuth();
-      return <span data-testid="email">{user?.email || "none"}</span>;
+      const { user, loading } = useAuth();
+      return (
+        <div>
+          <span data-testid="loading">{loading ? "yes" : "no"}</span>
+          <span data-testid="user-id">{user?.id || "none"}</span>
+          <span data-testid="email">{user?.primaryEmailAddress?.emailAddress || "none"}</span>
+          <span data-testid="first-name">{user?.firstName || "none"}</span>
+        </div>
+      );
     }
     render(
       <AuthProvider>
         <Consumer />
       </AuthProvider>
     );
-
-    // Trigger auth state change
-    if (authCallback) {
-      await act(async () => {
-        authCallback("SIGNED_IN", mockSession);
-      });
-    }
-
-    await waitFor(() => expect(screen.getByTestId("email").textContent).toBe("test@example.com"));
+    await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("no"));
+    expect(screen.getByTestId("user-id").textContent).toBe("user_123");
+    expect(screen.getByTestId("email").textContent).toBe("test@example.com");
+    expect(screen.getByTestId("first-name").textContent).toBe("Test");
   });
 
-  it("refreshes session when getSession returns null", async () => {
-    getSessionMock.mockResolvedValue({ data: { session: null } });
-    refreshSessionMock.mockResolvedValue({ data: { session: { user: { id: "u2", email: "refreshed@example.com" }, access_token: "tok2" } } });
-
-    const { AuthProvider, useAuth } = await import("@/lib/auth");
-    function Consumer() {
-      const { user } = useAuth();
-      return <span data-testid="email">{user?.email || "none"}</span>;
-    }
-    render(
-      <AuthProvider>
-        <Consumer />
-      </AuthProvider>
-    );
-
-    await waitFor(() => expect(refreshSessionMock).toHaveBeenCalled());
-  });
-
-  it("provides signOut function", async () => {
+  it("provides signOut function that calls Clerk signOut", async () => {
     const { AuthProvider, useAuth } = await import("@/lib/auth");
     let signOutFn: (() => Promise<void>) | undefined;
     function Consumer() {
@@ -125,44 +118,35 @@ describe("AuthProvider", () => {
       </AuthProvider>
     );
     await act(async () => {
-      await signOutFn();
+      await signOutFn!();
     });
-    // signOut should have been called on supabase
-  });
-
-  it("provides refreshSubscription function", async () => {
-    const { AuthProvider, useAuth } = await import("@/lib/auth");
-    let refreshFn: (() => Promise<void>) | undefined;
-    function Consumer() {
-      const auth = useAuth();
-      refreshFn = auth.refreshSubscription;
-      return null;
-    }
-    render(
-      <AuthProvider>
-        <Consumer />
-      </AuthProvider>
-    );
-    // Should not throw
-    await act(async () => {
-      await refreshFn();
-    });
+    expect(mockSignOut).toHaveBeenCalled();
   });
 
   it("refreshSubscription sets tier from product_id", async () => {
-    getSessionMock.mockResolvedValue({
-      data: { session: { user: { id: "u1" }, access_token: "tok" } },
+    mockUseUser.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      user: { id: "user_123", primaryEmailAddress: null, firstName: null, lastName: null, imageUrl: null },
     });
-    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+    mockUseClerkAuth.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      userId: "user_123",
+      getToken: mockGetToken,
+      signOut: mockSignOut,
+    });
+    mockGetToken.mockResolvedValue("clerk-token-123");
+
+    // Use mockResolvedValue (not Once) since the useEffect also calls refreshSubscription
+    vi.mocked(globalThis.fetch).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ product_id: "prod_plus_123", subscription_end: "2025-12-31", cancel_at_period_end: false }),
-    });
+    } as Response);
 
     const { AuthProvider, useAuth } = await import("@/lib/auth");
-    let refreshFn: (() => Promise<void>) | undefined;
     function Consumer() {
       const auth = useAuth();
-      refreshFn = auth.refreshSubscription;
       return <span data-testid="tier">{auth.tier}</span>;
     }
     render(
@@ -170,30 +154,39 @@ describe("AuthProvider", () => {
         <Consumer />
       </AuthProvider>
     );
-    await act(async () => {
-      await refreshFn();
+    // The useEffect triggers refreshSubscription when isSignedIn
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        "/api/check-subscription",
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer clerk-token-123" }) }),
+      );
     });
-    // fetch should have been called with the subscription endpoint
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      "/api/check-subscription",
-      expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer tok" }) }),
-    );
   });
 
   it("refreshSubscription handles tier_override", async () => {
-    getSessionMock.mockResolvedValue({
-      data: { session: { user: { id: "u1" }, access_token: "tok" } },
+    mockUseUser.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      user: { id: "user_123", primaryEmailAddress: null, firstName: null, lastName: null, imageUrl: null },
     });
-    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+    mockUseClerkAuth.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      userId: "user_123",
+      getToken: mockGetToken,
+      signOut: mockSignOut,
+    });
+    mockGetToken.mockResolvedValue("clerk-token-123");
+
+    // Use mockResolvedValue (not Once) since the useEffect also calls refreshSubscription
+    vi.mocked(globalThis.fetch).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ tier_override: "pro", subscription_end: null, cancel_at_period_end: false }),
-    });
+    } as Response);
 
     const { AuthProvider, useAuth } = await import("@/lib/auth");
-    let refreshFn: (() => Promise<void>) | undefined;
     function Consumer() {
       const auth = useAuth();
-      refreshFn = auth.refreshSubscription;
       return <span data-testid="tier">{auth.tier}</span>;
     }
     render(
@@ -201,14 +194,12 @@ describe("AuthProvider", () => {
         <Consumer />
       </AuthProvider>
     );
-    await act(async () => {
-      await refreshFn();
-    });
+    // The useEffect triggers refreshSubscription when isSignedIn
     await waitFor(() => expect(screen.getByTestId("tier").textContent).toBe("pro"));
   });
 
-  it("refreshSubscription skips when no session", async () => {
-    getSessionMock.mockResolvedValue({ data: { session: null } });
+  it("refreshSubscription skips when no token", async () => {
+    mockGetToken.mockResolvedValue(null);
 
     const { AuthProvider, useAuth } = await import("@/lib/auth");
     let refreshFn: (() => Promise<void>) | undefined;
@@ -223,9 +214,9 @@ describe("AuthProvider", () => {
       </AuthProvider>
     );
     await act(async () => {
-      await refreshFn();
+      await refreshFn!();
     });
-    // fetch should NOT have been called (no session)
+    // fetch should NOT have been called (no token)
     const fetchCalls = vi.mocked(globalThis.fetch).mock.calls.filter(
       (c) => c[0] === "/api/check-subscription"
     );
@@ -233,10 +224,9 @@ describe("AuthProvider", () => {
   });
 
   it("refreshSubscription handles fetch error", async () => {
-    getSessionMock.mockResolvedValue({
-      data: { session: { user: { id: "u1" }, access_token: "tok" } },
-    });
-    vi.mocked(globalThis.fetch).mockResolvedValueOnce({ ok: false, status: 500 });
+    mockGetToken.mockResolvedValue("clerk-token-123");
+
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({ ok: false, status: 500 } as Response);
 
     const { AuthProvider, useAuth } = await import("@/lib/auth");
     let refreshFn: (() => Promise<void>) | undefined;
@@ -252,16 +242,15 @@ describe("AuthProvider", () => {
     );
     // Should not throw
     await act(async () => {
-      await refreshFn();
+      await refreshFn!();
     });
     // Tier should remain free since the fetch failed
     expect(screen.getByTestId("tier").textContent).toBe("free");
   });
 
   it("refreshSubscription handles network exception", async () => {
-    getSessionMock.mockResolvedValue({
-      data: { session: { user: { id: "u1" }, access_token: "tok" } },
-    });
+    mockGetToken.mockResolvedValue("clerk-token-123");
+
     vi.mocked(globalThis.fetch).mockRejectedValueOnce(new Error("network down"));
 
     const { AuthProvider, useAuth } = await import("@/lib/auth");
@@ -278,41 +267,26 @@ describe("AuthProvider", () => {
     );
     // Should not throw
     await act(async () => {
-      await refreshFn();
+      await refreshFn!();
     });
   });
 
-  it("sets profile to null when getProfile fails", async () => {
-    const mockUser = { id: "u1", email: "test@example.com" };
-    const mockSession = { user: mockUser, access_token: "tok" };
-    getSessionMock.mockResolvedValue({ data: { session: mockSession } });
-    getProfileMock.mockRejectedValue(new Error("profile fetch failed"));
+  it("clears state when user signs out", async () => {
+    // Start signed in
+    mockUseUser.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      user: { id: "user_123", primaryEmailAddress: null, firstName: null, lastName: null, imageUrl: null },
+    });
+    mockUseClerkAuth.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      userId: "user_123",
+      getToken: mockGetToken,
+      signOut: mockSignOut,
+    });
+    mockGetToken.mockResolvedValue("clerk-token-123");
 
-    const { AuthProvider, useAuth } = await import("@/lib/auth");
-    function Consumer() {
-      const { profile } = useAuth();
-      return <span data-testid="profile">{profile ? "has" : "null"}</span>;
-    }
-    render(
-      <AuthProvider>
-        <Consumer />
-      </AuthProvider>
-    );
-
-    // Trigger auth state change with a session
-    if (authCallback) {
-      await act(async () => {
-        authCallback("SIGNED_IN", mockSession);
-      });
-    }
-
-    // Wait for the setTimeout(0) to run and fail
-    await waitFor(() => expect(getProfileMock).toHaveBeenCalled());
-    // Profile should be null after error
-    await waitFor(() => expect(screen.getByTestId("profile").textContent).toBe("null"));
-  });
-
-  it("clears state when session is null in auth callback", async () => {
     const { AuthProvider, useAuth } = await import("@/lib/auth");
     function Consumer() {
       const { user, tier } = useAuth();
@@ -323,18 +297,33 @@ describe("AuthProvider", () => {
         </div>
       );
     }
-    render(
+    const { rerender } = render(
       <AuthProvider>
         <Consumer />
       </AuthProvider>
     );
 
-    // Trigger signed out
-    if (authCallback) {
-      await act(async () => {
-        authCallback("SIGNED_OUT", null);
-      });
-    }
+    await waitFor(() => expect(screen.getByTestId("user").textContent).toBe("yes"));
+
+    // Now simulate sign out by changing mock return values
+    mockUseUser.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: false,
+      user: null,
+    });
+    mockUseClerkAuth.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: false,
+      userId: null,
+      getToken: mockGetToken,
+      signOut: mockSignOut,
+    });
+
+    rerender(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId("user").textContent).toBe("no");
