@@ -187,8 +187,8 @@ export default function AuthPage() {
     try {
       await signIn.sso({
         strategy: "oauth_google",
-        redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/dashboard",
+        redirectCallbackUrl: "/sso-callback",
+        redirectUrl: "/dashboard",
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message.toLowerCase() : "";
