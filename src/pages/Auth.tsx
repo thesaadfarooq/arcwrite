@@ -185,12 +185,17 @@ export default function AuthPage() {
       return;
     }
     try {
-      await signIn.sso({
+      const result = await signIn.sso({
         strategy: "oauth_google",
         redirectCallbackUrl: "/sso-callback",
         redirectUrl: "/dashboard",
       });
+      if (result.error) {
+        console.error("SSO error:", JSON.stringify(result.error, null, 2));
+        toast.error(result.error.message || "Google sign-in failed");
+      }
     } catch (err: unknown) {
+      console.error("SSO exception:", err);
       const msg = err instanceof Error ? err.message.toLowerCase() : "";
       if (msg.includes("already") || msg.includes("account exists")) {
         toast.error("An account with this email already exists. Try a different sign-in method.");
