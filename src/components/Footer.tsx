@@ -6,6 +6,7 @@ const PAGE_LINKS = [
   { label: "Pricing", to: "/pricing" },
   { label: "About", to: "/about" },
   { label: "Contact", to: "/contact" },
+  { label: "Terms & Privacy", to: "/legal" },
 ];
 
 const GENRE_LINKS = [

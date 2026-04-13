@@ -23,6 +23,7 @@ import GenreLanding from "./pages/GenreLanding.tsx";
 import Pricing from "./pages/Pricing.tsx";
 import About from "./pages/About.tsx";
 import Contact from "./pages/Contact.tsx";
+import Legal from "./pages/Legal.tsx";
 import SharedStory from "./pages/SharedStory.tsx";
 import StoryExplore from "@/pages/StoryExplore";
 import SSOCallback from "./pages/SSOCallback.tsx";
@@ -69,6 +70,7 @@ const AppRoutes = () => (
     <Route path="/pricing" element={<Pricing />} />
     <Route path="/about" element={<About />} />
     <Route path="/contact" element={<Contact />} />
+    <Route path="/legal" element={<Legal />} />
     <Route path="/s/:token" element={<SharedStory />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
