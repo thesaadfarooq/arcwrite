@@ -348,7 +348,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (active !== "all") sql += " AND is_active = true";
       sql += " ORDER BY created_at ASC";
 
-      const nodes = await query(sql, [story_id]);
+      const nodes = await query<{ id: string; parent_id: string | null }>(sql, [story_id]);
 
       // Sort by tree walk (root → leaf) so split-inserted nodes appear in
       // the correct position regardless of their created_at timestamp.
@@ -384,7 +384,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!story) return res.status(404).json({ error: "Not found" });
 
       const isRoot = !parent_id;
-      const node = await queryOne(
+      const node = await queryOne<{ id: string }>(
         `INSERT INTO story_nodes (
            story_id, parent_id, text, summary, story_state,
            choices, chosen_option, starts_chapter, branch_id
