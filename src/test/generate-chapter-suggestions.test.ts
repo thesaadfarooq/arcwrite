@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const getAuthenticatedUserMock = vi.fn();
-const unauthorizedResponseMock = vi.fn();
 
 vi.mock("../../api/_lib/auth", () => ({
   getAuthenticatedUser: getAuthenticatedUserMock,
-  unauthorizedResponse: unauthorizedResponseMock,
 }));
 
 function openAIStreamResponse(argumentsJson: unknown) {
@@ -31,6 +30,31 @@ function openAIStreamResponse(argumentsJson: unknown) {
   });
 }
 
+function createReq(overrides: Partial<VercelRequest> = {}) {
+  return {
+    method: "POST",
+    headers: { authorization: "Bearer token", "content-type": "application/json" },
+    query: { action: "suggestions" },
+    body: {},
+    ...overrides,
+  } as unknown as VercelRequest;
+}
+
+function createRes() {
+  return {
+    statusCode: 200,
+    _body: undefined as unknown,
+    _ended: false,
+    status(code: number) { this.statusCode = code; return this; },
+    json(payload: unknown) { this._body = payload; return this; },
+    end() { this._ended = true; return this; },
+  } as unknown as VercelResponse & {
+    statusCode: number;
+    _body: unknown;
+    _ended: boolean;
+  };
+}
+
 describe("generate-chapter-suggestions", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -40,25 +64,18 @@ describe("generate-chapter-suggestions", () => {
   });
 
   it("returns unauthorized when the request is not authenticated", async () => {
-    const unauthorizedResponse = new Response(JSON.stringify({ error: "Authentication required" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-    unauthorizedResponseMock.mockReturnValue(unauthorizedResponse);
     getAuthenticatedUserMock.mockResolvedValue(null);
 
     const handler = (await import("../../api/generate-chapter")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-chapter?action=suggestions", {
-        method: "POST",
-        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({ recentNodes: [] }),
-      })
+    const res = createRes();
+    await handler(
+      createReq({ body: { recentNodes: [] } }),
+      res
     );
 
     expect(getAuthenticatedUserMock).toHaveBeenCalledWith("Bearer token");
-    expect(unauthorizedResponseMock).toHaveBeenCalledTimes(1);
-    expect(response).toBe(unauthorizedResponse);
+    expect(res.statusCode).toBe(401);
+    expect(res._body).toEqual({ error: "Authentication required" });
   });
 
   it("requests at most two chapter suggestions for the active-path tail", async () => {
@@ -85,11 +102,10 @@ describe("generate-chapter-suggestions", () => {
     );
 
     const handler = (await import("../../api/generate-chapter")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-chapter?action=suggestions", {
-        method: "POST",
-        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({
+    const res = createRes();
+    await handler(
+      createReq({
+        body: {
           premise: "A distant signal calls the crew inland.",
           tone: "Atmospheric",
           genre: "Mystery",
@@ -105,12 +121,13 @@ describe("generate-chapter-suggestions", () => {
               paragraphCount: 3,
             },
           ],
-        }),
-      })
+        },
+      }),
+      res
     );
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
+    expect(res.statusCode).toBe(200);
+    expect(res._body).toEqual({
       suggestions: [
         expect.objectContaining({ type: "start_new_chapter_here", anchorNodeId: "node-5" }),
         expect.objectContaining({ type: "rename_recent_chapter", anchorNodeId: "node-4" }),
@@ -147,11 +164,10 @@ describe("generate-chapter-suggestions", () => {
     );
 
     const handler = (await import("../../api/generate-chapter")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-chapter?action=suggestions", {
-        method: "POST",
-        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({
+    const res = createRes();
+    await handler(
+      createReq({
+        body: {
           recentNodes: [
             {
               id: "node-4",
@@ -168,11 +184,12 @@ describe("generate-chapter-suggestions", () => {
               paragraphCount: 2,
             },
           ],
-        }),
-      })
+        },
+      }),
+      res
     );
 
-    await expect(response.json()).resolves.toEqual({
+    expect(res._body).toEqual({
       suggestions: [
         expect.objectContaining({
           type: "rename_recent_chapter",

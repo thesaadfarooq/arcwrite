@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const getAuthenticatedUserMock = vi.fn();
-const unauthorizedResponseMock = vi.fn();
 
 vi.mock("../../api/_lib/auth", () => ({
   getAuthenticatedUser: getAuthenticatedUserMock,
-  unauthorizedResponse: unauthorizedResponseMock,
 }));
 
 function openAIStreamResponse(argumentsJson: unknown) {
@@ -31,6 +30,31 @@ function openAIStreamResponse(argumentsJson: unknown) {
   });
 }
 
+function createReq(overrides: Partial<VercelRequest> = {}) {
+  return {
+    method: "POST",
+    headers: { authorization: "Bearer token", "content-type": "application/json" },
+    query: { action: "title" },
+    body: {},
+    ...overrides,
+  } as unknown as VercelRequest;
+}
+
+function createRes() {
+  return {
+    statusCode: 200,
+    _body: undefined as unknown,
+    _ended: false,
+    status(code: number) { this.statusCode = code; return this; },
+    json(payload: unknown) { this._body = payload; return this; },
+    end() { this._ended = true; return this; },
+  } as unknown as VercelResponse & {
+    statusCode: number;
+    _body: unknown;
+    _ended: boolean;
+  };
+}
+
 describe("generate-chapter-title", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -44,11 +68,10 @@ describe("generate-chapter-title", () => {
     vi.mocked(fetch).mockResolvedValue(openAIStreamResponse({ title: "Ashes Under Glass" }));
 
     const handler = (await import("../../api/generate-chapter")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-chapter?action=title", {
-        method: "POST",
-        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({
+    const res = createRes();
+    await handler(
+      createReq({
+        body: {
           premise: "A crew follows a signal into a dead city.",
           tone: "Atmospheric",
           genre: "Mystery",
@@ -58,12 +81,13 @@ describe("generate-chapter-title", () => {
             { id: "node-4", text: "They argued over the map.", startsChapter: true, chapterTitle: "Old title" },
             { id: "node-5", text: "The observatory windows reflected the marsh fire.", startsChapter: false, chapterTitle: null },
           ],
-        }),
-      })
+        },
+      }),
+      res
     );
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ title: "Ashes Under Glass" });
+    expect(res.statusCode).toBe(200);
+    expect(res._body).toEqual({ title: "Ashes Under Glass" });
 
     const [, init] = vi.mocked(fetch).mock.calls[0];
     const payload = JSON.parse(init?.body as string);

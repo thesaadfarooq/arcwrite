@@ -1,6 +1,12 @@
-import { getAuthenticatedUser, unauthorizedResponse } from "./_lib/auth.js";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { getAuthenticatedUser } from "./_lib/auth.js";
 
 export const config = { runtime: "nodejs", maxDuration: 300 };
+
+function getAuthHeader(req: VercelRequest): string | null {
+  const h = req.headers.authorization;
+  return typeof h === "string" ? h : null;
+}
 
 type Beat = {
   phase?: string;
@@ -105,11 +111,11 @@ async function streamToolCallArgs(response: Response): Promise<string> {
   return argsBuffer;
 }
 
-async function handleSuggestions(req: Request) {
-  const user = await getAuthenticatedUser(req.headers.get("authorization"));
-  if (!user) return unauthorizedResponse();
+async function handleSuggestions(req: VercelRequest, res: VercelResponse) {
+  const user = await getAuthenticatedUser(getAuthHeader(req));
+  if (!user) return res.status(401).json({ error: "Authentication required" });
 
-  const { premise, tone, genre, summary, beat, recentNodes } = (await req.json()) as {
+  const { premise, tone, genre, summary, beat, recentNodes } = req.body as {
     premise?: string;
     tone?: string;
     genre?: string;
@@ -199,26 +205,21 @@ Return only high-confidence chapter guidance.`;
   if (!response.ok) {
     const errText = await response.text();
     console.error("OpenAI error:", response.status, errText);
-    return new Response(JSON.stringify({ error: "Failed to generate chapter suggestions" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return res.status(500).json({ error: "Failed to generate chapter suggestions" });
   }
 
   const argsBuffer = await streamToolCallArgs(response);
   const parsed = JSON.parse(argsBuffer || "{\"suggestions\":[]}") as { suggestions?: unknown };
   const suggestions = normalizeSuggestions(parsed.suggestions, recentNodes ?? []);
 
-  return new Response(JSON.stringify({ suggestions }), {
-    headers: { "Content-Type": "application/json" },
-  });
+  return res.json({ suggestions });
 }
 
-async function handleTitle(req: Request) {
-  const user = await getAuthenticatedUser(req.headers.get("authorization"));
-  if (!user) return unauthorizedResponse();
+async function handleTitle(req: VercelRequest, res: VercelResponse) {
+  const user = await getAuthenticatedUser(getAuthHeader(req));
+  if (!user) return res.status(401).json({ error: "Authentication required" });
 
-  const { premise, tone, genre, summary, beat, recentNodes, currentTitle } = (await req.json()) as {
+  const { premise, tone, genre, summary, beat, recentNodes, currentTitle } = req.body as {
     premise?: string;
     tone?: string;
     genre?: string;
@@ -287,47 +288,35 @@ Suggest exactly one chapter title for the material above.`;
   if (!response.ok) {
     const errText = await response.text();
     console.error("OpenAI error:", response.status, errText);
-    return new Response(JSON.stringify({ error: "Failed to generate chapter title" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return res.status(500).json({ error: "Failed to generate chapter title" });
   }
 
   const argsBuffer = await streamToolCallArgs(response);
   const parsed = JSON.parse(argsBuffer || "{\"title\":\"\"}") as { title?: unknown };
   const title = typeof parsed.title === "string" ? parsed.title : "";
 
-  return new Response(JSON.stringify({ title }), {
-    headers: { "Content-Type": "application/json" },
-  });
+  return res.json({ title });
 }
 
-export default async function handler(req: Request) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204 });
+    return res.status(204).end();
   }
 
   try {
-    const url = new URL(req.url, "http://localhost");
-    const action = url.searchParams.get("action");
+    const action = req.query.action as string | undefined;
 
     switch (action) {
       case "suggestions":
-        return await handleSuggestions(req);
+        return await handleSuggestions(req, res);
       case "title":
-        return await handleTitle(req);
+        return await handleTitle(req, res);
       default:
-        return new Response(JSON.stringify({ error: "Invalid action. Use ?action=suggestions|title" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
+        return res.status(400).json({ error: "Invalid action. Use ?action=suggestions|title" });
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("generate-chapter error:", message);
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return res.status(500).json({ error: message });
   }
 }

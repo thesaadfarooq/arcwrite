@@ -174,21 +174,21 @@ describe("story generation arc routes", () => {
     );
 
     const handler = (await import("../../api/generate-choices")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-choices", {
-        method: "POST",
-        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({
+    const res = createRes();
+    await handler(
+      createReq({
+        body: {
           recentText: "Recent text",
           summary: "Summary",
           storyState: { mood: "tense" },
           beat: { phase: "falling", progress: 0.8, phaseProgress: 0.4, turnsRemaining: 6, isNearEnd: true },
-        }),
-      })
+        },
+      }),
+      res
     );
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
+    expect(res.statusCode).toBe(200);
+    expect(res._body).toEqual({
       choices: [
         { type: "resolve", label: "Put it to rest", preview: "The main thread closes." },
         { type: "emotional", label: "Say goodbye", preview: "A conversation lands softly." },
@@ -233,11 +233,10 @@ describe("story generation arc routes", () => {
     );
 
     const handler = (await import("../../api/generate-choices")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-choices", {
-        method: "POST",
-        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({
+    const res = createRes();
+    await handler(
+      createReq({
+        body: {
           recentText: "The gates closed behind them as the coronation ended.",
           summary: "The rebellion won and the city entered an uneasy peace.",
           storyState: { crown: "restored" },
@@ -248,12 +247,13 @@ describe("story generation arc routes", () => {
           moveFamilies: ["aftermath", "loose_thread", "time_skip", "new_problem"],
           previousEnding: "epilogue",
           beat: { phase: "resolution", progress: 1, phaseProgress: 1, turnsRemaining: 0, isNearEnd: true },
-        }),
-      })
+        },
+      }),
+      res
     );
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
+    expect(res.statusCode).toBe(200);
+    expect(res._body).toEqual({
       choices: [
         { type: "resolve", label: "Survey the damage", preview: "They take stock of the aftermath." },
         { type: "emotional", label: "Face the old promise", preview: "A loose thread becomes personal." },
@@ -282,22 +282,18 @@ describe("story generation arc routes", () => {
     );
 
     const handler = (await import("../../api/generate-choices")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-choices", {
-        method: "POST",
-        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({ recentText: "Some text" }),
-      })
+    const res = createRes();
+    await handler(
+      createReq({ body: { recentText: "Some text" } }),
+      res
     );
 
-    expect(response.status).toBe(500);
-    const body = await response.json();
-    expect(body.error).toBe("Failed to generate choices");
+    expect(res.statusCode).toBe(500);
+    expect(res._body).toEqual({ error: "Failed to generate choices" });
   });
 
   it("returns 500 when generate-choices stream contains malformed JSON", async () => {
     getAuthenticatedUserMock.mockResolvedValue({ id: "user-5" });
-    // Stream has a malformed chunk followed by a valid done
     vi.mocked(fetch).mockResolvedValue(
       new Response("data: {invalid json}\ndata: [DONE]\n\n", {
         status: 200,
@@ -306,24 +302,21 @@ describe("story generation arc routes", () => {
     );
 
     const handler = (await import("../../api/generate-choices")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-choices", {
-        method: "POST",
-        headers: { authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({ recentText: "Some text" }),
-      })
+    const res = createRes();
+    await handler(
+      createReq({ body: { recentText: "Some text" } }),
+      res
     );
 
-    // The empty argsBuffer will fail JSON.parse, caught by outer catch
-    expect(response.status).toBe(500);
+    expect(res.statusCode).toBe(500);
   });
 
   it("returns 204 for OPTIONS on generate-choices", async () => {
     const handler = (await import("../../api/generate-choices")).default;
-    const response = await handler(
-      new Request("http://localhost/api/generate-choices", { method: "OPTIONS" })
-    );
-    expect(response.status).toBe(204);
+    const res = createRes();
+    await handler(createReq({ method: "OPTIONS" }), res);
+    expect(res.statusCode).toBe(204);
+    expect(res._ended).toBe(true);
   });
 
   it("returns 429 when OpenAI rate-limits generate-section", async () => {

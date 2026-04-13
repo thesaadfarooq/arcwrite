@@ -1,7 +1,13 @@
-import { getAuthenticatedUser, unauthorizedResponse } from "./_lib/auth.js";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { getAuthenticatedUser } from "./_lib/auth.js";
 import { getToneDirective } from "../src/lib/tone-profiles.js";
 
 export const config = { runtime: "nodejs", maxDuration: 300 };
+
+function getAuthHeader(req: VercelRequest): string | null {
+  const h = req.headers.authorization;
+  return typeof h === "string" ? h : null;
+}
 
 type StoryArcMode = "normal" | "concluding" | "post_ending" | "resumed_extension";
 type StoryMoveFamily =
@@ -93,16 +99,16 @@ function isStoryMoveFamily(value: unknown): value is StoryMoveFamily {
   return typeof value === "string" && value in MOVE_FAMILY_GUIDANCE;
 }
 
-export default async function handler(req: Request) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204 });
+    return res.status(204).end();
   }
 
   try {
-    const user = await getAuthenticatedUser(req.headers.get("authorization"));
-    if (!user) return unauthorizedResponse();
+    const user = await getAuthenticatedUser(getAuthHeader(req));
+    if (!user) return res.status(401).json({ error: "Authentication required" });
 
-    const { recentText, summary, storyState, tone, genre, premise, beat, arcMode, moveFamilies, previousEnding } = await req.json() as {
+    const { recentText, summary, storyState, tone, genre, premise, beat, arcMode, moveFamilies, previousEnding } = req.body as {
       recentText?: string;
       summary?: string;
       storyState?: unknown;
@@ -216,10 +222,7 @@ Generate 4 story direction choices.`;
     if (!response.ok) {
       const errText = await response.text();
       console.error("OpenAI error:", response.status, errText);
-      return new Response(JSON.stringify({ error: "Failed to generate choices" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+      return res.status(500).json({ error: "Failed to generate choices" });
     }
 
     // Stream tool call argument chunks, assemble, return final JSON
@@ -253,15 +256,10 @@ Generate 4 story direction choices.`;
     }
 
     const result = JSON.parse(argsBuffer);
-    return new Response(JSON.stringify(result), {
-      headers: { "Content-Type": "application/json" },
-    });
+    return res.json(result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     console.error("generate-choices error:", msg);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return res.status(500).json({ error: msg });
   }
 }
