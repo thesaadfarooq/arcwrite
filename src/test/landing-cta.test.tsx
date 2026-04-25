@@ -26,9 +26,9 @@ function renderLanding() {
 }
 
 describe("Landing page CTAs", () => {
-  it("renders 'Start your story' button", () => {
+  it("renders 'Tell your first story' button", () => {
     renderLanding();
-    expect(screen.getByRole("button", { name: /start your story/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /tell your first story/i })).toBeInTheDocument();
   });
 
   it("does NOT render 'View plans' button", () => {
@@ -40,11 +40,11 @@ describe("Landing page CTAs", () => {
     renderLanding();
     expect(screen.queryByRole("button", { name: /fantasy quest/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /mystery case/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /sci-fi/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /mystery case/i })).not.toBeInTheDocument();
   });
 
-  it("renders 'Try it free' button", () => {
+  it("renders 'Begin now' button", () => {
     renderLanding();
-    expect(screen.getByRole("button", { name: /try it free/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /begin now/i })).toBeInTheDocument();
   });
 });

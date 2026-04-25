@@ -24,13 +24,13 @@ const DEMO_CHOICES = [
 const HOW_IT_WORKS = [
   {
     icon: PenLine,
-    title: "Describe your idea",
-    description: "Write a premise — a sentence, a paragraph, or just a vibe. The AI takes it from there.",
+    title: "Set the stage",
+    description: "A sentence, a scene, a vibe — just describe the world in your head.",
   },
   {
     icon: GitBranch,
-    title: "Choose what happens",
-    description: "After each turn, pick from AI-generated directions — or write your own twist.",
+    title: "Make the choices",
+    description: "At every turn, decide where the story goes — or write your own twist.",
   },
   {
     icon: Sparkles,
@@ -120,20 +120,20 @@ const Index = () => {
           <div>
             <Reveal delay={0}>
               <h1 className="font-story text-4xl md:text-5xl font-semibold text-foreground leading-[1.15] tracking-tight text-balance mb-5">
-                You direct the story.
+                Tell the story.
                 <br />
-                <span className="text-primary">AI writes it.</span>
+                <span className="text-primary">Shape every twist.</span>
               </h1>
             </Reveal>
             <Reveal delay={0.15}>
               <p className="text-muted-foreground text-lg leading-relaxed text-pretty max-w-lg mb-8">
-                Shape plots, steer characters, and craft entire novels — without writing a single paragraph yourself.
+                Describe the world in your head. Choose where the story goes. Every path is yours to explore.
               </p>
             </Reveal>
             <Reveal delay={0.3}>
               <div className="flex flex-wrap items-center gap-3">
                 <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate("/auth?mode=signup")}>
-                  Start your story <ArrowRight className="w-4 h-4 ml-1.5" />
+                  Tell your first story <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
                 <span className="text-xs text-muted-foreground">Free · No credit card needed</span>
               </div>
@@ -229,7 +229,7 @@ const Index = () => {
               How it works
             </h2>
             <p className="text-muted-foreground text-center mb-14 max-w-md mx-auto">
-              Three steps. No writing experience needed.
+              Three steps. One story only you could tell.
             </p>
           </Reveal>
 
@@ -263,10 +263,10 @@ const Index = () => {
         <div className="max-w-4xl mx-auto">
           <StaggerGroup stagger={0.1} className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { icon: GitBranch, title: "Branching choices", desc: "Different directions every turn" },
-              { icon: Palette, title: "Genre & tone", desc: "Multiple genres, your voice" },
-              { icon: Network, title: "Story tree", desc: "Visualize every path" },
-              { icon: Share2, title: "Export & share", desc: "PDF, public links" },
+              { icon: GitBranch, title: "Branching choices", desc: "Your decisions shape the story" },
+              { icon: Palette, title: "Genre & tone", desc: "Fantasy, sci-fi, horror — your world" },
+              { icon: Network, title: "Story tree", desc: "See every path you've taken" },
+              { icon: Share2, title: "Export & share", desc: "Share your story with the world" },
             ].map((f, i) => {
               const Icon = f.icon;
               return (
@@ -295,14 +295,14 @@ const Index = () => {
         <Reveal>
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="font-story text-2xl md:text-3xl font-semibold text-foreground mb-4">
-              Ready to write your story?
+              Your story is waiting.
             </h2>
             <p className="text-muted-foreground mb-8 max-w-md mx-auto">
               Free to start. No credit card needed.
             </p>
             <div className="flex items-center justify-center">
               <Button size="lg" className="hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150" onClick={() => navigate("/auth?mode=signup")}>
-                Try it free <ArrowRight className="w-4 h-4 ml-1.5" />
+                Begin now <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </div>
           </div>

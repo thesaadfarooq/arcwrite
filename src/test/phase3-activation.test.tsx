@@ -81,8 +81,8 @@ describe("phase 3 activation polish", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole("button", { name: /start your story/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /try it free/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /tell your first story/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /begin now/i })).toBeInTheDocument();
   });
 
   it("shows multiple quick-start options in the empty dashboard state", async () => {

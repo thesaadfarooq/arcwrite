@@ -29,20 +29,20 @@ describe("Index (landing) page", () => {
   it("renders the main hero heading", async () => {
     const { default: Index } = await import("@/pages/Index");
     renderPage(Index);
-    expect(screen.getByText(/you direct the story/i)).toBeDefined();
+    expect(screen.getByText(/tell the story/i)).toBeDefined();
   });
 
   it("renders the start your story CTA", async () => {
     const { default: Index } = await import("@/pages/Index");
     renderPage(Index);
-    expect(screen.getByRole("button", { name: /start your story/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /tell your first story/i })).toBeDefined();
   });
 
   it("renders feature highlights", async () => {
     const { default: Index } = await import("@/pages/Index");
     renderPage(Index);
     // The index page has feature cards
-    expect(screen.getAllByText(/ai/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/branching choices/i)).toBeDefined();
   });
 
   it("renders the footer", async () => {

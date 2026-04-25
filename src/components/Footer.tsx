@@ -29,7 +29,7 @@ export default function Footer() {
               <BookOpen className="w-4 h-4 text-primary" />
               <span className="font-story font-semibold text-foreground">Arcwrite</span>
             </div>
-            <p className="text-xs text-muted-foreground">Stories you direct, AI delivers.</p>
+            <p className="text-xs text-muted-foreground">Stories begin with you.</p>
           </div>
 
           {/* Pages */}
