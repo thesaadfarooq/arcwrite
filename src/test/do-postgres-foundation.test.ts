@@ -57,7 +57,7 @@ describe("DigitalOcean Postgres migration foundation", () => {
       expect.objectContaining({
         connectionString: process.env.DATABASE_URL,
         max: 5,
-        ssl: { rejectUnauthorized: false },
+        ssl: { rejectUnauthorized: true },
       })
     );
   });

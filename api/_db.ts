@@ -7,7 +7,8 @@ export function getPool(): Pool {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       max: 5,
-      ssl: { rejectUnauthorized: false },
+      // Neon serves publicly-trusted certs; verify them (the old droplet was self-signed).
+      ssl: { rejectUnauthorized: true },
     });
   }
 

@@ -70,43 +70,37 @@ Stripe/export functions (Node.js runtime):
 
 The project uses **full environment isolation** to prevent cross-contamination between local development and production.
 
-**Two databases** on the same DigitalOcean instance:
-- `arcwrite` — production database (used by Vercel production deployments)
-- `arcwrite_test` — test database (used locally and by Vercel preview deployments)
+**Two databases** on the same Neon project (managed via the Vercel Marketplace "Arcwrite-DB" store):
+- `neondb` — production database (used by Vercel production deployments)
+- `arcwrite_dev` — dev database (used locally and by Vercel preview deployments)
 
 **Two Stripe environments:**
 - Live keys (`sk_live_*`) + live product IDs — production only
 - Sandbox keys (`sk_test_*`) + sandbox product IDs — local dev and previews
 
 **How it works:**
-- `.env` (gitignored) — points to `arcwrite_test` DB + Stripe sandbox. This is what `vercel dev` and `vite dev` use locally.
+- `.env` (gitignored) — points to `arcwrite_dev` DB + Stripe sandbox. This is what `vercel dev` and `vite dev` use locally.
 - Vercel dashboard — env vars are scoped by environment:
-  - **Production**: prod DB, live Stripe key, live product/price IDs
-  - **Preview + Development**: test DB, sandbox Stripe key, sandbox product/price IDs
-- Supabase auth and OpenAI are shared (same keys) since they don't store environment-specific state.
+  - **Production**: prod DB (`neondb`), live Stripe key, live product/price IDs
+  - **Preview + Development**: dev DB (`arcwrite_dev`), sandbox Stripe key, sandbox product/price IDs
+- Clerk auth and OpenAI are shared (same keys) since they don't store environment-specific state.
 
 **Important:** Stripe product/price IDs have **no hardcoded fallbacks** in the code. They must be set via env vars (`STRIPE_PLUS_PRODUCT_ID`, `STRIPE_PRO_PRODUCT_ID`, `VITE_STRIPE_*`). If missing, tier resolution defaults to "free". This prevents accidental cross-environment contamination.
 
-**When running migrations**, always apply to both databases:
-```bash
-# Production
-sudo -u postgres psql -d arcwrite -c "ALTER TABLE ..."
-# Test
-sudo -u postgres psql -d arcwrite_test -c "ALTER TABLE ..."
-```
+**When running migrations**, always apply to both databases (see "Neon DB Access" below).
 
 **Environment variable reference:**
 
 Client-side (`VITE_` prefix, exposed to browser):
-- `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_CLERK_PUBLISHABLE_KEY`
 - `VITE_STRIPE_PLUS_PRICE_ID`, `VITE_STRIPE_PRO_PRICE_ID`
 - `VITE_STRIPE_PLUS_PRODUCT_ID`, `VITE_STRIPE_PRO_PRODUCT_ID`
 
 Server-side (API routes only):
-- `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`
+- `CLERK_SECRET_KEY`
 - `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`
 - `STRIPE_PLUS_PRODUCT_ID`, `STRIPE_PRO_PRODUCT_ID`
-- `DATABASE_URL` — points to `arcwrite_test` locally, `arcwrite` in production
+- `DATABASE_URL` — points to `arcwrite_dev` locally, `neondb` in production
 
 ### UI patterns
 
@@ -138,30 +132,36 @@ Vitest and Testing Library are the default stack. Add or update tests for any be
 ## Commit & Pull Request Guidelines
 Recent history uses Conventional Commit prefixes such as `feat:`, `fix:`, `refactor:`, and `chore:`. Keep commit titles short and imperative, for example `feat: add story arc pacing`. PRs should include a concise summary, test evidence (`npm run test`, `npm run build`), and screenshots or screen recordings for UI changes.
 
-## DigitalOcean DB Access
-Both databases (`arcwrite` and `arcwrite_test`) run on the DigitalOcean Droplet at `188.166.82.107`. For read-only inspection from this repo, load `.env` and use the app connection (note: `.env` points to `arcwrite_test` by default):
+## Neon DB Access
+Both databases (`neondb` for production, `arcwrite_dev` for dev/preview/local) live in one Neon project, managed through the Vercel Marketplace integration (store "Arcwrite-DB"). The connection string owns the schema — no SSH needed.
+
+Dev database (what `.env` points to):
 
 ```bash
 set -a; . ./.env; set +a
 psql "$DATABASE_URL" -c '\d stories'
 ```
 
-The `DATABASE_URL` user can inspect data but does not own the schema. For migrations or `ALTER TABLE`, SSH to the Droplet with the existing key and run `psql` as the local `postgres` user:
+Production database (pull the prod connection string from Vercel first — keep the pulled file out of the repo):
 
 ```bash
-ssh -i ~/.ssh/id_ed25519 root@188.166.82.107
-sudo -u postgres psql -d arcwrite -c '\d stories'       # production
-sudo -u postgres psql -d arcwrite_test -c '\d stories'   # test
+vercel env pull --environment=production /tmp/prod.env
+set -a; . /tmp/prod.env; set +a
+psql "$DATABASE_URL" -c '\d stories'
 ```
 
-Example migration pattern (apply to BOTH databases):
+Migration pattern (apply to BOTH databases):
 
 ```bash
-sudo -u postgres psql -d arcwrite -v ON_ERROR_STOP=1 \
+psql "$DEV_DATABASE_URL" -v ON_ERROR_STOP=1 \
   -c "ALTER TABLE stories ADD COLUMN IF NOT EXISTS target_turns integer DEFAULT 35;"
-sudo -u postgres psql -d arcwrite_test -v ON_ERROR_STOP=1 \
+psql "$PROD_DATABASE_URL" -v ON_ERROR_STOP=1 \
   -c "ALTER TABLE stories ADD COLUMN IF NOT EXISTS target_turns integer DEFAULT 35;"
 ```
+
+Notes:
+- `DATABASE_URL` is the pooled (PgBouncer) endpoint; `DATABASE_URL_UNPOOLED` bypasses the pooler — prefer it for DDL and `CREATE DATABASE`.
+- A fresh database is bootstrapped with `scripts/schema.sql` (the canonical schema).
 
 ## Security & Configuration Tips
-Do not commit secrets. Local environment values belong in `.env`. This project uses Supabase auth, Stripe, OpenAI, and a self-hosted Postgres connection via `DATABASE_URL`; treat all production credentials and SSH keys as sensitive.
+Do not commit secrets. Local environment values belong in `.env`. This project uses Clerk auth, Stripe, OpenAI, and Neon Postgres (via the Vercel Marketplace) through `DATABASE_URL`; treat all production credentials as sensitive.

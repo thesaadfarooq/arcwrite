@@ -22,27 +22,36 @@ Vitest and Testing Library are the default stack. Add or update tests for any be
 ## Commit & Pull Request Guidelines
 Recent history uses Conventional Commit prefixes such as `feat:`, `fix:`, `refactor:`, and `chore:`. Keep commit titles short and imperative, for example `feat: add story arc pacing`. PRs should include a concise summary, test evidence (`npm run test`, `npm run build`), and screenshots or screen recordings for UI changes.
 
-## DigitalOcean DB Access
-The production Postgres database runs on the DigitalOcean Droplet at `188.166.82.107`. For read-only inspection from this repo, load `.env` and use the app connection:
+## Neon DB Access
+Both databases (`neondb` for production, `arcwrite_dev` for dev/preview/local) live in one Neon project, managed through the Vercel Marketplace integration (store "Arcwrite-DB"). The connection string owns the schema — no SSH needed.
+
+Dev database (what `.env` points to):
 
 ```bash
 set -a; . ./.env; set +a
 psql "$DATABASE_URL" -c '\d stories'
 ```
 
-The `DATABASE_URL` user can inspect data but does not own the schema. For migrations or `ALTER TABLE`, SSH to the Droplet with the existing key and run `psql` as the local `postgres` user:
+Production database (pull the prod connection string from Vercel first — keep the pulled file out of the repo):
 
 ```bash
-ssh -i ~/.ssh/id_ed25519 root@188.166.82.107
-sudo -u postgres psql -d arcwrite -c '\d stories'
+vercel env pull --environment=production /tmp/prod.env
+set -a; . /tmp/prod.env; set +a
+psql "$DATABASE_URL" -c '\d stories'
 ```
 
-Example migration pattern:
+Migration pattern (apply to BOTH databases):
 
 ```bash
-sudo -u postgres psql -d arcwrite -v ON_ERROR_STOP=1 \
+psql "$DEV_DATABASE_URL" -v ON_ERROR_STOP=1 \
+  -c "ALTER TABLE stories ADD COLUMN IF NOT EXISTS target_turns integer DEFAULT 35;"
+psql "$PROD_DATABASE_URL" -v ON_ERROR_STOP=1 \
   -c "ALTER TABLE stories ADD COLUMN IF NOT EXISTS target_turns integer DEFAULT 35;"
 ```
 
+Notes:
+- `DATABASE_URL` is the pooled (PgBouncer) endpoint; `DATABASE_URL_UNPOOLED` bypasses the pooler — prefer it for DDL and `CREATE DATABASE`.
+- A fresh database is bootstrapped with `scripts/schema.sql` (the canonical schema).
+
 ## Security & Configuration Tips
-Do not commit secrets. Local environment values belong in `.env`. This project uses Supabase auth, Stripe, OpenAI, and a self-hosted Postgres connection via `DATABASE_URL`; treat all production credentials and SSH keys as sensitive.
+Do not commit secrets. Local environment values belong in `.env`. This project uses Clerk auth, Stripe, OpenAI, and Neon Postgres (via the Vercel Marketplace) through `DATABASE_URL`; treat all production credentials as sensitive.
